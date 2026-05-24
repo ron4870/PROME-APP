@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: prome_intranet_app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    # To enable SSL directly in Docker, you would typically use an Nginx reverse proxy
+    # or Traefik in front of this container. For now, it exposes port 80.
