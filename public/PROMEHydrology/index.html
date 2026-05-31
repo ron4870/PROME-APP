@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROME Road Alignment & Coordinate Transformer</title>
+  <meta name="description" content="A professional geodetic coordinate transformation and format conversion tool for road designs from LandXML to OpenDRIVE (.xodr), custom built for PROME Consultants Ltd.">
+  
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Proj4 Library for Coordinate Conversions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+  <!-- GeoTIFF.js -->
+  <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
+</head>
+<body>
+  
+  <!-- Main Glassmorphic Wrapper -->
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-logo-section">
+        <div class="logo-container">
+          <img src="https://www.promeconsult.com/images/prome.png" alt="PROME Consultants Logo" class="prome-logo">
+        </div>
+        <div class="brand-divider"></div>
+        <div class="company-brand">
+          <span class="company-name">PROME Consultants Ltd</span>
+          <span class="app-tagline">Road Design Alignment & Coordinate Converter</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle-btn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Theme">
+          <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+    
+    <!-- Main Content Area -->
+    <main class="dashboard-grid">
+      
+      <!-- Left Controls Panel -->
+      <section class="controls-column">
+        
+        <!-- Step 1: Input Data Selection -->
+        <div class="glass-card" id="step-input-card">
+          <div class="card-header">
+            <div class="step-badge">1</div>
+            <h2>Import Alignment</h2>
+          </div>
+          <div class="card-body">
+            <!-- Drag and Drop Dropzone -->
+            <div id="xml-dropzone" class="dropzone">
+              <input type="file" id="xml-file-input" accept=".xml,.landxml,.xodr,.zip,.shp" hidden>
+              <div class="dropzone-prompt">
+                <svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="primary-text">Drag & Drop your XML/SHP/XODR file</p>
+                <p class="secondary-text">or <span class="browse-link">browse files</span></p>
+              </div>
+            </div>
+            
+            <div class="file-status-container" id="file-status" style="display: none;">
+              <div class="file-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <div class="file-details">
+                <div class="file-name" id="selected-file-name">filename.xml</div>
+                <div class="file-size" id="selected-file-size">0 KB</div>
+              </div>
+              <button id="remove-file-btn" class="circle-btn danger" title="Clear file" aria-label="Clear File">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Coordinate Format Details -->
+            <div class="form-group" style="margin-top: 15px;">
+              <label for="alignment-coord-order">Coordinate Order</label>
+              <select id="alignment-coord-order">
+                <option value="NE" selected>Northing, Easting (Y, X)</option>
+                <option value="EN">Easting, Northing (X, Y)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-top: 15px;">
+              <label for="alignment-crs">Alignment Coordinate System</label>
+              <select id="alignment-crs">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+
+
+            <!-- Coordinate Format Details Removed to replace with dynamic -->
+            <div class="form-group" style="margin-top: 15px;">
+              <label for="coordinate-order-select">LandXML Coordinate Order</label>
+              <select id="coordinate-order-select">
+                <option value="NE" selected>Northing, Easting (Y, X)</option>
+                <option value="EN">Easting, Northing (X, Y)</option>
+              </select>
+              <small class="form-help">Specifies which coordinate is written first in the LandXML file's coordinate pairs.</small>
+            </div>
+          </div>
+        </div>
+        
+        
+        <!-- Step 2: Import Surface Data -->
+        <div class="glass-card" id="step-surface-card">
+          <div class="card-header">
+            <div class="step-badge">3</div>
+            <h2>Import Surface File</h2>
+          </div>
+          <div class="card-body">
+            <!-- Drag and Drop Dropzone -->
+            <div id="surface-dropzone" class="dropzone">
+              <input type="file" id="surface-file-input" accept=".tif,.tiff,.asc,.xml,.landxml" hidden>
+              <div class="dropzone-prompt">
+                <svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="primary-text">Drag & Drop GeoTIFF or LandXML</p>
+                <p class="secondary-text">or <span class="browse-link" id="surface-browse">browse files</span></p>
+              </div>
+            </div>
+            
+            <div class="file-status-container" id="surface-file-status" style="display: none;">
+              <div class="file-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <div class="file-details">
+                <div class="file-name" id="surface-selected-file-name">filename.tif</div>
+                <div class="file-size" id="surface-selected-file-size">0 KB</div>
+              </div>
+              <button id="surface-remove-file-btn" class="circle-btn danger" title="Clear file">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Coordinate System -->
+            <div class="form-group" style="margin-top: 15px;">
+              <label for="surface-crs">Surface Coordinate System</label>
+              <select id="surface-crs">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Coordinate Transformation System -->
+        <div class="glass-card" id="step-coords-card">
+          <div class="card-header">
+            <div class="step-badge">2</div>
+            <h2>Transformation Parameters</h2>
+          </div>
+          <div class="card-body">
+            
+            <!-- Source Coordinate Reference System -->
+            <div class="form-group">
+              <label for="source-crs-select">Source Coordinate System</label>
+              <select id="source-crs-select">
+                <optgroup label="Arc 1960 (Uganda/East Africa)">
+                  <option value="arc1960_36n" selected>Arc 1960 / UTM Zone 36N (EPSG:21096)</option>
+                  <option value="arc1960_36s">Arc 1960 / UTM Zone 36S (EPSG:21036)</option>
+                  <option value="arc1960_35n">Arc 1960 / UTM Zone 35N (EPSG:21095)</option>
+                  <option value="arc1960_35s">Arc 1960 / UTM Zone 35S (EPSG:21035)</option>
+                  <option value="arc1960_ll">Arc 1960 Geographic (Lat/Lon) (EPSG:4210)</option>
+                </optgroup>
+                <optgroup label="WGS 84 (Global)">
+                  <option value="wgs84_36n">WGS 84 / UTM Zone 36N (EPSG:32636)</option>
+                  <option value="wgs84_36s">WGS 84 / UTM Zone 36S (EPSG:32736)</option>
+                  <option value="wgs84_35n">WGS 84 / UTM Zone 35N (EPSG:32635)</option>
+                  <option value="wgs84_35s">WGS 84 / UTM Zone 35S (EPSG:32735)</option>
+                  <option value="wgs84_ll">WGS 84 Geographic (Lat/Lon) (EPSG:4326)</option>
+                </optgroup>
+                <optgroup label="Custom Options">
+                  <option value="custom_tm">Custom Transverse Mercator</option>
+                </optgroup>
+              </select>
+            </div>
+            
+            <!-- Custom Source CRS Form (Hidden by default) -->
+            <div id="custom-source-crs-form" class="custom-crs-form" style="display: none;">
+              <h3>Custom Source TM Projection</h3>
+              <div class="grid-2-col">
+                <div class="form-group small">
+                  <label for="src-lon0">Central Meridian (°E)</label>
+                  <input type="number" id="src-lon0" value="33.0" step="0.5">
+                </div>
+                <div class="form-group small">
+                  <label for="src-lat0">Latitude of Origin (°N)</label>
+                  <input type="number" id="src-lat0" value="0.0" step="0.5">
+                </div>
+              </div>
+              <div class="grid-2-col">
+                <div class="form-group small">
+                  <label for="src-scale">Scale Factor</label>
+                  <input type="number" id="src-scale" value="0.9996" step="0.0001">
+                </div>
+                <div class="form-group small">
+                  <label for="src-datum">Reference Datum</label>
+                  <select id="src-datum">
+                    <option value="arc1960">Arc 1960 (Clarke 1880)</option>
+                    <option value="wgs84" selected>WGS 84</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2-col">
+                <div class="form-group small">
+                  <label for="src-x0">False Easting (m)</label>
+                  <input type="number" id="src-x0" value="500000">
+                </div>
+                <div class="form-group small">
+                  <label for="src-y0">False Northing (m)</label>
+                  <input type="number" id="src-y0" value="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Target Coordinate Reference System -->
+            <div class="form-group">
+              <label for="target-crs-select">Target Coordinate System</label>
+              <select id="target-crs-select">
+                <optgroup label="WGS 84 (Global)">
+                  <option value="wgs84_36n" selected>WGS 84 / UTM Zone 36N (EPSG:32636)</option>
+                  <option value="wgs84_36s">WGS 84 / UTM Zone 36S (EPSG:32736)</option>
+                  <option value="wgs84_35n">WGS 84 / UTM Zone 35N (EPSG:32635)</option>
+                  <option value="wgs84_35s">WGS 84 / UTM Zone 35S (EPSG:32735)</option>
+                  <option value="wgs84_ll">WGS 84 Geographic (Lat/Lon) (EPSG:4326)</option>
+                </optgroup>
+                <optgroup label="Arc 1960 (Uganda/East Africa)">
+                  <option value="arc1960_36n">Arc 1960 / UTM Zone 36N (EPSG:21096)</option>
+                  <option value="arc1960_36s">Arc 1960 / UTM Zone 36S (EPSG:21036)</option>
+                  <option value="arc1960_35n">Arc 1960 / UTM Zone 35N (EPSG:21095)</option>
+                  <option value="arc1960_35s">Arc 1960 / UTM Zone 35S (EPSG:21035)</option>
+                  <option value="arc1960_ll">Arc 1960 Geographic (Lat/Lon) (EPSG:4210)</option>
+                </optgroup>
+                <optgroup label="Custom Options">
+                  <option value="custom_tm">Custom Transverse Mercator</option>
+                </optgroup>
+              </select>
+            </div>
+            
+            <!-- Custom Target CRS Form (Hidden by default) -->
+            <div id="custom-target-crs-form" class="custom-crs-form" style="display: none;">
+              <h3>Custom Target TM Projection</h3>
+              <div class="grid-2-col">
+                <div class="form-group small">
+                  <label for="tgt-lon0">Central Meridian (°E)</label>
+                  <input type="number" id="tgt-lon0" value="33.0" step="0.5">
+                </div>
+                <div class="form-group small">
+                  <label for="tgt-lat0">Latitude of Origin (°N)</label>
+                  <input type="number" id="tgt-lat0" value="0.0" step="0.5">
+                </div>
+              </div>
+              <div class="grid-2-col">
+                <div class="form-group small">
+                  <label for="tgt-scale">Scale Factor</label>
+                  <input type="number" id="tgt-scale" value="0.9996" step="0.0001">
+                </div>
+                <div class="form-group small">
+                  <label for="tgt-datum">Reference Datum</label>
+                  <select id="tgt-datum">
+                    <option value="wgs84" selected>WGS 84</option>
+                    <option value="arc1960">Arc 1960 (Clarke 1880)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2-col">
+                <div class="form-group small">
+                  <label for="tgt-x0">False Easting (m)</label>
+                  <input type="number" id="tgt-x0" value="500000">
+                </div>
+                <div class="form-group small">
+                  <label for="tgt-y0">False Northing (m)</label>
+                  <input type="number" id="tgt-y0" value="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Target Output File Format & Lane Width -->
+            <div class="grid-2-col">
+              <div class="form-group">
+                <label for="output-format-select">Output Format</label>
+                <select id="output-format-select" style="max-width: 250px;">
+                  <option value="xodr_opendrive" selected>OpenDrive (.xodr)</option>
+                  <option value="landxml">LandXML (.xml)</option>
+                  <option value="shapefile">ESRI Shapefile (.shp)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="lane-width-input">Lane Width (m)</label>
+                <input type="number" id="lane-width-input" value="3.5" step="0.1" min="1.0" style="max-width: 150px;">
+              </div>
+            </div>
+            
+            <!-- Warning/Alert message container -->
+            <div id="crs-warning" class="alert-box warning-alert" style="display: none;">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>Geographic coordinate targets will project local geometries to standard UTM meters and specify WGS84 Geographic inside the geo-reference header.</span>
+            </div>
+
+          </div>
+        </div>
+        
+        <!-- Transformation Execution and Download Controls -->
+        <div class="glass-card flex-row-card">
+          <button id="convert-btn" class="primary-btn glow-effect-active" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Convert Alignment
+          </button>
+          
+          <button id="download-btn" class="secondary-btn" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span class="button-text">Download File</span>
+          </button>
+        </div>
+      </section>
+      
+      <!-- Right Visualization & Inspector Column -->
+      <section class="viewer-column">
+        
+        <!-- Alignment 2D Canvas Map Viewer -->
+        <div class="glass-card map-card flex-grow-card">
+          <div class="card-header borderless">
+            <h2>2D Horizontal Alignment Viewer</h2>
+            <div class="map-legend">
+              <span class="legend-item"><span class="legend-dot line-dot"></span>Line</span>
+              <span class="legend-item"><span class="legend-dot curve-dot"></span>Curve</span>
+              <span class="legend-item"><span class="legend-dot spiral-dot"></span>Spiral</span>
+            </div>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="alignment-canvas"></canvas>
+            
+            <!-- Canvas Overlay UI -->
+            <div class="canvas-controls">
+              <button id="zoom-in-btn" class="icon-btn square" title="Zoom In">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              <button id="zoom-out-btn" class="icon-btn square" title="Zoom Out">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              <button id="reset-view-btn" class="icon-btn square" title="Reset View">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+
+            <!-- Alignment Selection Dropdown if multiple exist -->
+            <div class="alignment-selector-overlay" id="alignment-selector-container" style="display: none;">
+              <label for="alignment-select">Active Alignment:</label>
+              <select id="alignment-select">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+            
+            <!-- Map Source Dropdown -->
+            <div class="map-source-overlay" id="map-source-container">
+              <label for="map-source-select">Basemap:</label>
+              <select id="map-source-select" class="theme-select">
+                <option value="none">None</option>
+                <option value="esri">Esri Satellite</option>
+                <option value="google">Google Earth</option>
+                <option value="bing">Bing Maps</option>
+                <option value="sentinel">Copernicus Sentinel Hub</option>
+                <option value="osm">OpenStreetMap</option>
+                <option value="carto">Carto Light</option>
+              </select>
+              <button id="reload-map-btn" class="icon-btn square" title="Reload Map Tiles" style="margin-left: 4px; padding: 4px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+              </button>
+            </div>
+            
+            <div id="canvas-placeholder" class="canvas-placeholder">
+              <svg viewBox="0 0 24 24" width="60" height="60" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <p>Load alignment data to view horizontal path</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Segment Inspector -->
+        <div class="glass-card" id="inspector-card" style="display: none;">
+          <div class="card-header">
+            <h2>Alignment Geometry Inspector</h2>
+          </div>
+          <div class="card-body">
+            
+            <!-- Metadata Summary -->
+            <div class="metadata-grid" id="alignment-meta-summary">
+              <div class="meta-item">
+                <span class="meta-label">Alignment Name</span>
+                <span class="meta-val" id="meta-align-name">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Total Length</span>
+                <span class="meta-val" id="meta-align-length">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Start Station</span>
+                <span class="meta-val" id="meta-align-start">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Segments Count</span>
+                <span class="meta-val" id="meta-align-segments">-</span>
+              </div>
+            </div>
+            
+            <!-- Horizontal Segments Table -->
+            <div class="table-container">
+              <table id="segments-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Start Station</th>
+                    <th>Length (m)</th>
+                    <th>Start Coordinates (E, N)</th>
+                    <th>Parameters</th>
+                  </tr>
+                </thead>
+                <tbody id="segments-table-body">
+                  <tr>
+                    <td colspan="5" class="empty-table-cell">No alignment data available</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+        
+      </section>
+      
+    </main>
+    
+    <!-- Bottom Full Width Output Code Preview -->
+    <section class="output-console-row">
+      <div class="glass-card">
+        <div class="card-header code-header">
+          <h2>OpenDRIVE Output Preview (.xodr)</h2>
+          <div class="header-buttons">
+            <button id="copy-code-btn" class="secondary-btn small-btn" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy Code
+            </button>
+          </div>
+        </div>
+        <div class="code-preview-wrapper">
+          <pre id="code-output" class="code-output"><code>&lt;!-- Load an alignment and click 'Convert Alignment' to generate OpenDRIVE output here --&gt;</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- App Logs console -->
+    <section class="logs-row">
+      <div class="glass-card">
+        <div class="card-header logs-header">
+          <h2>Execution Log</h2>
+          <button id="clear-logs-btn" class="link-like-btn">Clear Logs</button>
+        </div>
+        <div class="logs-body" id="logs-console">
+          <div class="log-line system-log">[System] Application initialized. Awaiting LandXML file upload.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>© 2026 PROME Consultants Ltd. All Rights Reserved. Built for Road Engineering Design Workflows.</p>
+    </footer>
+
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script type="module" src="app.js"></script>
+    <!-- Alignment Selection Modal -->
+    <div id="alignment-selection-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content">
+        <h2>Select Alignments to Import</h2>
+        <p>This file contains multiple alignments. Please select the ones you want to import:</p>
+        <div class="modal-selection-controls" style="margin-bottom: 10px; display: flex; gap: 10px;">
+          <button id="modal-select-all-btn" class="secondary-btn" style="padding: 6px 12px; font-size: 12px;">Select All</button>
+          <button id="modal-deselect-all-btn" class="secondary-btn" style="padding: 6px 12px; font-size: 12px;">Deselect All</button>
+        </div>
+        <div id="modal-alignments-list" class="alignments-list">
+          <!-- Checkboxes injected here -->
+        </div>
+        <div class="modal-actions">
+          <button id="modal-cancel-btn" class="secondary-btn">Cancel</button>
+          <button id="modal-import-btn" class="primary-btn">Import Selected</button>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>

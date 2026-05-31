@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROME Horizontal Alignment Designer</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Proj4 for Coordinate Transformations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #0f4c81;
+      --secondary-color: #f1f5f9;
+      --accent-color: #3b82f6;
+      --danger-color: #ef4444;
+      --text-main: #1e293b;
+      --text-light: #64748b;
+      --border-color: #e2e8f0;
+      --bg-color: #f8fafc;
+      --panel-bg: #ffffff;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background-color: var(--panel-bg);
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 60px;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+      z-index: 10;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--panel-bg);
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .btn.primary {
+      background-color: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .btn.primary:hover {
+      background-color: #0c3e6a;
+    }
+
+    .main-container {
+      display: flex;
+      flex-grow: 1;
+      height: calc(100vh - 60px);
+    }
+
+    /* Left Panel: Settings */
+    .panel-left {
+      width: 300px;
+      background-color: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    /* Center Panel: Map/Canvas */
+    .panel-center {
+      flex-grow: 1;
+      position: relative;
+      background-color: #e5e7eb;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Right Panel: Element Data */
+    .panel-right {
+      width: 350px;
+      background-color: var(--panel-bg);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .panel-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+      background-color: var(--secondary-color);
+      font-size: 0.95rem;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .panel-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-light);
+    }
+
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent-color);
+    }
+
+    #alignment-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .map-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .map-control-btn {
+      width: 36px;
+      height: 36px;
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .map-control-btn:hover {
+      background: var(--secondary-color);
+    }
+
+    .status-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 5px 15px;
+      font-size: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Element Table Styles */
+    .element-card {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--bg-color);
+    }
+
+    .element-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--primary-color);
+    }
+
+    .element-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      align-items: center;
+    }
+    .element-row label {
+      width: 120px;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--primary-color);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .element-row input {
+      width: 60%;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-light);
+      font-size: 0.9rem;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-light);
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Horizontal Alignment Designer</h1>
+    <div class="toolbar">
+      <input type="file" id="import-xml" accept=".xml" style="display: none;">
+      <button class="btn" onclick="document.getElementById('import-xml').click()">Import LandXML</button>
+      <button class="btn" id="clear-btn">Clear All</button>
+      <button class="btn primary" id="export-btn">Export LandXML</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    
+    <!-- Left Panel: Settings -->
+    <div class="panel-left">
+      <div class="panel-header">Design Settings</div>
+      <div class="panel-content">
+        
+        <div class="form-group">
+          <label>Coordinate Reference System</label>
+          <select id="crs-select">
+            <optgroup label="WGS 84 (Global)">
+              <option value="wgs84_36n" selected>WGS 84 / UTM Zone 36N</option>
+              <option value="wgs84_36s">WGS 84 / UTM Zone 36S</option>
+              <option value="wgs84_35n">WGS 84 / UTM Zone 35N</option>
+              <option value="wgs84_35s">WGS 84 / UTM Zone 35S</option>
+              <option value="wgs84_ll">WGS 84 Geographic (Lat/Lon)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div style="height: 1px; background: var(--border-color); margin: 10px 0;"></div>
+
+        <div class="form-group">
+          <label>Design Standard</label>
+          <select id="design-standard">
+            <option value="aashto" selected>AASHTO Design Standards</option>
+            <option value="ukdmrb">UK DMRB (CD 109)</option>
+            <option value="ugandamow">Uganda MoW Design Standards</option>
+          </select>
+        </div>
+
+
+
+        <div style="height: 1px; background: var(--border-color); margin: 10px 0;"></div>
+
+        <div id="fields-aashto" class="standard-group">
+          <div class="form-group">
+            <label>AASHTO Road Type</label>
+            <select id="road-type">
+              <option value="freeway">Freeway / Interstate</option>
+              <option value="arterial" selected>Arterial</option>
+              <option value="collector">Collector</option>
+              <option value="local">Local</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Design Speed (km/h)</label>
+            <select id="aashto-design-speed" class="ds-select">
+              <option value="40">40 km/h</option>
+              <option value="50">50 km/h</option>
+              <option value="60">60 km/h</option>
+              <option value="80" selected>80 km/h</option>
+              <option value="100">100 km/h</option>
+              <option value="120">120 km/h</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Max Superelevation (e_max)</label>
+            <select id="aashto-emax">
+              <option value="4">4%</option>
+              <option value="6">6%</option>
+              <option value="8" selected>8%</option>
+              <option value="10">10%</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="fields-ukdmrb" class="standard-group" style="display: none;">
+          <div class="form-group">
+            <label>Road Category</label>
+            <select id="ukdmrb-road-cat">
+              <option value="1">Category 1 (Motorway)</option>
+              <option value="2">Category 2 (Dual Carriageway)</option>
+              <option value="3">Category 3 (Dual Carriageway)</option>
+              <option value="4">Category 4 (Single Carriageway)</option>
+              <option value="5" selected>Category 5 (Single Carriageway)</option>
+              <option value="6">Category 6 (Single Carriageway)</option>
+              <option value="7">Category 7 (Single Carriageway)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Environment</label>
+            <select id="ukdmrb-env">
+              <option value="rural" selected>Rural (Max 7% Superelevation)</option>
+              <option value="urban">Urban (Max 5% Superelevation)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Design Speed (km/h)</label>
+            <select id="ukdmrb-design-speed" class="ds-select">
+              <option value="50">50 km/h</option>
+              <option value="60">60 km/h</option>
+              <option value="70">70 km/h</option>
+              <option value="85" selected>85 km/h</option>
+              <option value="100">100 km/h</option>
+              <option value="120">120 km/h</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Relaxation Level</label>
+            <select id="ukdmrb-relaxation">
+              <option value="0" selected>Desirable Minimum</option>
+              <option value="1">1-Step Relaxation</option>
+              <option value="2">2-Step Relaxation</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="fields-ugandamow" class="standard-group" style="display: none;">
+          <div class="form-group">
+            <label>Functional Class</label>
+            <select id="ugandamow-func-class">
+              <option value="A">Class A (International Trunk)</option>
+              <option value="B" selected>Class B (National Trunk)</option>
+              <option value="C">Class C (Primary)</option>
+              <option value="D">Class D (Secondary)</option>
+              <option value="E">Class E (Minor)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Design Class</label>
+            <select id="ugandamow-design-class">
+              <option value="Ia">Class Ia</option>
+              <option value="Ib">Class Ib</option>
+              <option value="II" selected>Class II</option>
+              <option value="III">Class III</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Terrain</label>
+            <select id="ugandamow-terrain">
+              <option value="level" selected>Level</option>
+              <option value="rolling">Rolling</option>
+              <option value="mountainous">Mountainous</option>
+              <option value="escarpment">Escarpment</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Design Speed (km/h)</label>
+            <select id="ugandamow-design-speed" class="ds-select">
+              <option value="40">40 km/h</option>
+              <option value="50">50 km/h</option>
+              <option value="60">60 km/h</option>
+              <option value="70">70 km/h</option>
+              <option value="80" selected>80 km/h</option>
+              <option value="100">100 km/h</option>
+              <option value="120">120 km/h</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Max Superelevation (e_max)</label>
+            <select id="ugandamow-emax">
+              <option value="4">4%</option>
+              <option value="7" selected>7%</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="element-card" style="margin-top: 10px; background: rgba(15, 76, 129, 0.05); border-color: rgba(15, 76, 129, 0.2);">
+          <div id="criteria-title" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-color); margin-bottom: 5px;">AASHTO Criteria Info</div>
+          <div id="info-f-row" style="font-size: 0.8rem; display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>Friction (f):</span> <span id="info-f">0.14</span>
+          </div>
+          <div style="font-size: 0.8rem; display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>Max Superelevation:</span> <span id="info-emax">8%</span>
+          </div>
+          <div style="font-size: 0.8rem; display: flex; justify-content: space-between;">
+            <span id="rmin-label">Min Radius (R_min):</span> <span id="info-rmin">252 m</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Center Panel: Canvas Viewer -->
+    <div class="panel-center" id="canvas-container">
+      <canvas id="alignment-canvas"></canvas>
+      
+      <div class="map-controls">
+        <select id="active-alignment" style="margin-bottom: 10px; width: 100%; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; display: none;">
+        </select>
+        <select id="map-source" style="margin-bottom: 10px; width: 100%; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px;">
+          <option value="none">No Background</option>
+          <option value="google" selected>Google Maps (Satellite)</option>
+          <option value="bing">Bing Maps (Satellite)</option>
+          <option value="esri">Esri World Imagery</option>
+          <option value="osm">OpenStreetMap</option>
+          <option value="carto">Carto Light</option>
+        </select>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <div class="map-control-btn" id="tool-draw" title="Draw/Add PI" style="background: var(--secondary-color); border-color: var(--primary-color);">
+            <!-- Pen icon -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+          </div>
+          <div class="map-control-btn" id="tool-select" title="Select/Move PI">
+            <!-- Pointer icon -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path><path d="M13 13l6 6"></path></svg>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px;">
+          <div class="map-control-btn" id="zoom-in" title="Zoom In">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <div class="map-control-btn" id="zoom-out" title="Zoom Out">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <div class="map-control-btn" id="zoom-fit" title="Fit to Screen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v6h2V6h4V4H4zm14 0h-4v2h4v4h2V4h-2zM4 20h4v-2H6v-4H4v6zm14-6v4h-4v2h6v-6h-2z"></path></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span id="coord-display">E: 0.00, N: 0.00</span>
+        <span id="scale-display">Zoom: 1.0x</span>
+      </div>
+    </div>
+
+    <!-- Right Panel: Data Table -->
+    <div class="panel-right">
+      <div class="tabs">
+        <div class="tab active" id="tab-pis">Points of Intersection (PI)</div>
+        <div class="tab" id="tab-curves">Curves</div>
+      </div>
+      
+      <div class="panel-content" id="data-container">
+        <!-- Dynamically populated by JS -->
+        <div class="empty-state">
+          No alignment defined.<br><br>Click on the map to start placing Points of Intersection (PIs).
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay" id="import-modal">
+    <div class="modal-content" style="width: 500px;">
+      <div class="modal-header">Select Alignments to Import</div>
+      <p style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-light);">
+        The selected LandXML file contains multiple alignments. Please select which alignments you want to import.
+      </p>
+      <div id="import-alignment-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Dynamically populated checkboxes -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="import-cancel-btn">Cancel</button>
+        <button class="btn primary" id="import-confirm-btn">Import Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

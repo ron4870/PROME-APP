@@ -1,0 +1,1529 @@
+// Coordinate Reference Systems
+const CRS_DEFINITIONS = {
+  'wgs84_ll': '+proj=longlat +datum=WGS84 +no_defs',
+  'wgs84_35n': '+proj=utm +zone=35 +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
+  'wgs84_35s': '+proj=utm +zone=35 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
+  'wgs84_36n': '+proj=utm +zone=36 +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
+  'wgs84_36s': '+proj=utm +zone=36 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs'
+};
+
+// Register projections
+Object.entries(CRS_DEFINITIONS).forEach(([code, def]) => {
+  proj4.defs(code, def);
+});
+
+// App State
+const state = {
+  crs: 'wgs84_36n',
+  mapSource: 'google',
+  standard: 'aashto',
+  roadType: 'arterial',
+  ukdmrbRelaxation: 0,
+  designSpeed: 80,
+  eMax: 0.08,
+  rMin: 252,
+  
+  mode: 'draw', // 'draw' or 'select'
+  
+  alignments: [], // Array of { name, pis }
+  activeAlignmentIndex: -1,
+  
+  pis: [], // Points of active alignment
+  selectedPiIndex: -1,
+  
+  panX: 0,
+  panY: 0,
+  zoom: 1.0, // pixels per meter
+  
+  isDragging: false,
+  isPanning: false,
+  lastMouseX: 0,
+  lastMouseY: 0,
+  
+  mapTileCache: {},
+  activeTab: 'pis'
+};
+
+// AASHTO Side Friction Factors (Green Book approximate values)
+const AASHTO_FRICTION = {
+  40: 0.16,
+  50: 0.16,
+  60: 0.15,
+  80: 0.14,
+  100: 0.13,
+  120: 0.12
+};
+
+// Uganda MoW Side Friction Factors
+const UGANDA_MOW_FRICTION = {
+  40: 0.17,
+  50: 0.16,
+  60: 0.15,
+  70: 0.15,
+  80: 0.14,
+  100: 0.13,
+  120: 0.11
+};
+
+// Uganda MoW Design Speed mappings (Design Class + Terrain -> Speed)
+const UGANDA_MOW_SPEEDS = {
+  'Ia': { 'level': 120, 'rolling': 100, 'mountainous': 80, 'escarpment': 70 },
+  'Ib': { 'level': 100, 'rolling': 80, 'mountainous': 70, 'escarpment': 60 },
+  'II': { 'level': 80, 'rolling': 70, 'mountainous': 60, 'escarpment': 50 },
+  'III': { 'level': 70, 'rolling': 60, 'mountainous': 50, 'escarpment': 40 }
+};
+
+// UK DMRB Desirable Minimum Radii (CD 109)
+const UK_DMRB_RADII = {
+  50: 90,
+  60: 127,
+  70: 255,
+  85: 360,
+  100: 510,
+  120: 720
+};
+
+// DOM Elements
+const canvas = document.getElementById('alignment-canvas');
+const ctx = canvas.getContext('2d');
+const coordDisplay = document.getElementById('coord-display');
+const scaleDisplay = document.getElementById('scale-display');
+const dataContainer = document.getElementById('data-container');
+
+
+// --- Multiple Alignments Logic ---
+function updateAlignmentDropdown() {
+  const select = document.getElementById('active-alignment');
+  if (state.alignments.length > 1) {
+    select.style.display = 'block';
+    select.innerHTML = '';
+    state.alignments.forEach((aln, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = aln.name;
+      if (idx === state.activeAlignmentIndex) opt.selected = true;
+      select.appendChild(opt);
+    });
+  } else {
+    select.style.display = 'none';
+  }
+}
+
+document.getElementById('active-alignment').addEventListener('change', (e) => {
+  // Save current pis to active alignment
+  if (state.activeAlignmentIndex >= 0 && state.alignments[state.activeAlignmentIndex]) {
+    state.alignments[state.activeAlignmentIndex].pis = [...state.pis];
+  }
+  
+  state.activeAlignmentIndex = parseInt(e.target.value);
+  state.pis = [...state.alignments[state.activeAlignmentIndex].pis];
+  state.selectedPiIndex = -1;
+  updateDataPanel();
+  draw();
+});
+
+function syncActiveAlignment() {
+  if (state.activeAlignmentIndex >= 0 && state.alignments[state.activeAlignmentIndex]) {
+    state.alignments[state.activeAlignmentIndex].pis = [...state.pis];
+  }
+}
+
+// Resize Canvas
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  draw();
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100);
+
+// Design Criteria Calculator
+function updateDesignCriteria() {
+  const v = state.designSpeed;
+  let rMin = 252;
+  let f = 0.14;
+  
+  if (state.standard === 'aashto') {
+    f = AASHTO_FRICTION[v] || 0.14;
+    // R_min = V^2 / 127(e + f)
+    rMin = (v * v) / (127 * (state.eMax + f));
+    rMin = Math.ceil(rMin);
+    
+    document.getElementById('criteria-title').textContent = 'AASHTO Criteria Info';
+    document.getElementById('info-f-row').style.display = 'flex';
+    document.getElementById('info-f').textContent = f.toFixed(2);
+    document.getElementById('info-emax').textContent = (state.eMax * 100) + '%';
+  } 
+  else if (state.standard === 'ukdmrb') {
+    const speedSteps = [50, 60, 70, 85, 100, 120];
+    let speedIndex = speedSteps.indexOf(v);
+    if (speedIndex === -1) speedIndex = 3; // default to 85 if not found
+    
+    // Apply relaxation (step down)
+    let relaxedIndex = speedIndex - state.ukdmrbRelaxation;
+    if (relaxedIndex < 0) relaxedIndex = 0; // Cap at 50 km/h minimum radius
+    
+    const relaxedSpeed = speedSteps[relaxedIndex];
+    rMin = UK_DMRB_RADII[relaxedSpeed] || 90;
+    
+    document.getElementById('criteria-title').textContent = 'UK DMRB (CD 109) Criteria Info';
+    document.getElementById('info-f-row').style.display = 'none'; // Friction not directly tweaked
+    document.getElementById('info-emax').textContent = (state.eMax * 100) + '% (Max)';
+  }
+  else if (state.standard === 'ugandamow') {
+    f = UGANDA_MOW_FRICTION[v] || 0.14;
+    rMin = (v * v) / (127 * (state.eMax + f));
+    rMin = Math.ceil(rMin);
+    
+    document.getElementById('criteria-title').textContent = 'Uganda MoW Criteria Info';
+    document.getElementById('info-f-row').style.display = 'flex';
+    document.getElementById('info-f').textContent = f.toFixed(2);
+    document.getElementById('info-emax').textContent = (state.eMax * 100) + '%';
+  }
+  
+  state.rMin = rMin;
+  document.getElementById('info-rmin').textContent = rMin + ' m';
+  
+  // Automatically update any PI that has a radius smaller than the new minimum
+  let changed = false;
+  state.pis.forEach(pi => {
+    if (pi.r !== undefined && pi.r < rMin) {
+      pi.r = rMin;
+      changed = true;
+    }
+  });
+  
+  if (changed) {
+    updateDataPanel();
+    draw();
+  }
+}
+
+// Event Listeners for Settings
+document.getElementById('crs-select').addEventListener('change', (e) => {
+  state.crs = e.target.value;
+  state.mapTileCache = {};
+  draw();
+});
+
+document.getElementById('map-source').addEventListener('change', (e) => {
+  state.mapSource = e.target.value;
+  draw();
+});
+
+// Standard Dropdown Logic
+document.getElementById('design-standard').addEventListener('change', (e) => {
+  const std = e.target.value;
+  state.standard = std;
+  
+  // Hide all standard groups
+  document.querySelectorAll('.standard-group').forEach(el => el.style.display = 'none');
+  
+  // Show selected standard group
+  document.getElementById(`fields-${std}`).style.display = 'block';
+  
+  // Sync state values based on visible inputs
+  if (std === 'aashto') {
+    state.designSpeed = parseInt(document.getElementById('aashto-design-speed').value);
+    state.eMax = parseInt(document.getElementById('aashto-emax').value) / 100;
+  } else if (std === 'ukdmrb') {
+    state.designSpeed = parseInt(document.getElementById('ukdmrb-design-speed').value);
+    const env = document.getElementById('ukdmrb-env').value;
+    state.eMax = env === 'rural' ? 0.07 : 0.05;
+    state.ukdmrbRelaxation = parseInt(document.getElementById('ukdmrb-relaxation').value);
+  } else if (std === 'ugandamow') {
+    state.designSpeed = parseInt(document.getElementById('ugandamow-design-speed').value);
+    state.eMax = parseInt(document.getElementById('ugandamow-emax').value) / 100;
+  }
+  
+  updateDesignCriteria();
+});
+
+// Sync changes from specific fields
+document.querySelectorAll('.ds-select').forEach(el => {
+  el.addEventListener('change', (e) => {
+    state.designSpeed = parseInt(e.target.value);
+    updateDesignCriteria();
+  });
+});
+
+document.getElementById('aashto-emax').addEventListener('change', (e) => {
+  if (state.standard === 'aashto') {
+    state.eMax = parseInt(e.target.value) / 100;
+    updateDesignCriteria();
+  }
+});
+
+document.getElementById('ugandamow-emax').addEventListener('change', (e) => {
+  if (state.standard === 'ugandamow') {
+    state.eMax = parseInt(e.target.value) / 100;
+    updateDesignCriteria();
+  }
+});
+
+document.getElementById('ukdmrb-env').addEventListener('change', (e) => {
+  if (state.standard === 'ukdmrb') {
+    state.eMax = e.target.value === 'rural' ? 0.07 : 0.05;
+    updateDesignCriteria();
+  }
+});
+
+document.getElementById('ukdmrb-relaxation').addEventListener('change', (e) => {
+  if (state.standard === 'ukdmrb') {
+    state.ukdmrbRelaxation = parseInt(e.target.value);
+    updateDesignCriteria();
+  }
+});
+
+// Uganda MoW auto-update Design Speed based on Design Class + Terrain
+function handleMoWChange() {
+  if (state.standard === 'ugandamow') {
+    const dClass = document.getElementById('ugandamow-design-class').value;
+    const terrain = document.getElementById('ugandamow-terrain').value;
+    const suggestedSpeed = UGANDA_MOW_SPEEDS[dClass] && UGANDA_MOW_SPEEDS[dClass][terrain];
+    
+    if (suggestedSpeed) {
+      document.getElementById('ugandamow-design-speed').value = suggestedSpeed;
+      state.designSpeed = suggestedSpeed;
+    }
+    updateDesignCriteria();
+  }
+}
+
+document.getElementById('ugandamow-design-class').addEventListener('change', handleMoWChange);
+document.getElementById('ugandamow-terrain').addEventListener('change', handleMoWChange);
+
+// Toolbar Listeners
+document.getElementById('tool-draw').addEventListener('click', () => setMode('draw'));
+document.getElementById('tool-select').addEventListener('click', () => setMode('select'));
+document.getElementById('clear-btn').addEventListener('click', () => {
+  if (confirm('Clear all alignment data?')) {
+    state.pis = [];
+    state.selectedPiIndex = -1;
+    updateDataPanel();
+    draw();
+  }
+});
+
+function setMode(mode) {
+  state.mode = mode;
+  document.getElementById('tool-draw').style.background = mode === 'draw' ? 'var(--secondary-color)' : 'white';
+  document.getElementById('tool-draw').style.borderColor = mode === 'draw' ? 'var(--primary-color)' : 'var(--border-color)';
+  document.getElementById('tool-select').style.background = mode === 'select' ? 'var(--secondary-color)' : 'white';
+  document.getElementById('tool-select').style.borderColor = mode === 'select' ? 'var(--primary-color)' : 'var(--border-color)';
+  scaleDisplay.textContent = 'Mode: ' + (mode === 'draw' ? 'Draw PI' : 'Select/Move PI');
+}
+
+// Math Helpers
+function canvasToMap(x, y) {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  return {
+    x: (x - cx) / state.zoom + state.panX,
+    y: -(y - cy) / state.zoom + state.panY // inverted Y for CAD coords
+  };
+}
+
+function mapToCanvas(mx, my) {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  return {
+    x: (mx - state.panX) * state.zoom + cx,
+    y: -(my - state.panY) * state.zoom + cy
+  };
+}
+
+// Mouse Interaction
+canvas.addEventListener('mousedown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  if (e.button === 1 || e.shiftKey) { // Middle click or shift = pan
+    state.isPanning = true;
+    state.lastMouseX = mx;
+    state.lastMouseY = my;
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
+  
+  const mapCoords = canvasToMap(mx, my);
+  
+  if (state.mode === 'draw') {
+    // Add new PI
+    state.pis.push({
+      id: 'PI-' + (state.pis.length + 1),
+      x: mapCoords.x,
+      y: mapCoords.y,
+      r: state.pis.length > 0 ? state.rMin : undefined, // first and last PI don't need curve radius
+      lsIn: 0, lsOut: 0
+    });
+    state.selectedPiIndex = state.pis.length - 1;
+    updateDataPanel();
+    draw();
+  } else if (state.mode === 'select') {
+    // Check if we clicked an existing PI
+    let found = -1;
+    const clickRadius = 10 / state.zoom; // 10 pixels tolerance
+    for (let i = 0; i < state.pis.length; i++) {
+      const pi = state.pis[i];
+      const dx = pi.x - mapCoords.x;
+      const dy = pi.y - mapCoords.y;
+      if (Math.sqrt(dx*dx + dy*dy) < clickRadius) {
+        found = i;
+        break;
+      }
+    }
+    
+    if (found !== -1) {
+      state.selectedPiIndex = found;
+      state.isDragging = true;
+    } else {
+      state.selectedPiIndex = -1;
+      // Start panning if clicked empty space
+      state.isPanning = true;
+      state.lastMouseX = mx;
+      state.lastMouseY = my;
+      canvas.style.cursor = 'grabbing';
+    }
+    updateDataPanel();
+    draw();
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  const mapCoords = canvasToMap(mx, my);
+  coordDisplay.textContent = `X: ${mapCoords.x.toFixed(3)}, Y: ${mapCoords.y.toFixed(3)}`;
+  
+  if (state.isPanning) {
+    const dx = mx - state.lastMouseX;
+    const dy = my - state.lastMouseY;
+    state.panX -= dx / state.zoom;
+    state.panY += dy / state.zoom; // Inverted Y
+    state.lastMouseX = mx;
+    state.lastMouseY = my;
+    draw();
+  } else if (state.isDragging && state.selectedPiIndex !== -1) {
+    state.pis[state.selectedPiIndex].x = mapCoords.x;
+    state.pis[state.selectedPiIndex].y = mapCoords.y;
+    updateDataPanel();
+    draw();
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  state.isPanning = false;
+  state.isDragging = false;
+  canvas.style.cursor = state.mode === 'draw' ? 'crosshair' : 'default';
+});
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  const zoomTarget = canvasToMap(mx, my);
+  
+  const zoomFactor = 1.1;
+  if (e.deltaY < 0) {
+    state.zoom *= zoomFactor; // zoom in
+  } else {
+    state.zoom /= zoomFactor; // zoom out
+  }
+  
+  // Adjust pan so mouse stays at same point
+  state.panX = zoomTarget.x - (mx - canvas.width / 2) / state.zoom;
+  state.panY = zoomTarget.y + (my - canvas.height / 2) / state.zoom;
+  
+  draw();
+});
+
+// Zoom Controls
+document.getElementById('zoom-in').addEventListener('click', () => {
+  state.zoom *= 1.5; draw();
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  state.zoom /= 1.5; draw();
+});
+document.getElementById('zoom-fit').addEventListener('click', () => {
+  if (state.pis.length === 0) return;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  state.pis.forEach(p => {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  });
+  
+  const w = maxX - minX || 100;
+  const h = maxY - minY || 100;
+  
+  state.panX = minX + w/2;
+  state.panY = minY + h/2;
+  
+  const padding = 0.8;
+  const zoomX = (canvas.width * padding) / w;
+  const zoomY = (canvas.height * padding) / h;
+  state.zoom = Math.min(zoomX, zoomY);
+  draw();
+});
+
+// Calculate Geometric Elements
+function calculateGeometry() {
+  const elements = [];
+  
+  if (state.pis.length < 2) return elements;
+  
+  for (let i = 0; i < state.pis.length - 1; i++) {
+    const pi1 = state.pis[i];
+    const pi2 = state.pis[i+1];
+    
+    // Tangent azimuth
+    const dx = pi2.x - pi1.x;
+    const dy = pi2.y - pi1.y;
+    const length = Math.sqrt(dx*dx + dy*dy);
+    const azimuth = Math.atan2(dx, dy); // math azimuth
+    
+    if (i === 0) {
+      elements.push({ type: 'Point', x: pi1.x, y: pi1.y, name: 'POB' });
+    }
+    
+    // Tangent Line
+    elements.push({ type: 'Tangent', length: length, az: azimuth });
+    
+    if (i < state.pis.length - 2) {
+      const pi3 = state.pis[i+2];
+      const dx2 = pi3.x - pi2.x;
+      const dy2 = pi3.y - pi2.y;
+      const azimuth2 = Math.atan2(dx2, dy2);
+      
+      let delta = azimuth2 - azimuth;
+      if (delta > Math.PI) delta -= 2*Math.PI;
+      if (delta < -Math.PI) delta += 2*Math.PI;
+      
+      const r = pi2.r || state.rMin;
+      const lsIn = pi2.lsIn || 0;
+      const lsOut = pi2.lsOut || 0;
+      const absDelta = Math.abs(delta);
+      const rot = delta > 0 ? "cw" : "ccw";
+      
+      let theta_in = lsIn > 0 ? lsIn / (2 * r) : 0;
+      let theta_out = lsOut > 0 ? lsOut / (2 * r) : 0;
+      
+      let p_in = lsIn > 0 ? (lsIn * lsIn) / (24 * r) : 0;
+      let p_out = lsOut > 0 ? (lsOut * lsOut) / (24 * r) : 0;
+      
+      let k_in = lsIn > 0 ? (lsIn / 2) - (lsIn * lsIn * lsIn) / (240 * r * r) : 0;
+      let k_out = lsOut > 0 ? (lsOut / 2) - (lsOut * lsOut * lsOut) / (240 * r * r) : 0;
+      
+      let T_in = r * Math.tan(absDelta / 2);
+      let T_out = r * Math.tan(absDelta / 2);
+      let Lc = r * absDelta;
+      
+      let valid_spirals = false;
+      if (theta_in + theta_out < absDelta) {
+          valid_spirals = true;
+          if (lsIn > 0 || lsOut > 0) {
+              T_in = k_in + (r + p_out - (r + p_in) * Math.cos(absDelta)) / Math.sin(absDelta);
+              T_out = k_out + (r + p_in - (r + p_out) * Math.cos(absDelta)) / Math.sin(absDelta);
+          }
+          Lc = r * (absDelta - theta_in - theta_out);
+      } else {
+          // Spirals overlap, revert to simple curve for visual
+          theta_in = 0; theta_out = 0;
+          p_in = 0; p_out = 0;
+          k_in = 0; k_out = 0;
+      }
+      
+      const tsX = pi2.x - T_in * Math.sin(azimuth);
+      const tsY = pi2.y - T_in * Math.cos(azimuth);
+      
+      const stX = pi2.x + T_out * Math.sin(azimuth2);
+      const stY = pi2.y + T_out * Math.cos(azimuth2);
+      
+      let sc = null;
+      let cs = null;
+      let center = null;
+      let az_sc = null;
+      let az_cs = null;
+      let rot_dir = rot === 'cw' ? 1 : -1;
+      
+      if (valid_spirals && (lsIn > 0 || lsOut > 0)) {
+         const cx = tsX + k_in * Math.sin(azimuth) + (r + p_in) * Math.sin(azimuth + rot_dir * Math.PI/2);
+         const cy = tsY + k_in * Math.cos(azimuth) + (r + p_in) * Math.cos(azimuth + rot_dir * Math.PI/2);
+         center = {x: cx, y: cy};
+         
+         if (lsIn > 0) {
+             az_sc = azimuth + rot_dir * theta_in;
+             sc = {
+                x: cx + r * Math.sin(az_sc - rot_dir * Math.PI/2),
+                y: cy + r * Math.cos(az_sc - rot_dir * Math.PI/2)
+             };
+         }
+         
+         if (lsOut > 0) {
+             az_cs = azimuth2 - rot_dir * theta_out;
+             cs = {
+                x: cx + r * Math.sin(az_cs - rot_dir * Math.PI/2),
+                y: cy + r * Math.cos(az_cs - rot_dir * Math.PI/2)
+             };
+         }
+      } else {
+         const cx = tsX + r * Math.sin(azimuth + rot_dir * Math.PI/2);
+         const cy = tsY + r * Math.cos(azimuth + rot_dir * Math.PI/2);
+         center = {x: cx, y: cy};
+      }
+      
+      elements.push({ 
+        type: 'Curve', 
+        radius: r, 
+        delta: delta, 
+        length: Lc,
+        lsIn: valid_spirals ? lsIn : 0, lsOut: valid_spirals ? lsOut : 0,
+        tLengthIn: T_in, tLengthOut: T_out,
+        azIn: azimuth, azOut: azimuth2,
+        pc: {x: tsX, y: tsY},
+        pt: {x: stX, y: stY},
+        sc: sc,
+        cs: cs,
+        center: center,
+        az_sc: az_sc,
+        az_cs: az_cs,
+        piIndex: i + 1,
+        pi: {x: pi2.x, y: pi2.y},
+        rot: rot
+      });
+    } else {
+      elements.push({ type: 'Point', x: pi2.x, y: pi2.y, name: 'POE' });
+    }
+  }
+  
+  // Post-pass: Calculate Stationing (Chainage)
+  let currentStation = 0;
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    if (el.type === 'Point' && el.name === 'POB') {
+      el.station = currentStation;
+    } else if (el.type === 'Curve') {
+      // Find the previous tangent
+      const prevTangent = elements[i-1];
+      const prevCurve = elements[i-2] && elements[i-2].type === 'Curve' ? elements[i-2] : null;
+      
+      let t_out_prev = prevCurve ? prevCurve.tLengthOut : 0;
+      let straightLen = prevTangent.length - t_out_prev - el.tLengthIn;
+      
+      currentStation += straightLen;
+      el.station_pc = currentStation;
+      
+      if (el.lsIn > 0) {
+        currentStation += el.lsIn;
+        el.station_sc = currentStation;
+      }
+      
+      currentStation += el.length;
+      if (el.lsIn > 0 || el.lsOut > 0) el.station_cs = currentStation;
+      
+      if (el.lsOut > 0) {
+        currentStation += el.lsOut;
+      }
+      el.station_pt = currentStation; // PT or ST
+    } else if (el.type === 'Point' && el.name === 'POE') {
+      const prevTangent = elements[i-1];
+      const prevCurve = elements[i-2] && elements[i-2].type === 'Curve' ? elements[i-2] : null;
+      let t_out_prev = prevCurve ? prevCurve.tLengthOut : 0;
+      let straightLen = prevTangent.length - t_out_prev;
+      currentStation += straightLen;
+      el.station = currentStation;
+    }
+  }
+  
+  return elements;
+}
+
+// Drawing Logic
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  drawMapTiles();
+
+  // Sync active before drawing
+  syncActiveAlignment();
+
+  // Draw inactive alignments in background
+  state.alignments.forEach((aln, idx) => {
+    if (idx !== state.activeAlignmentIndex && aln.pis.length >= 2) {
+      const originalPis = state.pis;
+      state.pis = aln.pis;
+      const elements = calculateGeometry();
+      
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#9ca3af'; // Gray for inactive
+      ctx.beginPath();
+      
+      let currPt = { x: aln.pis[0].x, y: aln.pis[0].y };
+      const startPx = mapToCanvas(currPt.x, currPt.y);
+      ctx.moveTo(startPx.x, startPx.y);
+      
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        if (el.type === 'Tangent') {
+          let nextEl = elements[i+1];
+          let endPt = null;
+          if (nextEl && nextEl.type === 'Curve') {
+            endPt = nextEl.pc;
+          } else if (nextEl && nextEl.type === 'Point') {
+            endPt = {x: nextEl.x, y: nextEl.y};
+          } else {
+            continue;
+          }
+          const ptPx = mapToCanvas(endPt.x, endPt.y);
+          ctx.lineTo(ptPx.x, ptPx.y);
+          currPt = endPt;
+        } else if (el.type === 'Curve') {
+          // Connect key points for inactive alignment
+          if (el.sc) {
+            const scPx = mapToCanvas(el.sc.x, el.sc.y);
+            ctx.lineTo(scPx.x, scPx.y);
+          }
+          if (el.cs) {
+            const csPx = mapToCanvas(el.cs.x, el.cs.y);
+            ctx.lineTo(csPx.x, csPx.y);
+          }
+          const ptPx = mapToCanvas(el.pt.x, el.pt.y);
+          ctx.lineTo(ptPx.x, ptPx.y);
+          currPt = el.pt;
+        }
+      }
+      ctx.stroke();
+      state.pis = originalPis;
+    }
+  });
+  
+  const elements = calculateGeometry();
+  
+  // Draw Tangents (ghost lines to PIs)
+  ctx.strokeStyle = '#94a3b8'; // light gray
+  ctx.setLineDash([5, 5]);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  state.pis.forEach((pi, i) => {
+    const pt = mapToCanvas(pi.x, pi.y);
+    if (i === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // Draw True Geometry
+  ctx.lineWidth = 3;
+  
+  let currentPt = null;
+  
+  for (let i = 0; i < state.pis.length; i++) {
+    const pi = state.pis[i];
+    
+    if (i === 0) {
+      currentPt = mapToCanvas(pi.x, pi.y);
+      continue;
+    }
+    
+    // Find if this PI has a curve
+    const curve = elements.find(e => e.type === 'Curve' && e.piIndex === i);
+    
+    if (curve) {
+      const pc = mapToCanvas(curve.pc.x, curve.pc.y);
+      const pt = mapToCanvas(curve.pt.x, curve.pt.y);
+      const piScreen = mapToCanvas(pi.x, pi.y);
+      
+      // Draw straight to TS
+      ctx.beginPath();
+      ctx.strokeStyle = '#3b82f6'; // Light Blue
+      ctx.moveTo(currentPt.x, currentPt.y);
+      ctx.lineTo(pc.x, pc.y);
+      ctx.stroke();
+      
+      
+      const rot_dir = curve.rot === 'cw' ? 1 : -1;
+      
+      // Function to generate discrete points along Euler spiral
+      function getSpiralPoints(startX, startY, startAz, r, ls, rot_dir, isExit) {
+          const points = [];
+          const steps = 20;
+          for (let j = 0; j <= steps; j++) {
+              const l = (j / steps) * ls;
+              // Taylor series approximation for clothoid coordinates
+              const x_loc = l - Math.pow(l, 5) / (40 * r * r * ls * ls);
+              const y_loc = Math.pow(l, 3) / (6 * r * ls) - Math.pow(l, 7) / (336 * Math.pow(r, 3) * Math.pow(ls, 3));
+              
+              // Apply rotation direction
+              const effective_rot = isExit ? -rot_dir : rot_dir;
+              const y_dir = effective_rot * y_loc;
+              
+              let az = startAz;
+              if (isExit) {
+                 az = startAz + Math.PI; // Look backward from ST
+              }
+              
+              const x_glob = startX + x_loc * Math.sin(az) + y_dir * Math.cos(az);
+              const y_glob = startY + x_loc * Math.cos(az) - y_dir * Math.sin(az);
+              
+              points.push(mapToCanvas(x_glob, y_glob));
+          }
+          if (isExit) points.reverse();
+          return points;
+      }
+
+      if ((curve.lsIn > 0 || curve.lsOut > 0) && (curve.sc || curve.cs)) {
+         
+         // Draw Spiral In (TS to SC)
+         if (curve.lsIn > 0 && curve.sc) {
+             const spInPts = getSpiralPoints(curve.pc.x, curve.pc.y, curve.azIn, curve.radius, curve.lsIn, rot_dir, false);
+             ctx.beginPath();
+             ctx.strokeStyle = '#22c55e'; // Light Green
+             ctx.moveTo(spInPts[0].x, spInPts[0].y);
+             for(let k=1; k<spInPts.length; k++) ctx.lineTo(spInPts[k].x, spInPts[k].y);
+             ctx.stroke();
+         }
+         
+         // Draw Circular Curve (SC to CS)
+         if (curve.length > 0) {
+             const cx = curve.center.x;
+             const cy = curve.center.y;
+             const cScreen = mapToCanvas(cx, cy);
+             const rScreen = curve.radius * state.zoom;
+             
+             // Canvas uses standard math angles where 0 is Right (East), PI/2 is Down (South).
+             // Math.atan2(y, x) is perfect because Canvas Y points down.
+             const startCurve = curve.lsIn > 0 && curve.sc ? curve.sc : curve.pc;
+             const endCurve = curve.lsOut > 0 && curve.cs ? curve.cs : curve.pt;
+             
+             const startScreen = mapToCanvas(startCurve.x, startCurve.y);
+             const endScreen = mapToCanvas(endCurve.x, endCurve.y);
+             
+             const startAngle = Math.atan2(startScreen.y - cScreen.y, startScreen.x - cScreen.x);
+             const endAngle = Math.atan2(endScreen.y - cScreen.y, endScreen.x - cScreen.x);
+             
+             ctx.beginPath();
+             ctx.strokeStyle = '#ef4444'; // Red
+             // false for cw, true for ccw in Canvas API
+             ctx.arc(cScreen.x, cScreen.y, rScreen, startAngle, endAngle, curve.rot === 'ccw');
+             ctx.stroke();
+         }
+         
+         // Draw Spiral Out (CS to ST)
+         if (curve.lsOut > 0 && curve.cs) {
+             const spOutPts = getSpiralPoints(curve.pt.x, curve.pt.y, curve.azOut, curve.radius, curve.lsOut, rot_dir, true);
+             ctx.beginPath();
+             ctx.strokeStyle = '#22c55e'; // Light Green
+             ctx.moveTo(spOutPts[0].x, spOutPts[0].y);
+             for(let k=1; k<spOutPts.length; k++) ctx.lineTo(spOutPts[k].x, spOutPts[k].y);
+             ctx.stroke();
+         }
+      } else {
+         // Draw purely Circular Curve (PC to PT)
+         if (curve.length > 0) {
+             const cx = curve.center.x;
+             const cy = curve.center.y;
+             const cScreen = mapToCanvas(cx, cy);
+             const rScreen = curve.radius * state.zoom;
+             
+             const startScreen = mapToCanvas(curve.pc.x, curve.pc.y);
+             const endScreen = mapToCanvas(curve.pt.x, curve.pt.y);
+             
+             const startAngle = Math.atan2(startScreen.y - cScreen.y, startScreen.x - cScreen.x);
+             const endAngle = Math.atan2(endScreen.y - cScreen.y, endScreen.x - cScreen.x);
+             
+             ctx.beginPath();
+             ctx.strokeStyle = '#ef4444'; // Red
+             ctx.arc(cScreen.x, cScreen.y, rScreen, startAngle, endAngle, curve.rot === 'ccw');
+             ctx.stroke();
+         }
+      }
+      currentPt = pt;
+    } else {
+      const p = mapToCanvas(pi.x, pi.y);
+      ctx.beginPath();
+      ctx.strokeStyle = '#3b82f6'; // Light Blue
+      ctx.moveTo(currentPt.x, currentPt.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      currentPt = p;
+    }
+  }
+  
+    // Draw PIs
+  state.pis.forEach((pi, i) => {
+    const pt = mapToCanvas(pi.x, pi.y);
+    ctx.fillStyle = i === state.selectedPiIndex ? 'var(--accent-color)' : '#ffffff';
+    ctx.strokeStyle = i === state.selectedPiIndex ? 'white' : 'var(--primary-color)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Draw Label
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '12px Inter';
+    ctx.fillText('PI ' + i, pt.x + 10, pt.y - 10);
+  });
+  
+  // Format Station (e.g. 0+120.50)
+  function formatStation(st) {
+    if (st === undefined || isNaN(st)) return '';
+    const km = Math.floor(st / 1000);
+    const m = (st % 1000).toFixed(2);
+    return `${km}+${m.padStart(6, '0')}`;
+  }
+
+  // Draw Station Labels (Referents)
+  ctx.font = '11px Inter';
+  ctx.fillStyle = '#1e293b';
+  elements.forEach(el => {
+    if (el.type === 'Point') {
+      const pt = mapToCanvas(el.x, el.y);
+      ctx.fillText(`${el.name}: ${formatStation(el.station)}`, pt.x + 10, pt.y + 15);
+    } else if (el.type === 'Curve') {
+      const pcLbl = el.lsIn > 0 ? 'TS' : 'PC';
+      const ptLbl = el.lsOut > 0 ? 'ST' : 'PT';
+      
+      const pcSc = mapToCanvas(el.pc.x, el.pc.y);
+      ctx.fillText(`${pcLbl}: ${formatStation(el.station_pc)}`, pcSc.x + 10, pcSc.y + 15);
+      
+      if (el.lsIn > 0 && el.sc) {
+        const scSc = mapToCanvas(el.sc.x, el.sc.y);
+        ctx.fillText(`SC: ${formatStation(el.station_sc)}`, scSc.x + 10, scSc.y + 15);
+      }
+      
+      if (el.lsOut > 0 && el.cs) {
+        const csSc = mapToCanvas(el.cs.x, el.cs.y);
+        ctx.fillText(`CS: ${formatStation(el.station_cs)}`, csSc.x + 10, csSc.y + 15);
+      } else if (el.lsIn > 0 && !el.lsOut && el.pt) {
+        // Just CC to ST but only spiral in exists? Should be CS.
+      }
+      
+      const ptSc = mapToCanvas(el.pt.x, el.pt.y);
+      ctx.fillText(`${ptLbl}: ${formatStation(el.station_pt)}`, ptSc.x + 10, ptSc.y + 15);
+    }
+  });
+}
+
+// Map Tile Logic (From Hydrology App)
+function drawMapTiles() {
+  if (state.mapSource === 'none') return;
+  const projStr = CRS_DEFINITIONS[state.crs];
+  if (!projStr) return;
+  
+  const earthCircumference = 40075016.68557849;
+  
+  try {
+    const tlLocal = canvasToMap(0, 0);
+    const brLocal = canvasToMap(canvas.width, canvas.height);
+    
+    const tlWebMerc = proj4(projStr, 'EPSG:3857', [tlLocal.x, tlLocal.y]);
+    const brWebMerc = proj4(projStr, 'EPSG:3857', [brLocal.x, brLocal.y]);
+    
+    const minX = Math.min(tlWebMerc[0], brWebMerc[0]);
+    const maxX = Math.max(tlWebMerc[0], brWebMerc[0]);
+    const minY = Math.min(tlWebMerc[1], brWebMerc[1]);
+    const maxY = Math.max(tlWebMerc[1], brWebMerc[1]);
+    
+    const webMercWidth = maxX - minX;
+    let z = 0;
+    if (webMercWidth > 0) {
+      z = Math.round(Math.log2((earthCircumference * canvas.width) / (webMercWidth * 256)));
+    }
+    z = Math.max(0, Math.min(19, z));
+    const tileWidth = earthCircumference / Math.pow(2, z);
+    
+    const startXTile = Math.max(0, Math.floor((minX + earthCircumference / 2) / tileWidth));
+    const endXTile = Math.min(Math.pow(2, z) - 1, Math.floor((maxX + earthCircumference / 2) / tileWidth));
+    const startYTile = Math.max(0, Math.floor((earthCircumference / 2 - maxY) / tileWidth));
+    const endYTile = Math.min(Math.pow(2, z) - 1, Math.floor((earthCircumference / 2 - minY) / tileWidth));
+    
+    const urls = {
+      'esri': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      'osm': 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      'carto': 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+      'google': 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+      'bing': '' // handled separately
+    };
+    
+    let tileCount = 0;
+    const maxTiles = 60;
+    
+    for (let x = startXTile; x <= endXTile; x++) {
+      for (let y = startYTile; y <= endYTile; y++) {
+        if (tileCount++ > maxTiles) break;
+        
+        let url = urls[state.mapSource];
+        if (state.mapSource === 'bing') {
+          let quadKey = '';
+          for (let i = z; i > 0; i--) {
+            let digit = '0';
+            const mask = 1 << (i - 1);
+            if ((x & mask) !== 0) digit = String.fromCharCode(digit.charCodeAt(0) + 1);
+            if ((y & mask) !== 0) digit = String.fromCharCode(digit.charCodeAt(0) + 2);
+            quadKey += digit;
+          }
+          url = `https://ecn.t3.tiles.virtualearth.net/tiles/a${quadKey}.jpeg?g=1`;
+        } else {
+          url = url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+        }
+
+        let img = state.mapTileCache[url];
+        if (!img) {
+          img = new Image();
+          img.crossOrigin = "Anonymous";
+          img.src = url;
+          img.loaded = false;
+          img.onload = () => { img.loaded = true; draw(); };
+          state.mapTileCache[url] = img;
+        }
+        
+        if (img.loaded) {
+          // Math to draw tile in correct position
+          const tileMinXWebMerc = x * tileWidth - earthCircumference / 2;
+          const tileMaxYWebMerc = earthCircumference / 2 - y * tileWidth;
+          const tileMaxXWebMerc = tileMinXWebMerc + tileWidth;
+          const tileMinYWebMerc = tileMaxYWebMerc - tileWidth;
+          
+          const tlProj = proj4('EPSG:3857', projStr, [tileMinXWebMerc, tileMaxYWebMerc]);
+          const brProj = proj4('EPSG:3857', projStr, [tileMaxXWebMerc, tileMinYWebMerc]);
+          
+          const p1 = mapToCanvas(tlProj[0], tlProj[1]);
+          const p2 = mapToCanvas(brProj[0], brProj[1]);
+          
+          ctx.drawImage(img, p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        }
+      }
+    }
+  } catch (e) {
+    console.log("Map render skip: " + e);
+  }
+}
+
+// Data Panel Logic
+function updateDataPanel() {
+  if (state.pis.length === 0) {
+    dataContainer.innerHTML = '<div class="empty-state">No alignment defined.<br><br>Click on the map to start placing Points of Intersection (PIs).</div>';
+    return;
+  }
+  
+  if (state.activeTab === 'pis') {
+    let html = '';
+    state.pis.forEach((pi, i) => {
+      html += `
+        <div class="element-card" ${i === state.selectedPiIndex ? 'style="border-color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color);"' : ''}>
+          <div class="element-header">
+            <span>PI ${i}</span>
+            <button class="btn" style="padding: 2px 6px; font-size: 0.75rem;" onclick="removePI(${i})">Remove</button>
+          </div>
+          <div class="element-row">
+            <label>Easting (X)</label>
+            <input type="number" step="0.001" value="${pi.x.toFixed(3)}" onchange="updatePI(${i}, 'x', this.value)">
+          </div>
+          <div class="element-row">
+            <label>Northing (Y)</label>
+            <input type="number" step="0.001" value="${pi.y.toFixed(3)}" onchange="updatePI(${i}, 'y', this.value)">
+          </div>
+        </div>
+      `;
+    });
+    dataContainer.innerHTML = html;
+  } else if (state.activeTab === 'curves') {
+    let html = '';
+    const elements = calculateGeometry();
+    const curves = elements.filter(e => e.type === 'Curve');
+    
+    if (curves.length === 0) {
+      dataContainer.innerHTML = '<div class="empty-state">No curves generated yet. Need at least 3 PIs to form a curve.</div>';
+      return;
+    }
+    
+    curves.forEach((c) => {
+      const piIndex = c.piIndex;
+      const degDelta = Math.abs(c.delta * 180 / Math.PI).toFixed(2);
+      
+      // Calculate standard-specific minimums
+      const v = state.designSpeed;
+      const r = c.radius || state.rMin;
+      let lsMin = v / 1.8; // Default 2 seconds rule (Uganda MoW base)
+      
+      if (state.standard === 'aashto') {
+        lsMin = Math.max((v * v * v) / (46.7 * r), v / 1.8);
+      } else if (state.standard === 'ukdmrb') {
+        lsMin = (v * v * v) / (14 * r);
+      }
+      
+      lsMin = Math.ceil(lsMin);
+      const rMin = state.rMin;
+      
+      html += `
+        <div class="element-card">
+          <div class="element-header">Curve at PI ${piIndex}</div>
+          <div class="element-row">
+            <label>Radius (R)</label>
+            <div style="text-align: right;">
+              <input type="number" step="1" value="${c.radius}" onchange="updatePI(${piIndex}, 'r', this.value)" style="width: 80px;">
+              <div style="font-size: 0.65rem; color: #888; margin-top: 2px;">Min: ${rMin}m</div>
+            </div>
+          </div>
+          <div class="element-row">
+            <label>Spiral In (Ls)</label>
+            <div style="text-align: right;">
+              <input type="number" step="1" value="${c.lsIn || 0}" onchange="updatePI(${piIndex}, 'lsIn', this.value)" style="width: 80px;">
+              <div style="font-size: 0.65rem; color: #888; margin-top: 2px;">Min: ${lsMin}m</div>
+            </div>
+          </div>
+          <div class="element-row">
+            <label>Deflection (Δ)</label>
+            <span>${degDelta}°</span>
+          </div>
+          <div class="element-row">
+            <label>Arc Length (Lc)</label>
+            <span>${c.length.toFixed(2)} m</span>
+          </div>
+          <div class="element-row">
+            <label>Tangent In (Ts)</label>
+            <span>${c.tLengthIn.toFixed(2)} m</span>
+          </div>
+          <div class="element-row">
+            <label>Tangent Out (Ts)</label>
+            <span>${c.tLengthOut.toFixed(2)} m</span>
+          </div>
+          <div class="element-row">
+            <label>Spiral Out (Ls)</label>
+            <div style="text-align: right;">
+              <input type="number" step="1" value="${c.lsOut || 0}" onchange="updatePI(${piIndex}, 'lsOut', this.value)" style="width: 80px;">
+              <div style="font-size: 0.65rem; color: #888; margin-top: 2px;">Min: ${lsMin}m</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    dataContainer.innerHTML = html;
+  }
+}
+
+document.getElementById('tab-pis').addEventListener('click', () => {
+  state.activeTab = 'pis';
+  document.getElementById('tab-pis').classList.add('active');
+  document.getElementById('tab-curves').classList.remove('active');
+  updateDataPanel();
+});
+
+document.getElementById('tab-curves').addEventListener('click', () => {
+  state.activeTab = 'curves';
+  document.getElementById('tab-curves').classList.add('active');
+  document.getElementById('tab-pis').classList.remove('active');
+  updateDataPanel();
+});
+
+// Global functions for inline HTML event handlers
+window.updatePI = function(index, field, value) {
+  const val = parseFloat(value);
+  if (!isNaN(val)) {
+    state.pis[index][field] = val;
+    draw();
+    if (field === 'x' || field === 'y' || field === 'r') {
+      updateDataPanel(); // Re-render to show updated curve data if in curve tab
+    }
+  }
+};
+
+window.removePI = function(index) {
+  state.pis.splice(index, 1);
+  if (state.selectedPiIndex === index) state.selectedPiIndex = -1;
+  else if (state.selectedPiIndex > index) state.selectedPiIndex--;
+  updateDataPanel();
+  draw();
+};
+
+// Initial Setup
+updateDesignCriteria();
+
+// --- LandXML Import / Export ---
+
+document.getElementById('import-xml').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const xmlStr = evt.target.result;
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlStr, "text/xml");
+      
+      const alignNodes = xmlDoc.getElementsByTagName('Alignment');
+      if (alignNodes.length === 0) {
+        alert("No Alignment found in LandXML file.");
+        return;
+      }
+      
+      function extractPisFromAlignment(alignNode) {
+        const geom = alignNode.getElementsByTagName('CoordGeom')[0];
+        if (!geom) return null;
+        
+        const children = geom.children;
+        const newPis = [];
+        
+        const segments = [];
+        for (let i = 0; i < children.length; i++) {
+          const el = children[i];
+          if (el.tagName === 'Line') {
+            const startNodes = el.getElementsByTagName('Start');
+            const endNodes = el.getElementsByTagName('End');
+            if (startNodes.length > 0 && endNodes.length > 0) {
+              const start = startNodes[0].textContent.trim().split(/\s+/);
+              const end = endNodes[0].textContent.trim().split(/\s+/);
+              segments.push({
+                type: 'Line',
+                start: { x: parseFloat(start[1]), y: parseFloat(start[0]) },
+                end: { x: parseFloat(end[1]), y: parseFloat(end[0]) }
+              });
+            }
+          } else if (el.tagName === 'Spiral') {
+            segments.push({
+              type: 'Spiral',
+              length: parseFloat(el.getAttribute('length')) || 0
+            });
+          } else if (el.tagName === 'Curve') {
+            segments.push({
+              type: 'Curve',
+              radius: parseFloat(el.getAttribute('radius')) || state.rMin
+            });
+          }
+        }
+        
+        function getIntersection(l1, l2) {
+          const p1 = l1.start, p2 = l1.end;
+          const p3 = l2.start, p4 = l2.end;
+          const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+          const d2x = p4.x - p3.x, d2y = p4.y - p3.y;
+          const denom = d1x * d2y - d1y * d2x;
+          if (Math.abs(denom) < 1e-6) return null;
+          const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom;
+          return { x: p1.x + t * d1x, y: p1.y + t * d1y };
+        }
+
+        const lines = segments.filter(s => s.type === 'Line');
+        
+        if (lines.length > 0) {
+          newPis.push({ x: lines[0].start.x, y: lines[0].start.y, r: 0, lsIn: 0, lsOut: 0 });
+          
+          let lineIdx = 0;
+          for (let i = 0; i < segments.length; i++) {
+            if (segments[i].type === 'Line') {
+              if (lineIdx < lines.length - 1) {
+                const currentLine = lines[lineIdx];
+                const nextLine = lines[lineIdx + 1];
+                const pi = getIntersection(currentLine, nextLine);
+                if (pi) {
+                  let r = state.rMin, lsIn = 0, lsOut = 0;
+                  let j = i + 1;
+                  let seenSpiral = false;
+                  while (j < segments.length && segments[j].type !== 'Line') {
+                    if (segments[j].type === 'Spiral') {
+                      if (!seenSpiral) {
+                        lsIn = segments[j].length;
+                        seenSpiral = true;
+                      } else {
+                        lsOut = segments[j].length;
+                      }
+                    } else if (segments[j].type === 'Curve') {
+                      r = segments[j].radius;
+                    }
+                    j++;
+                  }
+                  newPis.push({ x: pi.x, y: pi.y, r: r, lsIn: lsIn, lsOut: lsOut });
+                }
+              }
+              lineIdx++;
+            }
+          }
+          
+          const lastLine = lines[lines.length - 1];
+          newPis.push({ x: lastLine.end.x, y: lastLine.end.y, r: 0, lsIn: 0, lsOut: 0 });
+        }
+        
+        return newPis;
+      }
+      
+      const processAlignment = (alignNode) => {
+        const name = alignNode.getAttribute('name') || "Imported Alignment";
+        const newPis = extractPisFromAlignment(alignNode);
+
+        if (newPis && newPis.length > 0) {
+          state.alignments = [{ name: name, pis: newPis }];
+          state.activeAlignmentIndex = 0;
+          state.pis = [...newPis];
+          updateAlignmentDropdown();
+
+          state.pis = newPis;
+          state.selectedPiIndex = -1;
+          updateDataPanel();
+          
+          // Fit bounds to new PIs
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          state.pis.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          });
+          const w = maxX - minX || 100;
+          const h = maxY - minY || 100;
+          state.panX = minX + w/2;
+          state.panY = minY + h/2;
+          state.zoom = Math.min((canvas.width * 0.8) / w, (canvas.height * 0.8) / h);
+          
+          draw();
+        } else {
+          alert("Could not extract PIs from file.");
+        }
+        
+        e.target.value = ''; // Reset input so same file can be loaded again
+      };
+
+      if (alignNodes.length === 1) {
+        processAlignment(alignNodes[0]);
+      } else {
+        const modal = document.getElementById('import-modal');
+        const list = document.getElementById('import-alignment-list');
+        list.innerHTML = '';
+        
+        Array.from(alignNodes).forEach((node, idx) => {
+          const name = node.getAttribute('name') || `Alignment ${idx + 1}`;
+          
+          const label = document.createElement('label');
+          label.style.display = 'flex';
+          label.style.alignItems = 'center';
+          label.style.gap = '8px';
+          label.style.cursor = 'pointer';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = idx;
+          checkbox.checked = true; // Default all selected
+          
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(name));
+          list.appendChild(label);
+        });
+        
+        modal.classList.add('active');
+        
+        const confirmBtn = document.getElementById('import-confirm-btn');
+        const cancelBtn = document.getElementById('import-cancel-btn');
+        
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.replaceWith(newConfirmBtn);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.replaceWith(newCancelBtn);
+        
+        newConfirmBtn.addEventListener('click', () => {
+          modal.classList.remove('active');
+          
+          const checkboxes = list.querySelectorAll('input[type="checkbox"]:checked');
+          if (checkboxes.length === 0) {
+            e.target.value = '';
+            return;
+          }
+          
+          // Clear current alignments if importing multiple? Or append?
+          // Let's replace state.alignments with the newly imported ones.
+          state.alignments = [];
+          state.activeAlignmentIndex = -1;
+          
+          let bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+          let foundAny = false;
+          
+          checkboxes.forEach((cb, i) => {
+            const idx = parseInt(cb.value);
+            const node = alignNodes[idx];
+            const name = node.getAttribute('name') || `Alignment ${idx + 1}`;
+            
+            // Re-use processAlignment but modify it to return PIs instead of setting state
+            const newPis = extractPisFromAlignment(node);
+            if (newPis && newPis.length > 0) {
+              state.alignments.push({ name: name, pis: newPis });
+              
+              newPis.forEach(p => {
+                if (p.x < bounds.minX) bounds.minX = p.x;
+                if (p.x > bounds.maxX) bounds.maxX = p.x;
+                if (p.y < bounds.minY) bounds.minY = p.y;
+                if (p.y > bounds.maxY) bounds.maxY = p.y;
+              });
+              foundAny = true;
+            }
+          });
+          
+          if (state.alignments.length > 0) {
+            state.activeAlignmentIndex = 0;
+            state.pis = [...state.alignments[0].pis];
+            state.selectedPiIndex = -1;
+            
+            updateAlignmentDropdown();
+            updateDataPanel();
+            
+            // Fit bounds
+            if (foundAny) {
+              const w = bounds.maxX - bounds.minX || 100;
+              const h = bounds.maxY - bounds.minY || 100;
+              state.panX = bounds.minX + w/2;
+              state.panY = bounds.minY + h/2;
+              state.zoom = Math.min((canvas.width * 0.8) / w, (canvas.height * 0.8) / h);
+            }
+            
+            draw();
+          } else {
+            alert("No valid alignments extracted.");
+          }
+          
+          e.target.value = '';
+        });
+        
+        newCancelBtn.addEventListener('click', () => {
+          modal.classList.remove('active');
+          e.target.value = '';
+        });
+      }
+
+    } catch(err) {
+      alert("Error parsing LandXML: " + err);
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('export-btn').addEventListener('click', async () => {
+  if (state.pis.length < 2) {
+    alert("Not enough points to export an alignment.");
+    return;
+  }
+  
+  const elements = calculateGeometry();
+  let length = 0;
+  
+  let coordGeomStr = '';
+  let currPt = { x: state.pis[0].x, y: state.pis[0].y };
+  
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    if (el.type === 'Tangent') {
+      let nextEl = elements[i+1];
+      let endPt = null;
+      if (nextEl && nextEl.type === 'Curve') {
+        endPt = nextEl.pc;
+      } else if (nextEl && nextEl.type === 'Point') {
+        endPt = {x: nextEl.x, y: nextEl.y};
+      } else {
+        continue;
+      }
+      
+      const dx = endPt.x - currPt.x;
+      const dy = endPt.y - currPt.y;
+      const l = Math.sqrt(dx*dx + dy*dy);
+      const dir = Math.atan2(dx, dy);
+      
+      coordGeomStr += `
+        <Line length="${l.toFixed(4)}" dir="${(dir * 180 / Math.PI).toFixed(4)}">
+          <Start>${currPt.y.toFixed(4)} ${currPt.x.toFixed(4)}</Start>
+          <End>${endPt.y.toFixed(4)} ${endPt.x.toFixed(4)}</End>
+        </Line>`;
+      length += l;
+      currPt = endPt;
+    } else if (el.type === 'Curve') {
+      const pc = currPt;
+      const pt = el.pt;
+      const sc = el.sc || pc;
+      const cs = el.cs || pt;
+      
+      if (el.lsIn > 0) {
+        // Output TS -> SC Spiral
+        coordGeomStr += `
+        <Spiral length="${el.lsIn.toFixed(4)}" radiusEnd="${el.radius.toFixed(4)}" radiusStart="INF" rot="${el.rot}" spiType="clothoid">
+          <Start>${pc.y.toFixed(4)} ${pc.x.toFixed(4)}</Start>
+          <End>${sc.y.toFixed(4)} ${sc.x.toFixed(4)}</End>
+        </Spiral>`;
+        length += el.lsIn;
+      }
+      
+      coordGeomStr += `
+        <Curve length="${el.length.toFixed(4)}" radius="${el.radius.toFixed(4)}" rot="${el.rot}">
+          <Start>${sc.y.toFixed(4)} ${sc.x.toFixed(4)}</Start>
+          <Center>${el.center.y.toFixed(4)} ${el.center.x.toFixed(4)}</Center>
+          <End>${cs.y.toFixed(4)} ${cs.x.toFixed(4)}</End>
+        </Curve>`;
+      length += el.length;
+      
+      if (el.lsOut > 0) {
+        // Output CS -> ST Spiral
+        coordGeomStr += `
+        <Spiral length="${el.lsOut.toFixed(4)}" radiusEnd="INF" radiusStart="${el.radius.toFixed(4)}" rot="${el.rot}" spiType="clothoid">
+          <Start>${cs.y.toFixed(4)} ${cs.x.toFixed(4)}</Start>
+          <End>${pt.y.toFixed(4)} ${pt.x.toFixed(4)}</End>
+        </Spiral>`;
+        length += el.lsOut;
+      }
+      
+      currPt = pt;
+    }
+  }
+
+  // Construct XML
+  const dateStr = new Date().toISOString().split('T')[0];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.landxml.org/schema/LandXML-1.2 http://www.landxml.org/schema/LandXML-1.2/LandXML-1.2.xsd" version="1.2" date="${dateStr}">
+  <Project name="PROME Horizontal Alignment Designer" />
+  <Alignments>
+    <Alignment name="Designed_Alignment_1" length="${length.toFixed(4)}" staStart="0.0">
+      <CoordGeom>${coordGeomStr}
+      </CoordGeom>
+    </Alignment>
+  </Alignments>
+</LandXML>`;
+
+  // Use the File System Access API if supported
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: 'Alignment_Export.xml',
+        types: [{
+          description: 'LandXML File',
+          accept: { 'application/xml': ['.xml'] },
+        }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(xml);
+      await writable.close();
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.warn("showSaveFilePicker failed or was cancelled, falling back:", err);
+    }
+  }
+
+  // Fallback for older browsers
+  let fileName = prompt("Enter file name for export:", "Alignment_Export.xml");
+  if (!fileName) return; // User cancelled
+  if (!fileName.endsWith('.xml')) fileName += '.xml';
+
+  const blob = new Blob([xml], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});

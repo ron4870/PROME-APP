@@ -7,5 +7,60 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:80"
-    # To enable SSL directly in Docker, you would typically use an Nginx reverse proxy
-    # or Traefik in front of this container. For now, it exposes port 80.
+    depends_on:
+      - api
+
+  api:
+    build: ./server
+    container_name: prome_api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/promedb?schema=public
+    volumes:
+      - ./server/uploads:/app/uploads
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    container_name: prome_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: promedb
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  invoiceplane_app:
+    build: ./invoiceplane_docker
+    container_name: prome_invoiceplane
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:80"
+    volumes:
+      - ./invoiceplane:/var/www/html
+    depends_on:
+      - invoiceplane_db
+
+  invoiceplane_db:
+    image: mariadb:10.6
+    container_name: prome_invoiceplane_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: invoiceplane_root_secret
+      MYSQL_DATABASE: invoiceplane
+      MYSQL_USER: invoiceplane
+      MYSQL_PASSWORD: invoiceplane_secret
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - invoiceplane_data:/var/lib/mysql
+
+volumes:
+  postgres_data:
+  invoiceplane_data:

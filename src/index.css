@@ -1,23 +1,24 @@
 :root {
   /* Colors - PROME Theme */
-  --bg-color: #f8fafc;
-  --bg-gradient-start: #f8fafc;
-  --bg-gradient-end: #e2e8f0;
-  --surface-color: rgba(255, 255, 255, 0.85);
-  --surface-border: rgba(0, 0, 0, 0.08);
-  --primary-color: #bb0a0a;
-  --primary-hover: #8b0000;
-  --text-primary: #151414;
-  --text-secondary: #475569;
-  --accent-color: #711310;
+  --bg-color: #f4f5f7;
+  --bg-gradient-start: #f4f5f7;
+  --bg-gradient-end: #eaeef2;
+  --surface-color: #ffffff;
+  --surface-border: #e5e5e5;
+  --primary-color: #cc0000;
+  --primary-hover: #aa0000;
+  --text-primary: #1a1a1a;
+  --text-secondary: #555555;
+  --accent-color: #990000;
   
   /* Typography */
   --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-heading: 'Outfit', var(--font-family);
   
-  /* Shadows & Glassmorphism */
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-  --glass-blur: blur(12px);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.4);
+  /* Shadows & Borders */
+  --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  --glass-blur: none;
+  --glass-border: 1px solid #e5e5e5;
 
   /* Transitions */
   --transition-fast: 0.2s ease;
@@ -32,7 +33,7 @@
 
 body {
   font-family: var(--font-family);
-  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+  background: var(--bg-color);
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
@@ -42,9 +43,26 @@ body {
   overflow-x: hidden;
 }
 
+/* Elegant Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.3);
+}
+
 /* Typography styles */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-weight: 600;
   line-height: 1.2;
   margin-bottom: 1rem;
 }
@@ -59,13 +77,11 @@ a:hover {
   color: var(--primary-hover);
 }
 
-/* Glass Panel Component */
+/* Glass Panel Component (Now Flat Enterprise Card) */
 .glass-panel {
   background: var(--surface-color);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: var(--glass-border);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--glass-shadow);
   padding: 2rem;
 }
@@ -224,5 +240,494 @@ a:hover {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
+  }
+}
+
+/* ==========================================================================
+   HSBC-Style Global App Layout
+   ========================================================================== */
+
+.app-layout-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-color, #f4f5f7);
+}
+
+.layout-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  width: 100%;
+}
+
+.sticky-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* --- 1. Top Utility Bar --- */
+.top-utility-bar {
+  background-color: rgba(26, 26, 26, 0.85);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #cccccc;
+}
+
+.utility-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.utility-left, .utility-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.utility-link {
+  color: #aaaaaa;
+  text-decoration: none;
+  padding: 0 1rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #444444;
+  transition: all 0.2s;
+}
+.utility-link:first-child {
+  border-left: 1px solid #444444;
+}
+.utility-link:hover {
+  background-color: #444444;
+  color: #ffffff;
+}
+.utility-link.active {
+  background-color: #444444;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.utility-dropdown-wrapper {
+  position: relative;
+  height: 100%;
+  display: flex;
+}
+
+.utility-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #ffffff;
+  min-width: 380px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
+  border-radius: 0 0 4px 4px;
+  z-index: 1000;
+  flex-direction: column;
+}
+
+.utility-dropdown-wrapper:hover .utility-dropdown-menu,
+.utility-dropdown-wrapper:focus-within .utility-dropdown-menu {
+  display: flex;
+}
+
+.dropdown-item {
+  color: #333333;
+  text-decoration: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s, color 0.2s;
+  white-space: normal;
+  line-height: 1.4;
+}
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: var(--primary-color, #1a1a1a);
+}
+.utility-dropdown, .utility-btn {
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  height: 100%;
+  cursor: pointer;
+  color: #cccccc;
+  transition: background-color 0.2s;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+.utility-btn:hover, .utility-dropdown:hover {
+  background-color: #444444;
+  color: #ffffff;
+}
+.utility-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #555555;
+  margin: 0 0.5rem;
+}
+
+/* --- 2. Main Navigation Header --- */
+.main-nav-header {
+  background-color: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.03);
+  position: relative;
+  z-index: 50;
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  cursor: pointer;
+}
+
+.header-logo {
+  height: 48px;
+  object-fit: contain;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #eee;
+  padding-left: 1.25rem;
+}
+
+.brand-title {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #111;
+  line-height: 1.2;
+}
+.brand-subtitle {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.desktop-nav {
+  display: flex;
+  height: 100%;
+}
+
+.main-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0 1.25rem;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  position: relative;
+  transition: color 0.2s;
+}
+.main-nav-link:hover {
+  color: var(--primary-color);
+}
+.main-nav-link.active {
+  color: var(--primary-color);
+}
+.main-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--primary-color);
+}
+
+.mobile-menu-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- 3. Mobile Navigation Drawer --- */
+.mobile-nav-drawer {
+  background-color: #ffffff;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  position: absolute;
+  width: 100%;
+  z-index: 40;
+}
+
+.mobile-nav-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #f5f5f5;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mobile-nav-link.active {
+  color: var(--primary-color);
+  background-color: #fafafa;
+}
+.logout-link {
+  color: var(--primary-color);
+}
+
+.mobile-nav-divider {
+  height: 4px;
+  background-color: #f1f1f1;
+}
+
+/* --- 4. Main Content Area --- */
+.layout-main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* --- 5. Corporate Footer --- */
+.corporate-footer {
+  background-color: #222;
+  color: #a0a0a0;
+  padding: 2rem 0;
+  font-size: 0.85rem;
+  margin-top: auto;
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: #ddd;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.footer-links a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.footer-copyright {
+  color: #888;
+}
+
+/* --- Utility Classes for Layout --- */
+.hide-on-mobile {
+  display: flex;
+}
+.hide-on-mobile-tablet {
+  display: flex;
+}
+.hide-on-desktop {
+  display: none;
+}
+
+/* --- Responsive Breakpoints --- */
+@media (max-width: 1024px) {
+  .hide-on-mobile-tablet {
+    display: none !important;
+  }
+  .hide-on-desktop {
+    display: flex;
+  }
+  .layout-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .header-brand {
+    gap: 0.75rem;
+  }
+  .header-logo {
+    height: 36px;
+  }
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* --- 6. Right Menu Drawer --- */
+.right-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.right-drawer-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.right-drawer {
+  position: fixed;
+  top: 0;
+  right: -350px;
+  width: 350px;
+  height: 100vh;
+  background-color: #ffffff;
+  border-left: 1px solid #e5e5e5;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.05);
+  z-index: 1001;
+  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+.right-drawer.open {
+  right: 0;
+}
+.right-drawer-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.right-drawer-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #111;
+}
+.right-drawer-content {
+  padding: 1rem 0;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+.right-drawer-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.right-drawer-close:hover {
+  color: #bb0a0a;
+}
+
+/* ==========================================================================
+   Print / PDF Export Styles
+   ========================================================================== */
+@media print {
+  /* Hide UI elements that shouldn't be in the PDF */
+  .sidebar,
+  .top-navbar,
+  .right-drawer,
+  .btn,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout margins so PDF uses full page width */
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  
+  .layout-container {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Force background colors to render in PDFs */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Prevent awkward page breaks */
+  table, tr, td, th, .card, .break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Ensure text is dark and readable */
+  body {
+    background-color: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  /* Add a formal header specifically for print */
+  body::before {
+    content: "PROME Information Management System - Official Record";
+    display: block;
+    text-align: center;
+    font-weight: bold;
+    font-size: 14pt;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #bb0a0a;
+    color: #881337;
   }
 }
