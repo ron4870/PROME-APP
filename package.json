@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "rsync -avz --exclude 'node_modules' --exclude '.git' --exclude 'dist' ./ root@207.180.197.219:/root/prome-app/ && ssh root@207.180.197.219 'cd /root/prome-app && docker compose up -d --build && sleep 5 && docker exec prome_api npx prisma db push --accept-data-loss'"
+    "deploy": "rsync -avz --exclude 'node_modules' --exclude '.git' --exclude 'dist' ./ root@207.180.197.219:/root/prome-app/ && ssh root@207.180.197.219 'cd /root/prome-app && docker compose up -d --build && sleep 5 && docker exec prome_api npx prisma db push --accept-data-loss && docker exec prome_api npx prisma db seed'"
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",

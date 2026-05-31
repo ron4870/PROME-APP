@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Compass, Box, Layers, Droplets, ChevronRight, Map } from 'lucide-react';
+import { Compass, Box, Layers, ChevronRight, Map, Signpost, Waves } from 'lucide-react';
 import { useState } from 'react';
 
 const AppButton = ({ title, description, icon, onClick, colorStart, colorEnd, shadowColor }: any) => {
@@ -139,7 +139,7 @@ export default function PEDRoadsHighways() {
               title="GLTF / GLB Image Extractor" 
               description="Extract 3D models and images for highway visualizations." 
               icon={<Box size={24} />} 
-              onClick={() => alert('Link will be specified later')} 
+              onClick={() => window.open('/PROMEImageExtractor/index.html', '_blank')} 
               colorStart="#ea580c" colorEnd="#7c2d12" shadowColor="#431407"
             />
 
@@ -152,11 +152,19 @@ export default function PEDRoadsHighways() {
             />
 
             <AppButton 
+              title="Traffic Sign Designer" 
+              description="Create and customize road signs with professional template texts and symbols." 
+              icon={<Signpost size={24} />} 
+              onClick={() => window.open('/PROMETrafficSignDesigner/index.html', '_blank')} 
+              colorStart="#eab308" colorEnd="#a16207" shadowColor="#713f12"
+            />
+
+            <AppButton 
               title="Hydraulics & Hydrology" 
-              description="Calculations for drainage, culverts, and runoff flows." 
-              icon={<Droplets size={24} />} 
-              onClick={() => navigate('/division/ped/hydrology')} 
-              colorStart="#0284c7" colorEnd="#0c4a6e" shadowColor="#082f49"
+              description="Analyze drainage, culverts, and bridge waterways." 
+              icon={<Waves size={24} />} 
+              onClick={() => window.open('/PROMEHydrology/index.html', '_blank')} 
+              colorStart="#0ea5e9" colorEnd="#0369a1" shadowColor="#0c4a6e"
             />
           </motion.div>
         </div>

@@ -1,0 +1,126 @@
+/* =============================================================================
+   InvoicePlane
+   Custom Stylesheet (PROME Theme)
+   Matches the colors of ims.promeconsult.com
+   ========================================================================== */
+
+/* Typography & Backgrounds */
+body, html {
+    background-color: #f8fafc !important;
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0) !important;
+    color: #151414 !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Sidebar / Header */
+.navbar-inverse, .sidebar, #headerbar {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+
+.navbar-inverse .navbar-brand, 
+.navbar-inverse .navbar-nav>li>a,
+.sidebar a,
+#headerbar a {
+    color: #151414 !important;
+    font-weight: 500;
+}
+
+.navbar-inverse .navbar-nav>li>a:hover,
+.sidebar a:hover,
+#headerbar a:hover {
+    color: #bb0a0a !important;
+    background-color: #f8fafc !important;
+}
+
+.navbar-inverse .navbar-nav>.active>a,
+.sidebar .active>a {
+    color: #bb0a0a !important;
+    background-color: rgba(187, 10, 10, 0.05) !important;
+    border-left: 3px solid #bb0a0a !important;
+}
+
+/* Buttons */
+.btn-primary, .btn-success, .btn-info {
+    background: linear-gradient(135deg, #bb0a0a, #711310) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px 0 rgba(187, 10, 10, 0.3) !important;
+    transition: all 0.2s ease !important;
+    border-radius: 8px !important;
+}
+
+.btn-primary:hover, .btn-success:hover, .btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(187, 10, 10, 0.2) !important;
+    background: linear-gradient(135deg, #8b0000, #bb0a0a) !important;
+}
+
+/* Panels / Cards */
+.panel-default {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05) !important;
+    color: #151414 !important;
+}
+
+.panel-default > .panel-heading {
+    background-color: transparent !important;
+    color: #bb0a0a !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem;
+    padding: 1rem 1.5rem !important;
+}
+
+/* Tables */
+.table {
+    color: #151414 !important;
+}
+.table-striped>tbody>tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+.table th {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.08) !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+}
+
+/* Forms */
+.form-control {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #151414 !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.form-control:focus {
+    border-color: #bb0a0a !important;
+    box-shadow: 0 0 0 2px rgba(187, 10, 10, 0.2) !important;
+}
+
+/* Specific elements */
+h1, h2, h3, h4, h5, h6 {
+    color: #bb0a0a !important;
+    font-weight: 700 !important;
+}
+
+#main-area {
+    background: transparent !important;
+}
+
+.headerbar {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.pull-right .btn {
+    margin-left: 0.5rem;
+}
