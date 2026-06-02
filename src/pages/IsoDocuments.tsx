@@ -67,11 +67,12 @@ const IsoDocuments: React.FC = () => {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFile) return alert("Please select a file.");
 
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', uploadFile);
+    if (uploadFile) {
+      formData.append('file', uploadFile);
+    }
     formData.append('documentNumber', docNumber);
     formData.append('title', docTitle);
     formData.append('category', docCategory);
@@ -306,12 +307,11 @@ const IsoDocuments: React.FC = () => {
                 </select>
               </div>
               <div style={{ marginBottom: '2rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Upload PDF/Doc</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Upload File (Optional)</label>
                 <input 
                   type="file" 
                   onChange={e => setUploadFile(e.target.files ? e.target.files[0] : null)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px dashed #d1d5db', borderRadius: '4px' }}
-                  required
                 />
               </div>
               
