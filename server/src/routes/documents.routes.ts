@@ -1,11 +1,36 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
+import multer from 'multer';
+import { google } from 'googleapis';
+import path from 'path';
+import { Readable } from 'stream';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get all documents
+const uploadDir = path.join(__dirname, '../../uploads');
+import fs from 'fs';
+
+// Ensure upload directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 25 * 1024 * 1024 }
+});
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const documents = await prisma.masterDocument.findMany({
@@ -23,30 +48,42 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Create new document
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, upload.single('file'), async (req, res) => {
   try {
-    const { title, type, ownerId } = req.body;
+    const { title, type, category, division, retentionPeriod, documentNumber, ownerId } = req.body;
     
-    // Auto-generate document number based on type
-    const year = new Date().getFullYear();
-    const typePrefix = type === 'SOP' ? 'SOP' : 
-                       type === 'Policy' ? 'POL' : 
-                       type === 'Manual' ? 'MAN' : 
-                       type === 'Form' ? 'FRM' : 'WI';
-                       
-    const count = await prisma.masterDocument.count({
-      where: { documentNumber: { startsWith: `PROME-${typePrefix}-${year}` } }
-    });
-    
-    const nextNum = (count + 1).toString().padStart(3, '0');
-    const documentNumber = `PROME-${typePrefix}-${year}-${nextNum}`;
+    // Auto-generate document number if not provided
+    let finalDocNumber = documentNumber;
+    if (!finalDocNumber) {
+      const year = new Date().getFullYear();
+      const typePrefix = type === 'SOP' ? 'SOP' : 
+                         type === 'Policy' ? 'POL' : 
+                         type === 'Manual' ? 'MAN' : 
+                         type === 'Form' ? 'FRM' : 'WI';
+                         
+      const count = await prisma.masterDocument.count({
+        where: { documentNumber: { startsWith: `PROME-${typePrefix}-${year}` } }
+      });
+      
+      const nextNum = (count + 1).toString().padStart(3, '0');
+      finalDocNumber = `PROME-${typePrefix}-${year}-${nextNum}`;
+    }
+
+    let fileUrl = null;
+    if (req.file) {
+      fileUrl = `/uploads/${req.file.filename}`;
+    }
 
     const data: any = {
-      documentNumber,
+      documentNumber: finalDocNumber,
       title,
       type,
+      category,
+      division,
+      retentionPeriod,
       status: 'Draft',
-      revision: '1.0'
+      revision: '1.0',
+      fileUrl
     };
 
     if (ownerId) data.ownerId = parseInt(ownerId);
@@ -91,12 +128,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { 
       title, type, revision, status, 
+      category, division, retentionPeriod,
       issueDate, nextReviewDate, ownerId, 
       approvedById, fileUrl, changeHistory 
     } = req.body;
 
     const data: any = {
-      title, type, revision, status, fileUrl, changeHistory
+      title, type, revision, status, 
+      category, division, retentionPeriod,
+      fileUrl, changeHistory
     };
 
     if (issueDate) data.issueDate = new Date(issueDate);

@@ -12,6 +12,9 @@ interface DocumentRecord {
   documentNumber: string;
   title: string;
   type: string;
+  category?: string;
+  division?: string;
+  retentionPeriod?: string;
   revision: string;
   status: string;
   issueDate: string | null;
@@ -161,6 +164,59 @@ const DocumentDetails: React.FC = () => {
                   <option value="Form">Form / Template</option>
                 </select>
               </div>
+
+              <div className="form-group">
+                <label className="form-label">Category</label>
+                <select 
+                  className="form-input"
+                  value={doc.category || 'Other'}
+                  onChange={e => setDoc({...doc, category: e.target.value})}
+                >
+                  <option value="Quality System Manuals">Quality System Manuals</option>
+                  <option value="Quality System Procedures">Quality System Procedures</option>
+                  <option value="Quality System Record">Quality System Record</option>
+                  <option value="Job Description">Job Description</option>
+                  <option value="Work Instruction">Work Instruction</option>
+                  <option value="Work Instructions">Work Instructions</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Division</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={doc.division || ''}
+                  onChange={e => setDoc({...doc, division: e.target.value})}
+                  placeholder="e.g. AFD, PMBDO or Custom"
+                  list="divisions-list"
+                />
+                <datalist id="divisions-list">
+                  <option value="AFD" />
+                  <option value="PMBDD" />
+                  <option value="PED" />
+                  <option value="CP&SD" />
+                  <option value="PDMD" />
+                  <option value="PMBDO" />
+                  <option value="CMD" />
+                  <option value="BEED" />
+                  <option value="CPSD" />
+                  <option value="ALL" />
+                </datalist>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Retention Period</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={doc.retentionPeriod || ''}
+                  onChange={e => setDoc({...doc, retentionPeriod: e.target.value})}
+                  placeholder="e.g. 3 years"
+                />
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Revision Number/Letter</label>
                 <input 

@@ -563,6 +563,10 @@ model MasterDocument {
   projectId             Int?
   project               Project?   @relation(fields: [projectId], references: [id])
 
+  category              String?   // e.g. "Quality System Manuals", "Quality System Procedures", "Work Instructions"
+  division              String?   // e.g. "AFD", "PMBDO", "CMD", "BEED", "CPSD", "ALL"
+  retentionPeriod       String?   // e.g. "3 years"
+
   fileUrl               String?   @db.Text
   changeHistory         String?   @db.Text
   
