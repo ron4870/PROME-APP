@@ -33,7 +33,8 @@ export default function FundsRequisitionForm() {
     { id: '2', description: '', budget: 0, expenditure: 0, amount: 0 },
     { id: '3', description: '', budget: 0, expenditure: 0, amount: 0 },
     { id: '4', description: '', budget: 0, expenditure: 0, amount: 0 },
-    { id: '5', description: '', budget: 0, expenditure: 0, amount: 0 }
+    { id: '5', description: '', budget: 0, expenditure: 0, amount: 0 },
+    { id: '6', description: '', budget: 0, expenditure: 0, amount: 0 }
   ]);
 
   const [uniqueId, setUniqueId] = useState<string | null>(null);
@@ -138,7 +139,7 @@ export default function FundsRequisitionForm() {
             >
               <ArrowLeft size={18} color="#374151" />
             </button>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>Funds Requisition Form</h1>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827', margin: 0 }}>Funds Requisition Form</h1>
           </div>
           
           <button 
@@ -177,7 +178,7 @@ export default function FundsRequisitionForm() {
               </div>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                 {uniqueId ? (
-                  <div style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 'bold', border: '1px solid #64748b', padding: '4px 8px' }}>
+                  <div style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: '600', color: '#334155', borderBottom: '1px solid #e2e8f0', padding: '4px 8px' }}>
                     {uniqueId}
                   </div>
                 ) : (
@@ -189,15 +190,15 @@ export default function FundsRequisitionForm() {
             </div>
 
             <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', textDecoration: 'underline' }}>FUNDS REQUISITION FORM</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#334155', textDecoration: 'underline' }}>FUNDS REQUISITION FORM</h3>
             </div>
 
             {/* Form Fields */}
             <table style={{ width: '100%', marginBottom: '20px', borderCollapse: 'collapse' }}>
               <tbody>
                 <tr>
-                  <td style={{ width: '25%', padding: '8px 0', fontWeight: 'bold' }}>Date:</td>
-                  <td style={{ width: '75%', borderBottom: '1px dotted black' }}>
+                  <td style={{ width: '25%', padding: '8px 0', fontWeight: '600', color: '#334155' }}>Date:</td>
+                  <td style={{ width: '75%', borderBottom: '1px solid #cbd5e1' }}>
                     <input 
                       type="date" 
                       value={formData.date}
@@ -207,8 +208,8 @@ export default function FundsRequisitionForm() {
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Vote/Project:</td>
-                  <td style={{ borderBottom: '1px dotted black' }}>
+                  <td style={{ padding: '8px 0', fontWeight: '600', color: '#334155' }}>Vote/Project:</td>
+                  <td style={{ borderBottom: '1px solid #cbd5e1' }}>
                     <input 
                       type="text" 
                       value={formData.voteProject}
@@ -218,14 +219,14 @@ export default function FundsRequisitionForm() {
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Amount Requisitioned:</td>
-                  <td style={{ borderBottom: '1px dotted black', fontSize: '14px', fontWeight: 'bold' }}>
+                  <td style={{ padding: '8px 0', fontWeight: '600', color: '#334155' }}>Amount Requisitioned:</td>
+                  <td style={{ borderBottom: '1px solid #cbd5e1', fontSize: '14px', fontWeight: '600', color: '#334155' }}>
                     {totalAmount.toLocaleString()}
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Amount in Words:</td>
-                  <td style={{ borderBottom: '1px dotted black' }}>
+                  <td style={{ padding: '8px 0', fontWeight: '600', color: '#334155' }}>Amount in Words:</td>
+                  <td style={{ borderBottom: '1px solid #cbd5e1' }}>
                     <input 
                       type="text" 
                       value={formData.amountInWords}
@@ -235,8 +236,8 @@ export default function FundsRequisitionForm() {
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold', verticalAlign: 'top' }}>Purpose:</td>
-                  <td style={{ borderBottom: '1px dotted black' }}>
+                  <td style={{ padding: '8px 0', fontWeight: '600', verticalAlign: 'top' }}>Purpose:</td>
+                  <td style={{ borderBottom: '1px solid #cbd5e1' }}>
                     <textarea 
                       value={formData.purpose}
                       onChange={(e) => setFormData({...formData, purpose: e.target.value})}
@@ -251,19 +252,19 @@ export default function FundsRequisitionForm() {
             {/* Items Table */}
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
               <thead>
-                <tr style={{ backgroundColor: '#ecfdf5', color: '#065f46' }}>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '5%', textAlign: 'center' }}>No.</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '40%', textAlign: 'left' }}>Item Description</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '15%', textAlign: 'right' }}>Budget</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '20%', textAlign: 'right' }}>Expenditure to date</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '20%', textAlign: 'right' }}>Amount Requisitioned</th>
+                <tr style={{ backgroundColor: '#f8fafc', color: '#0f172a', borderBottom: '2px solid #cbd5e1', borderTop: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '5%', textAlign: 'center' }}>No.</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '40%', textAlign: 'left' }}>Item Description</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '15%', textAlign: 'right' }}>Budget</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '20%', textAlign: 'right' }}>Expenditure to date</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '20%', textAlign: 'right' }}>Amount Requisitioned</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => (
                   <tr key={item.id}>
-                    <td style={{ border: '1px solid #64748b', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
-                    <td style={{ border: '1px solid #64748b', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
                       <input 
                         type="text" 
                         value={item.description}
@@ -271,7 +272,7 @@ export default function FundsRequisitionForm() {
                         style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ border: '1px solid #64748b', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
                       <input 
                         type="number" 
                         value={item.budget || ''}
@@ -279,7 +280,7 @@ export default function FundsRequisitionForm() {
                         style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', textAlign: 'right', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ border: '1px solid #64748b', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
                       <input 
                         type="number" 
                         value={item.expenditure || ''}
@@ -287,57 +288,52 @@ export default function FundsRequisitionForm() {
                         style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', textAlign: 'right', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ border: '1px solid #64748b', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
                       <div style={{ display: 'flex' }}>
                         <input 
                           type="number" 
                           value={item.amount || ''}
                           onChange={(e) => updateItem(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                          style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', textAlign: 'right', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box', fontWeight: 'bold' }}
+                          style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', textAlign: 'right', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box', fontWeight: '600'}}
                         />
                       </div>
                     </td>
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={2} style={{ border: '1px solid #64748b', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</td>
-                  <td style={{ border: '1px solid #64748b', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>{totalBudget.toLocaleString()}</td>
-                  <td style={{ border: '1px solid #64748b', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>{totalExpenditure.toLocaleString()}</td>
-                  <td style={{ border: '1px solid #64748b', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>{totalAmount.toLocaleString()}</td>
+                  <td colSpan={2} style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>TOTAL</td>
+                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>{totalBudget.toLocaleString()}</td>
+                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>{totalExpenditure.toLocaleString()}</td>
+                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>{totalAmount.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
 
             <div style={{ marginBottom: '40px' }}></div>
             {/* Approvals Section */}
-            <div style={{ border: '1px solid #64748b' }}>
-              <div style={{ borderBottom: '1px solid #64748b', padding: '4px 8px', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', marginTop: '40px' }}>
+              <div style={{ color: '#0f172a', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', marginBottom: '24px', fontSize: '14px' }}>
                 APPROVALS
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ width: '33%', borderRight: '1px solid #64748b', padding: '8px', verticalAlign: 'top' }}>
-                      <p style={{ margin: '0 0 40px 0', fontWeight: 'bold' }}>Requested By:</p>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px dotted #94a3b8', paddingTop: '4px' }}>Name & Signature</p>
-                      <p style={{ margin: 0, fontSize: '12px' }}>Date: .......................................</p>
-                    </td>
-                    <td style={{ width: '33%', borderRight: '1px solid #64748b', padding: '8px', verticalAlign: 'top' }}>
-                      <p style={{ margin: '0 0 40px 0', fontWeight: 'bold' }}>Checked By (Project Officer):</p>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px dotted #94a3b8', paddingTop: '4px' }}>Name & Signature</p>
-                      <p style={{ margin: 0, fontSize: '12px' }}>Date: .......................................</p>
-                    </td>
-                    <td style={{ width: '34%', padding: '8px', verticalAlign: 'top' }}>
-                      <p style={{ margin: '0 0 40px 0', fontWeight: 'bold' }}>Approved By (Director):</p>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px dotted #94a3b8', paddingTop: '4px' }}>Name & Signature</p>
-                      <p style={{ margin: 0, fontSize: '12px' }}>Date: .......................................</p>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '24px' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0 0 40px 0', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Requested By:</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Name & Signature</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Date: <span style={{display: 'inline-block', width: '120px', borderBottom: '1px solid #cbd5e1'}}></span></p>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0 0 40px 0', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Checked By (Project Officer):</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Name & Signature</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Date: <span style={{display: 'inline-block', width: '120px', borderBottom: '1px solid #cbd5e1'}}></span></p>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0 0 40px 0', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Approved By (Director):</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Name & Signature</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Date: <span style={{display: 'inline-block', width: '120px', borderBottom: '1px solid #cbd5e1'}}></span></p>
+                </div>
+              </div>
             </div>
-            
-            
+
             <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
               PROME Consultants Ltd - ISO 9001:2015 Certified
             </div>
