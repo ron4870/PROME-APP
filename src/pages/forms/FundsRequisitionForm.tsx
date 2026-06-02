@@ -29,7 +29,11 @@ export default function FundsRequisitionForm() {
   });
 
   const [items, setItems] = useState<FormItem[]>([
-    { id: '1', description: '', budget: 0, expenditure: 0, amount: 0 }
+    { id: '1', description: '', budget: 0, expenditure: 0, amount: 0 },
+    { id: '2', description: '', budget: 0, expenditure: 0, amount: 0 },
+    { id: '3', description: '', budget: 0, expenditure: 0, amount: 0 },
+    { id: '4', description: '', budget: 0, expenditure: 0, amount: 0 },
+    { id: '5', description: '', budget: 0, expenditure: 0, amount: 0 }
   ]);
 
   const [uniqueId, setUniqueId] = useState<string | null>(null);
@@ -54,16 +58,6 @@ export default function FundsRequisitionForm() {
       }
     }
   }, [uniqueId]);
-
-  const addItem = () => {
-    setItems([...items, { id: Date.now().toString(), description: '', budget: 0, expenditure: 0, amount: 0 }]);
-  };
-
-  const removeItem = (id: string) => {
-    if (items.length > 1) {
-      setItems(items.filter(item => item.id !== id));
-    }
-  };
 
   const updateItem = (id: string, field: keyof FormItem, value: string | number) => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -224,7 +218,7 @@ export default function FundsRequisitionForm() {
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Amount Requisitioned (UGX):</td>
+                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Amount Requisitioned:</td>
                   <td style={{ borderBottom: '1px dotted black', fontSize: '14px', fontWeight: 'bold' }}>
                     {totalAmount.toLocaleString()}
                   </td>
@@ -260,9 +254,9 @@ export default function FundsRequisitionForm() {
                 <tr style={{ backgroundColor: '#ecfdf5', color: '#065f46' }}>
                   <th style={{ border: '1px solid #64748b', padding: '8px', width: '5%', textAlign: 'center' }}>No.</th>
                   <th style={{ border: '1px solid #64748b', padding: '8px', width: '40%', textAlign: 'left' }}>Item Description</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '15%', textAlign: 'right' }}>Budget (UGX)</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '20%', textAlign: 'right' }}>Expenditure to date (UGX)</th>
-                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '20%', textAlign: 'right' }}>Amount Requisitioned (UGX)</th>
+                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '15%', textAlign: 'right' }}>Budget</th>
+                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '20%', textAlign: 'right' }}>Expenditure to date</th>
+                  <th style={{ border: '1px solid #64748b', padding: '8px', width: '20%', textAlign: 'right' }}>Amount Requisitioned</th>
                 </tr>
               </thead>
               <tbody>
@@ -301,11 +295,6 @@ export default function FundsRequisitionForm() {
                           onChange={(e) => updateItem(item.id, 'amount', parseFloat(e.target.value) || 0)}
                           style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', textAlign: 'right', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box', fontWeight: 'bold' }}
                         />
-                        <button 
-                          onClick={() => removeItem(item.id)}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 8px' }}
-                          title="Remove item"
-                        >×</button>
                       </div>
                     </td>
                   </tr>
@@ -319,15 +308,7 @@ export default function FundsRequisitionForm() {
               </tbody>
             </table>
 
-            <div style={{ marginBottom: '40px' }}>
-              <button 
-                onClick={addItem}
-                style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: '600', padding: '6px 16px', borderRadius: '6px', transition: 'all 0.2s ease', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
-              >
-                + Add Item
-              </button>
-            </div>
-
+            <div style={{ marginBottom: '40px' }}></div>
             {/* Approvals Section */}
             <div style={{ border: '1px solid #64748b' }}>
               <div style={{ borderBottom: '1px solid #64748b', padding: '4px 8px', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -342,7 +323,7 @@ export default function FundsRequisitionForm() {
                       <p style={{ margin: 0, fontSize: '12px' }}>Date: .......................................</p>
                     </td>
                     <td style={{ width: '33%', borderRight: '1px solid #64748b', padding: '8px', verticalAlign: 'top' }}>
-                      <p style={{ margin: '0 0 40px 0', fontWeight: 'bold' }}>Checked By (Finance):</p>
+                      <p style={{ margin: '0 0 40px 0', fontWeight: 'bold' }}>Checked By (Project Officer):</p>
                       <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px dotted #94a3b8', paddingTop: '4px' }}>Name & Signature</p>
                       <p style={{ margin: 0, fontSize: '12px' }}>Date: .......................................</p>
                     </td>
