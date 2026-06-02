@@ -95,11 +95,16 @@ const MOCK_EQUIPMENT_LOGS = [
   { id: 2, equipment: 'Crane CR-01', runningHours: 4.0, fuelConsumed: 20, breakdown: true, date: '2025-05-30' }
 ];
 
+// import { useProjectModules } from '../hooks/useProjectModules';
+
 export const ProjectWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, token } = useAuth();
   
+  // Real data fetching hook
+  // const { procurement, dailyReports, variations, subcontractors, snags, correspondence, equipmentLogs } = useProjectModules(id, token);
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);

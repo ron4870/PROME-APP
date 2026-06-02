@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { FileDown, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import QRCode from 'react-qr-code';
+import Barcode from 'react-barcode';
 
 interface FormItem {
   id: string;
@@ -142,12 +144,14 @@ export default function FundsRequisitionForm() {
             ref={formRef}
             style={{ 
               width: '210mm', 
-              minHeight: '297mm', 
+              height: '297mm', 
               backgroundColor: 'white', 
               padding: '20mm', 
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               fontFamily: '"Times New Roman", Times, serif',
-              color: 'black'
+              color: 'black',
+              boxSizing: 'border-box',
+              position: 'relative'
             }}
           >
             {/* Header */}
@@ -155,8 +159,7 @@ export default function FundsRequisitionForm() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <img src="/prome.png" alt="PROME Logo" style={{ height: '60px' }} />
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#cc0000' }}>PROME CONSULTANTS LTD</h2>
-                  <p style={{ margin: 0, fontSize: '12px' }}>ENGINEERS, PLANNERS & PROJECT MANAGERS</p>
+                  <Barcode value={uniqueId || 'DRAFT'} height={40} width={1.5} fontSize={14} displayValue={true} margin={0} />
                 </div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -334,8 +337,22 @@ export default function FundsRequisitionForm() {
               </table>
             </div>
             
+            
             <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
               PROME Consultants Ltd - ISO 9001:2015 Certified
+            </div>
+
+            <div style={{ position: 'absolute', bottom: '20mm', right: '20mm' }}>
+              <QRCode 
+                value={JSON.stringify({
+                  id: uniqueId || 'DRAFT',
+                  date: formData.date,
+                  project: formData.voteProject,
+                  amount: totalAmount,
+                  pdfUrl: `https://ims.promeconsult.com/forms/funds-requisition/${uniqueId || 'DRAFT'}.pdf`
+                })} 
+                size={80} 
+              />
             </div>
 
           </div>
