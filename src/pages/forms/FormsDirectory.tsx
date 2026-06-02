@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, FileSignature, History } from 'lucide-react';
-import AppLayout from '../../components/AppLayout';
 
 export default function FormsDirectory() {
   const navigate = useNavigate();
@@ -27,7 +26,6 @@ export default function FormsDirectory() {
   };
 
   return (
-    <AppLayout>
       <div className="layout-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div>
@@ -116,6 +114,5 @@ export default function FormsDirectory() {
           
         </div>
       </div>
-    </AppLayout>
   );
 }

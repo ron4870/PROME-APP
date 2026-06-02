@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileDown, ArrowLeft } from 'lucide-react';
-import AppLayout from '../../components/AppLayout';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -115,7 +114,6 @@ export default function FundsRequisitionForm() {
   };
 
   return (
-    <AppLayout>
       <div className="layout-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -343,6 +341,5 @@ export default function FundsRequisitionForm() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }
