@@ -41,7 +41,7 @@ export default function FundsRequisitionForm() {
   useEffect(() => {
     if (barcodeRef.current) {
       try {
-        JsBarcode(barcodeRef.current, uniqueId || 'DRAFT-FORM', {
+        JsBarcode(barcodeRef.current, uniqueId || 'PROME-IMSR-AFD-15', {
           format: 'CODE128',
           displayValue: true,
           height: 40,
@@ -364,11 +364,11 @@ export default function FundsRequisitionForm() {
             <div style={{ position: 'absolute', bottom: '20mm', right: '20mm' }}>
               <QRCode 
                 value={JSON.stringify({
-                  id: uniqueId || 'DRAFT',
+                  id: uniqueId || 'PROME-IMSR-AFD-15',
                   date: formData.date,
                   project: formData.voteProject,
                   amount: totalAmount,
-                  pdfUrl: `https://ims.promeconsult.com/forms/funds-requisition/${uniqueId || 'DRAFT'}.pdf`
+                  pdfUrl: `https://ims.promeconsult.com/forms/funds-requisition/${uniqueId || 'PROME-IMSR-AFD-15'}.pdf`
                 })} 
                 size={80} 
               />
