@@ -1039,7 +1039,7 @@ export const generateLandXML = (
   });
   
   return `<?xml version="1.0" encoding="UTF-8"?>
-<LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" date="${date}" time="${time}" version="1.2">
+<LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.landxml.org/schema/LandXML-1.2 http://www.landxml.org/schema/LandXML-1.2/LandXML-1.2.xsd" date="${date}" time="${time}" version="1.2">
   <Units>
     <Metric areaUnit="squareMeter" linearUnit="meter" volumeUnit="cubicMeter" temperatureUnit="celsius" pressureUnit="mmHG" />
   </Units>
