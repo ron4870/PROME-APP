@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileDown, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import QRCode from 'react-qr-code';
+import { QRCode } from 'react-qr-code';
 import JsBarcode from 'jsbarcode';
 import { useEffect } from 'react';
 
