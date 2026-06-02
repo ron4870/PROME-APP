@@ -36,6 +36,8 @@ import { MocDetails } from './pages/MocDetails';
 import { NcrDashboard } from './pages/NcrDashboard';
 import { ProjectsDashboard } from './pages/ProjectsDashboard';
 import { ProjectWorkspace } from './pages/ProjectWorkspace';
+import FormsDirectory from './pages/forms/FormsDirectory';
+import FundsRequisitionForm from './pages/forms/FundsRequisitionForm';
 import NotificationsPage from './pages/NotificationsPage';
 import AppLayout from './components/AppLayout';
 
@@ -132,6 +134,10 @@ function App() {
         <Route path="/ncr" element={<ProtectedRoute><NcrDashboard /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><ProjectsDashboard /></ProtectedRoute>} />
         <Route path="/projects/:id" element={<ProtectedRoute><ProjectWorkspace /></ProtectedRoute>} />
+        
+        {/* Forms Routes */}
+        <Route path="/forms" element={<ProtectedRoute><FormsDirectory /></ProtectedRoute>} />
+        <Route path="/forms/funds-requisition" element={<ProtectedRoute><FundsRequisitionForm /></ProtectedRoute>} />
         
         {/* Division Routes */}
         <Route path="/division/pmbdd" element={<ProtectedRoute><PMBDD /></ProtectedRoute>} />

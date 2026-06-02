@@ -29,6 +29,7 @@ import noticeRoutes from './routes/noticeboard.routes';
 import ncrRoutes from './routes/ncr.routes';
 import projectRoutes from './routes/project.routes';
 import workflowRoutes from './routes/workflow.routes';
+import formsRoutes from './routes/forms.routes';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-prome-key';
@@ -70,6 +71,7 @@ app.use('/api/notices', noticeRoutes);
 app.use('/api/ncr', ncrRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/workflows', workflowRoutes);
+app.use('/api/forms', formsRoutes);
 
 // Setup Google Drive Auth
 const KEYFILEPATH = path.join(__dirname, '../google-credentials.json');

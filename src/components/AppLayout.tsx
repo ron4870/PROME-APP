@@ -378,6 +378,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <Users size={28} color="#bb0a0a" strokeWidth={1.5} />
                   <span>Mgmt Reviews</span>
                 </Link>
+                <Link to="/forms" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <FileText size={28} color="#bb0a0a" strokeWidth={1.5} />
+                  <span>Forms</span>
+                </Link>
                 <Link to="/objectives" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                   <Target size={28} color="#bb0a0a" strokeWidth={1.5} />
                   <span>Objectives</span>
