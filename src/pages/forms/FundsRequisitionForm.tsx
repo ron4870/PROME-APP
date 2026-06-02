@@ -4,7 +4,8 @@ import { FileDown, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import QRCode from 'react-qr-code';
-import Barcode from 'react-barcode';
+import JsBarcode from 'jsbarcode';
+import { useEffect } from 'react';
 
 interface FormItem {
   id: string;
@@ -17,6 +18,7 @@ interface FormItem {
 export default function FundsRequisitionForm() {
   const navigate = useNavigate();
   const formRef = useRef<HTMLDivElement>(null);
+  const barcodeRef = useRef<SVGSVGElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -35,6 +37,23 @@ export default function FundsRequisitionForm() {
   const totalAmount = items.reduce((sum, item) => sum + (item.amount || 0), 0);
   const totalBudget = items.reduce((sum, item) => sum + (item.budget || 0), 0);
   const totalExpenditure = items.reduce((sum, item) => sum + (item.expenditure || 0), 0);
+
+  useEffect(() => {
+    if (barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, uniqueId || 'DRAFT-FORM', {
+          format: 'CODE128',
+          displayValue: true,
+          height: 40,
+          width: 1.5,
+          fontSize: 14,
+          margin: 0
+        });
+      } catch (e) {
+        console.error('Barcode generation failed', e);
+      }
+    }
+  }, [uniqueId]);
 
   const addItem = () => {
     setItems([...items, { id: Date.now().toString(), description: '', budget: 0, expenditure: 0, amount: 0 }]);
@@ -159,7 +178,7 @@ export default function FundsRequisitionForm() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <img src="/prome.png" alt="PROME Logo" style={{ height: '60px' }} />
                 <div>
-                  <Barcode value={uniqueId || 'DRAFT'} height={40} width={1.5} fontSize={14} displayValue={true} margin={0} />
+                  <svg ref={barcodeRef}></svg>
                 </div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
