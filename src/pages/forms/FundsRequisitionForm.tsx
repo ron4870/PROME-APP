@@ -318,17 +318,17 @@ export default function FundsRequisitionForm() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '24px' }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: '0 0 40px 0', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Requested By:</p>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Name & Signature</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Signature</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Date: <span style={{display: 'inline-block', width: '120px', borderBottom: '1px solid #cbd5e1'}}></span></p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: '0 0 40px 0', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Checked By (Project Officer):</p>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Name & Signature</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Signature</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Date: <span style={{display: 'inline-block', width: '120px', borderBottom: '1px solid #cbd5e1'}}></span></p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: '0 0 40px 0', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Approved By (Director):</p>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Name & Signature</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '8px', color: '#64748b' }}>Signature</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Date: <span style={{display: 'inline-block', width: '120px', borderBottom: '1px solid #cbd5e1'}}></span></p>
                 </div>
               </div>
@@ -336,6 +336,10 @@ export default function FundsRequisitionForm() {
 
             <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
               PROME Consultants Ltd - ISO 9001:2015 Certified
+            </div>
+
+            <div style={{ position: 'absolute', bottom: '10mm', left: '20mm' }}>
+              <img src="/prome-stamp.png" alt="PROME Stamp" style={{ width: '80px', opacity: 0.9 }} />
             </div>
 
             <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
