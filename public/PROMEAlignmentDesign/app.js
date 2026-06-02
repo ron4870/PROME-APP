@@ -1433,9 +1433,11 @@ document.getElementById('export-btn').addEventListener('click', async () => {
       const dy = endPt.y - currPt.y;
       const l = Math.sqrt(dx*dx + dy*dy);
       const dir = Math.atan2(dx, dy);
+      let dir_deg = dir * 180 / Math.PI;
+      if (dir_deg < 0) dir_deg += 360;
       
       coordGeomStr += `
-        <Line length="${l.toFixed(4)}" dir="${(dir * 180 / Math.PI).toFixed(4)}">
+        <Line length="${l.toFixed(4)}" dir="${dir_deg.toFixed(4)}">
           <Start>${currPt.y.toFixed(4)} ${currPt.x.toFixed(4)}</Start>
           <End>${endPt.y.toFixed(4)} ${endPt.x.toFixed(4)}</End>
         </Line>`;
@@ -1503,7 +1505,8 @@ document.getElementById('export-btn').addEventListener('click', async () => {
         }],
       });
       const writable = await handle.createWritable();
-      await writable.write(xml);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      await writable.write(blob);
       await writable.close();
       return;
     } catch (err) {
@@ -1525,5 +1528,5 @@ document.getElementById('export-btn').addEventListener('click', async () => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 });

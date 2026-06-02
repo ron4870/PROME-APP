@@ -1284,7 +1284,7 @@ function downloadXodr() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
   
   log(`Downloaded file: ${name}_opendrive.xodr`, 'success');
 }
@@ -1322,7 +1322,7 @@ function handleExport() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     log(`Downloaded file: ${name}_alignment.xml`, 'success');
   } else if (format === 'shapefile') {
     log('Packaging ESRI Shapefile (.zip)...', 'info');
