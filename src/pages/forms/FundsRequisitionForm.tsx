@@ -338,7 +338,7 @@ export default function FundsRequisitionForm() {
               PROME Consultants Ltd - ISO 9001:2015 Certified
             </div>
 
-            <div style={{ position: 'absolute', bottom: '20mm', right: '20mm' }}>
+            <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
               <QRCode 
                 value={JSON.stringify({
                   id: uniqueId || 'PROME-IMSR-AFD-15',
