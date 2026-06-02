@@ -959,10 +959,13 @@ export const generateLandXML = (
     const dx = endUTM[0] - startUTM[0];
     const dy = endUTM[1] - startUTM[1];
     let chordLen = Math.sqrt(dx*dx + dy*dy);
+    
+    let dir = Math.atan2(dx, dy) * 180 / Math.PI;
+    if (dir < 0) dir += 360;
 
     if (seg.type === 'Tangent') {
       coordGeomXml += `
-        <Line>
+        <Line length="${chordLen.toFixed(3)}" dir="${dir.toFixed(4)}">
           <Start>${startStr}</Start>
           <End>${endStr}</End>
         </Line>`;
@@ -995,7 +998,7 @@ export const generateLandXML = (
       const centerStr = `${cy.toFixed(3)} ${cx.toFixed(3)}`;
       
       coordGeomXml += `
-        <Curve rot="${rot}" radius="${R.toFixed(3)}" length="${(seg.length || chordLen).toFixed(3)}">
+        <Curve crvType="arc" rot="${rot}" radius="${R.toFixed(3)}" length="${(seg.length || chordLen).toFixed(3)}">
           <Start>${startStr}</Start>
           <Center>${centerStr}</Center>
           <End>${endStr}</End>
@@ -1037,6 +1040,10 @@ export const generateLandXML = (
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" date="${date}" time="${time}" version="1.2">
+  <Units>
+    <Metric areaUnit="squareMeter" linearUnit="meter" volumeUnit="cubicMeter" temperatureUnit="celsius" pressureUnit="mmHG" />
+  </Units>
+  <Application name="PROME Route Optimizer" manufacturer="PROME" version="1.0" />
   <Project name="PROME Route Optimization Project" />
   <Alignments>
     <Alignment name="${alignmentName}" length="${currentStation.toFixed(3)}" staStart="0.000">

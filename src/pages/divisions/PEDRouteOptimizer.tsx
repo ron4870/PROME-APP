@@ -333,7 +333,7 @@ export default function PEDRouteOptimizer() {
         a.href = url;
         a.download = `Optimized_Alignment_${Date.now()}.xml`;
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
