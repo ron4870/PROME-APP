@@ -1460,7 +1460,7 @@ document.getElementById('export-btn').addEventListener('click', async () => {
       }
       
       coordGeomStr += `
-        <Curve length="${el.length.toFixed(4)}" radius="${el.radius.toFixed(4)}" rot="${el.rot}">
+        <Curve crvType="arc" length="${el.length.toFixed(4)}" radius="${el.radius.toFixed(4)}" rot="${el.rot}">
           <Start>${sc.y.toFixed(4)} ${sc.x.toFixed(4)}</Start>
           <Center>${el.center.y.toFixed(4)} ${el.center.x.toFixed(4)}</Center>
           <End>${cs.y.toFixed(4)} ${cs.x.toFixed(4)}</End>
@@ -1485,6 +1485,10 @@ document.getElementById('export-btn').addEventListener('click', async () => {
   const dateStr = new Date().toISOString().split('T')[0];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.landxml.org/schema/LandXML-1.2 http://www.landxml.org/schema/LandXML-1.2/LandXML-1.2.xsd" version="1.2" date="${dateStr}">
+  <Units>
+    <Metric areaUnit="squareMeter" linearUnit="meter" volumeUnit="cubicMeter" temperatureUnit="celsius" pressureUnit="mmHG" />
+  </Units>
+  <Application name="PROME Alignment Designer" manufacturer="PROME" version="1.0" />
   <Project name="PROME Horizontal Alignment Designer" />
   <Alignments>
     <Alignment name="Designed_Alignment_1" length="${length.toFixed(4)}" staStart="0.0">

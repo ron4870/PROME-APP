@@ -1406,6 +1406,10 @@ function generateLandXML(transformedAlign) {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.landxml.org/schema/LandXML-1.2 http://www.landxml.org/schema/LandXML-1.2/LandXML-1.2.xsd" version="1.2" date="${new Date().toISOString().split('T')[0]}" time="${new Date().toISOString().split('T')[1].split('.')[0]}">
+  <Units>
+    <Metric areaUnit="squareMeter" linearUnit="meter" volumeUnit="cubicMeter" temperatureUnit="celsius" pressureUnit="mmHG" />
+  </Units>
+  <Application name="PROME Alignment Converter" manufacturer="PROME" version="1.0" />
   <Alignments>
     <Alignment name="${transformedAlign.name}" length="${transformedAlign.length.toFixed(6)}" staStart="${transformedAlign.startStation.toFixed(6)}">
       <CoordGeom>${segmentsXml}
