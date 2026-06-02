@@ -16,6 +16,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [notificationCount, setNotificationCount] = React.useState(0);
 
   React.useEffect(() => {
+    // Close the right drawer automatically when navigating to a new page
+    setIsRightDrawerOpen(false);
+
     // Simple fetch to get inbox count
     const token = localStorage.getItem('token');
     if (token) {
