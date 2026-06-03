@@ -81,7 +81,7 @@ export default function FundsRequisitionForm() {
       let currentUniqueId = uniqueId;
 
       if (!currentUniqueId) {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || localStorage.getItem('jwtToken');
         const response = await fetch('/api/forms', {
           method: 'POST',
           headers: {

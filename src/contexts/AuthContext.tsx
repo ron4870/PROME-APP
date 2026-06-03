@@ -76,12 +76,14 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setUser(newUser);
     setToken(newToken);
     localStorage.setItem('jwtToken', newToken);
+    localStorage.setItem('token', newToken);
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('jwtToken');
+    localStorage.removeItem('token');
   };
 
   const hasPermission = (key: string) => {
