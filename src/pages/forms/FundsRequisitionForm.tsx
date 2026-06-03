@@ -69,7 +69,6 @@ export default function FundsRequisitionForm() {
       setIsSubmitting(true);
       
       // 1. Submit to API to get Unique ID
-      const token = localStorage.getItem('token');
       const payload = {
         formType: 'FundsRequisition',
         data: {
