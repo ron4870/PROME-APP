@@ -375,7 +375,8 @@ export default function FundsRequisitionForm() {
             </div>
 
             <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
-              PROME Consultants Ltd - ISO 9001:2015 Certified
+              <div>PROME Consultants Ltd - ISO 9001:2015 Certified</div>
+              <div>PROME-IMSR-AFD-15</div>
             </div>
 
             <div style={{ position: 'absolute', bottom: '10mm', left: '20mm' }}>
