@@ -291,18 +291,18 @@ export default function FundsRequisitionForm() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', color: '#0f172a', borderBottom: '2px solid #cbd5e1', borderTop: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '5%', textAlign: 'center' }}>No.</th>
-                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '40%', textAlign: 'left' }}>Item Description</th>
-                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '15%', textAlign: 'right' }}>Budget</th>
-                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '20%', textAlign: 'right' }}>Expenditure to date</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '5%', textAlign: 'center', borderRight: '1px solid #f1f5f9' }}>No.</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '40%', textAlign: 'left', borderRight: '1px solid #f1f5f9' }}>Item Description</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '15%', textAlign: 'right', borderRight: '1px solid #f1f5f9' }}>Budget</th>
+                  <th style={{ padding: '12px 8px', fontWeight: '600', width: '20%', textAlign: 'right', borderRight: '1px solid #f1f5f9' }}>Expenditure to date</th>
                   <th style={{ padding: '12px 8px', fontWeight: '600', width: '20%', textAlign: 'right' }}>Amount Requisitioned</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => (
                   <tr key={item.id}>
-                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
-                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #f1f5f9', padding: '4px', textAlign: 'center' }}>{index + 1}</td>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #f1f5f9', padding: '0' }}>
                       <input 
                         type="text" 
                         value={item.description}
@@ -310,7 +310,7 @@ export default function FundsRequisitionForm() {
                         style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #f1f5f9', padding: '0' }}>
                       <input 
                         type="number" 
                         value={item.budget || ''}
@@ -318,7 +318,7 @@ export default function FundsRequisitionForm() {
                         style={{ width: '100%', border: 'none', padding: '8px', fontFamily: 'inherit', fontSize: '14px', textAlign: 'right', outline: 'none', backgroundColor: 'transparent', color: '#0f172a', boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ borderBottom: '1px solid #e2e8f0', padding: '0' }}>
+                    <td style={{ borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #f1f5f9', padding: '0' }}>
                       <input 
                         type="number" 
                         value={item.expenditure || ''}
@@ -339,9 +339,9 @@ export default function FundsRequisitionForm() {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={2} style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>TOTAL</td>
-                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>{totalBudget.toLocaleString()}</td>
-                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>{totalExpenditure.toLocaleString()}</td>
+                  <td colSpan={2} style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155', borderRight: '1px solid #f1f5f9' }}>TOTAL</td>
+                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155', borderRight: '1px solid #f1f5f9' }}>{totalBudget.toLocaleString()}</td>
+                  <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155', borderRight: '1px solid #f1f5f9' }}>{totalExpenditure.toLocaleString()}</td>
                   <td style={{ padding: '12px 8px', fontWeight: '600', textAlign: 'right', color: '#334155' }}>{totalAmount.toLocaleString()}</td>
                 </tr>
               </tbody>
