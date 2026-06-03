@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileDown, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -17,6 +17,9 @@ interface FormItem {
 
 export default function FundsRequisitionForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const viewId = searchParams.get('id');
+  const isReadOnly = !!viewId;
   const formRef = useRef<HTMLDivElement>(null);
   const barcodeRef = useRef<SVGSVGElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +63,40 @@ export default function FundsRequisitionForm() {
     }
   }, [uniqueId]);
 
+
+  useEffect(() => {
+    if (viewId) {
+      const fetchFormData = async () => {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('jwtToken');
+          const res = await fetch(`/api/forms/${viewId}`, {
+            headers: {
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+          if (res.ok) {
+            const result = await res.json();
+            if (result.data) {
+              setFormData({
+                date: result.data.date || '',
+                voteProject: result.data.voteProject || '',
+                amountInWords: result.data.amountInWords || '',
+                purpose: result.data.purpose || '',
+              });
+              if (result.data.items && Array.isArray(result.data.items)) {
+                setItems(result.data.items);
+              }
+              setUniqueId(result.uniqueId);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load form data", err);
+        }
+      };
+      fetchFormData();
+    }
+  }, [viewId]);
+
   const updateItem = (id: string, field: keyof FormItem, value: string | number) => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
@@ -80,7 +117,7 @@ export default function FundsRequisitionForm() {
       
       let currentUniqueId = uniqueId;
 
-      if (!currentUniqueId) {
+      if (!isReadOnly && !currentUniqueId) {
         const token = localStorage.getItem('token') || localStorage.getItem('jwtToken');
         const response = await fetch('/api/forms', {
           method: 'POST',
@@ -117,7 +154,7 @@ export default function FundsRequisitionForm() {
           pdf.save(`${currentUniqueId || 'Funds-Requisition'}.pdf`);
           
           setIsSubmitting(false);
-          alert('Form saved and PDF generated successfully!');
+          if (!isReadOnly) alert('Form saved and PDF generated successfully!');
           navigate('/forms');
         }, 100);
       } else {
@@ -149,7 +186,7 @@ export default function FundsRequisitionForm() {
             className="btn btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            {isSubmitting ? 'Saving...' : <><FileDown size={18} /> Save & Export PDF</>}
+            {isSubmitting ? (isReadOnly ? 'Exporting...' : 'Saving...') : <><FileDown size={18} /> {isReadOnly ? 'Export PDF' : 'Save & Export PDF'}</>}
           </button>
         </div>
 
@@ -194,7 +231,7 @@ export default function FundsRequisitionForm() {
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#334155', textDecoration: 'underline' }}>FUNDS REQUISITION FORM</h3>
             </div>
 
-            {/* Form Fields */}
+            {/* Form Fields */}\n            <div style={{ pointerEvents: isReadOnly ? 'none' : 'auto' }}>
             <table style={{ width: '100%', marginBottom: '20px', borderCollapse: 'collapse' }}>
               <tbody>
                 <tr>
@@ -310,7 +347,7 @@ export default function FundsRequisitionForm() {
               </tbody>
             </table>
 
-            <div style={{ marginBottom: '40px' }}></div>
+            </div>\n            <div style={{ marginBottom: '40px' }}></div>
             {/* Approvals Section */}
             <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', marginTop: '40px' }}>
               <div style={{ color: '#0f172a', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', marginBottom: '24px', fontSize: '14px' }}>
@@ -345,13 +382,7 @@ export default function FundsRequisitionForm() {
 
             <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
               <QRCode 
-                value={JSON.stringify({
-                  id: uniqueId || 'PROME-IMSR-AFD-15',
-                  date: formData.date,
-                  project: formData.voteProject,
-                  amount: totalAmount,
-                  pdfUrl: `https://ims.promeconsult.com/forms/funds-requisition/${uniqueId || 'PROME-IMSR-AFD-15'}.pdf`
-                })} 
+                value={`https://ims.promeconsult.com/forms/funds-requisition?id=${uniqueId || 'PROME-IMSR-AFD-15'}`}
                 size={80} 
               />
             </div>

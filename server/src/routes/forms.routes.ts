@@ -65,12 +65,16 @@ router.post('/', authenticateToken, async (req: any, res: any) => {
   }
 });
 
-// Get a specific form by ID
+// Get a specific form by ID or uniqueId
 router.get('/:id', authenticateToken, async (req: any, res: any) => {
   try {
     const { id } = req.params;
+    
+    // Check if it's a uniqueId (starts with PROME-) or a numeric ID
+    const isUniqueId = id.startsWith('PROME-');
+    
     const form = await prisma.formSubmission.findUnique({
-      where: { id: parseInt(id) },
+      where: isUniqueId ? { uniqueId: id } : { id: parseInt(id) },
       include: {
         submittedBy: { select: { id: true, name: true, email: true } }
       }
