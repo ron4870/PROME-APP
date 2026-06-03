@@ -82,11 +82,12 @@ export default function FundsRequisitionForm() {
       let currentUniqueId = uniqueId;
 
       if (!currentUniqueId) {
+        const token = localStorage.getItem('token');
         const response = await fetch('/api/forms', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
           body: JSON.stringify(payload)
         });
@@ -96,7 +97,8 @@ export default function FundsRequisitionForm() {
           currentUniqueId = result.uniqueId;
           setUniqueId(currentUniqueId);
         } else {
-          throw new Error('Failed to save form to database');
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(`Failed to save form to database (Status ${response.status} ${response.statusText}): ${errData.error || errData.message || 'Unknown error'}`);
         }
       }
 
