@@ -105,7 +105,7 @@ export default function FundsRequisitionForm() {
         // Wait a tiny bit for React to render the new Unique ID if it was just set
         setTimeout(async () => {
           const element = formRef.current!;
-          const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+          const canvas = await html2canvas(element, { scale: 2, useCORS: true });
           const imgData = canvas.toDataURL('image/jpeg', 1.0);
           
           const pdf = new jsPDF('p', 'mm', 'a4');
@@ -122,9 +122,9 @@ export default function FundsRequisitionForm() {
       } else {
         setIsSubmitting(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('An error occurred while saving the form.');
+      alert(`An error occurred while saving the form: ${error.message || error}`);
       setIsSubmitting(false);
     }
   };
