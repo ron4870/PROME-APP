@@ -231,7 +231,8 @@ export default function FundsRequisitionForm() {
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#334155', textDecoration: 'underline' }}>FUNDS REQUISITION FORM</h3>
             </div>
 
-            {/* Form Fields */}\n            <div style={{ pointerEvents: isReadOnly ? 'none' : 'auto' }}>
+            {/* Form Fields */}
+            <div style={{ pointerEvents: isReadOnly ? 'none' : 'auto' }}>
             <table style={{ width: '100%', marginBottom: '20px', borderCollapse: 'collapse' }}>
               <tbody>
                 <tr>
@@ -347,9 +348,10 @@ export default function FundsRequisitionForm() {
               </tbody>
             </table>
 
-            </div>\n            <div style={{ marginBottom: '40px' }}></div>
+            </div>
+            <div style={{ marginBottom: '10px' }}></div>
             {/* Approvals Section */}
-            <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', marginTop: '40px' }}>
+            <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
               <div style={{ color: '#0f172a', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', marginBottom: '24px', fontSize: '14px' }}>
                 APPROVALS
               </div>
