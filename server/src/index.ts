@@ -30,6 +30,7 @@ import ncrRoutes from './routes/ncr.routes';
 import projectRoutes from './routes/project.routes';
 import workflowRoutes from './routes/workflow.routes';
 import formsRoutes from './routes/forms.routes';
+import manualsRoutes from './routes/manuals';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-prome-key';
@@ -72,6 +73,7 @@ app.use('/api/ncr', ncrRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/forms', formsRoutes);
+app.use('/api/manuals', manualsRoutes);
 
 // Setup Google Drive Auth
 const KEYFILEPATH = path.join(__dirname, '../google-credentials.json');
@@ -481,6 +483,29 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 // --- ISO Document Control Endpoints ---
 
 // Get ISO Documents (Admins see all, others see APPROVED)
+
+// Get single ISO document
+app.get('/api/iso-documents/:id', async (req, res) => {
+  try {
+    const document = await prisma.isoDocument.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        author: true,
+        approver: true,
+      }
+    });
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    res.json(document);
+  } catch (error) {
+    console.error('Failed to fetch ISO document:', error);
+    res.status(500).json({ error: 'Failed to fetch ISO document' });
+  }
+});
+
 app.get('/api/iso-documents', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -497,8 +522,8 @@ app.get('/api/iso-documents', async (req, res) => {
 
     let whereClause = {};
     // If not Admin/Quality Manager (checking if role is somewhat elevated, assuming role name check or generic)
-    // For now, let's say if role is Admin, fetch all, else fetch APPROVED
-    if (user?.role?.name !== 'Admin' && user?.role?.name !== 'Super Admin') {
+    // For now, let's say if role is Admin/Administrator, fetch all, else fetch APPROVED
+    if (user?.role?.name !== 'Admin' && user?.role?.name !== 'Super Admin' && user?.role?.name !== 'Administrator') {
       whereClause = { status: 'APPROVED' };
     }
 
@@ -522,7 +547,7 @@ app.get('/api/iso-documents', async (req, res) => {
   }
 });
 
-// Create new ISO Document Draft
+// Create new ISO Document Draft (Supports Native and File upload)
 app.post('/api/iso-documents', upload.single('file'), async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -532,7 +557,7 @@ app.post('/api/iso-documents', upload.single('file'), async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    const { documentNumber, title, category, reviewerId, approverId } = req.body;
+    const { documentNumber, title, category, reviewerId, approverId, format, content } = req.body;
     const file = req.file;
     let fileUrl = null;
 
@@ -566,6 +591,8 @@ app.post('/api/iso-documents', upload.single('file'), async (req, res) => {
         reviewerId: reviewerId ? Number(reviewerId) : null,
         approverId: approverId ? Number(approverId) : null,
         fileUrl,
+        format: format || (file ? 'legacy' : 'native'),
+        content: content || '',
         status: 'DRAFT'
       }
     });
@@ -575,6 +602,8 @@ app.post('/api/iso-documents', upload.single('file'), async (req, res) => {
         isoDocumentId: newDoc.id,
         revision: newDoc.revision,
         changeSummary: 'Document drafted.',
+        content: newDoc.content,
+        status: 'DRAFT',
         updatedById: decoded.userId
       }
     });
@@ -583,6 +612,60 @@ app.post('/api/iso-documents', upload.single('file'), async (req, res) => {
   } catch (error) {
     console.error('Error creating ISO doc:', error);
     res.status(500).json({ error: 'Failed to create document' });
+  }
+});
+
+// Auto-save native document content
+app.put('/api/iso-documents/:id/content', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const { id } = req.params;
+    const { content } = req.body;
+
+    const doc = await prisma.isoDocument.findUnique({ where: { id: Number(id) } });
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    if (doc.status !== 'DRAFT' && doc.status !== 'REJECTED') {
+      return res.status(403).json({ error: 'Only drafts can be edited directly' });
+    }
+
+    const updatedDoc = await prisma.isoDocument.update({
+      where: { id: Number(id) },
+      data: { content }
+    });
+
+    res.json(updatedDoc);
+  } catch (error) {
+    console.error('Error saving document content:', error);
+    res.status(500).json({ error: 'Failed to save document content' });
+  }
+});
+
+// Get document history
+app.get('/api/iso-documents/:id/history', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  try {
+    const { id } = req.params;
+    const history = await prisma.isoDocumentHistory.findMany({
+      where: { isoDocumentId: Number(id) },
+      include: {
+        updatedBy: { select: { name: true } }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching document history:', error);
+    res.status(500).json({ error: 'Failed to fetch document history' });
   }
 });
 
@@ -604,9 +687,24 @@ app.patch('/api/iso-documents/:id/status', async (req, res) => {
 
     // In a strict environment, check if decoded.userId == reviewerId or approverId
 
+    let newRevision = doc.revision;
+    let publishedAt = doc.publishedAt;
+
+    if (status === 'PUBLISHED' && doc.status !== 'PUBLISHED') {
+      // Increment major revision version on publish if needed
+      // Actually typically revision stays same until it goes back to DRAFT for next version.
+      publishedAt = new Date();
+    } else if (status === 'DRAFT' && doc.status === 'PUBLISHED') {
+      // If we move back to draft from published, increment revision
+      const revParts = doc.revision.split('.');
+      if (revParts.length === 2) {
+        newRevision = `${parseInt(revParts[0]) + 1}.0`;
+      }
+    }
+
     const updatedDoc = await prisma.isoDocument.update({
       where: { id: Number(id) },
-      data: { status }
+      data: { status, revision: newRevision, publishedAt }
     });
 
     await prisma.isoDocumentHistory.create({
@@ -614,6 +712,8 @@ app.patch('/api/iso-documents/:id/status', async (req, res) => {
         isoDocumentId: updatedDoc.id,
         revision: updatedDoc.revision,
         changeSummary: changeSummary || `Status changed to ${status}`,
+        content: updatedDoc.content,
+        status: status,
         updatedById: decoded.userId
       }
     });

@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard';
 import UserProfile from './pages/UserProfile';
 import AlignmentConverter from './pages/AlignmentConverter';
 import IsoDocuments from './pages/IsoDocuments';
+import IsoDocumentEditor from './pages/document-control/IsoDocumentEditor';
+import IsoDocumentViewer from './pages/document-control/IsoDocumentViewer';
 import CapaDashboard from './pages/CapaDashboard';
 import CapaDetails from './pages/CapaDetails';
 import AuditDashboard from './pages/AuditDashboard';
@@ -55,6 +57,7 @@ import PEDHydrology from './pages/divisions/PEDHydrology';
 import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import ManualsDirectory from './pages/ManualsDirectory';
 
 // Simple protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -104,6 +107,8 @@ function App() {
         />
         {/* Division Routes */}
         <Route path="/iso-documents" element={<ProtectedRoute><IsoDocuments /></ProtectedRoute>} />
+        <Route path="/iso-documents/edit/:id" element={<ProtectedRoute><IsoDocumentEditor /></ProtectedRoute>} />
+        <Route path="/iso-documents/:id" element={<ProtectedRoute><IsoDocumentViewer /></ProtectedRoute>} />
         <Route path="/capa" element={<ProtectedRoute><CapaDashboard /></ProtectedRoute>} />
         <Route path="/capa/:id" element={<ProtectedRoute><CapaDetails /></ProtectedRoute>} />
         <Route path="/audits" element={<ProtectedRoute><AuditDashboard /></ProtectedRoute>} />
@@ -139,6 +144,7 @@ function App() {
         {/* Forms Routes */}
         <Route path="/forms" element={<ProtectedRoute><FormsDirectory /></ProtectedRoute>} />
         <Route path="/forms/funds-requisition" element={<ProtectedRoute><FundsRequisitionForm /></ProtectedRoute>} />
+        <Route path="/manuals" element={<ProtectedRoute><ManualsDirectory /></ProtectedRoute>} />
         <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
         
         {/* Division Routes */}

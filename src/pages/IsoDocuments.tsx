@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, FileText, CheckCircle, Upload, Search, Filter } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,6 +10,7 @@ interface IsoDocument {
   category: string;
   revision: string;
   status: string;
+  format: string;
   fileUrl: string | null;
   effectiveDate: string | null;
   author: { name: string } | null;
@@ -21,6 +23,7 @@ const IsoDocuments: React.FC = () => {
   const [documents, setDocuments] = useState<IsoDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
   
   // Upload State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -135,15 +138,25 @@ const IsoDocuments: React.FC = () => {
           <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Central repository for controlled policies, procedures, and manuals.</p>
         </div>
         
-        {(user?.role?.name === 'Admin' || user?.role?.name === 'Super Admin') && (
-          <button 
-            className="btn btn-primary"
-            onClick={() => setIsUploadModalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <Upload size={18} />
-            New Document Draft
-          </button>
+        {(user?.role?.name === 'Administrator' || user?.role?.name === 'Super Admin') && (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => navigate('/iso-documents/edit/new')}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <FileText size={18} />
+              Draft Native Doc
+            </button>
+            <button 
+              className="btn btn-primary"
+              onClick={() => setIsUploadModalOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Upload size={18} />
+              Upload PDF
+            </button>
+          </div>
         )}
       </div>
 
@@ -219,13 +232,20 @@ const IsoDocuments: React.FC = () => {
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            {doc.fileUrl && (
+                            {doc.format === 'legacy' && doc.fileUrl ? (
                               <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
                                 View PDF
                               </a>
+                            ) : (
+                              <button 
+                                onClick={() => navigate(doc.status === 'DRAFT' || doc.status === 'IN_REVIEW' ? `/iso-documents/edit/${doc.id}` : `/iso-documents/${doc.id}`)}
+                                className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                              >
+                                {(doc.status === 'DRAFT' || doc.status === 'IN_REVIEW') ? 'Edit / Review' : 'View Native'}
+                              </button>
                             )}
                             
-                            {doc.status === 'APPROVED' && !hasAcknowledged && (
+                            {doc.status === 'PUBLISHED' && !hasAcknowledged && (
                               <button 
                                 onClick={() => handleAcknowledge(doc.id)}
                                 className="btn btn-primary" 
@@ -235,13 +255,13 @@ const IsoDocuments: React.FC = () => {
                               </button>
                             )}
                             
-                            {doc.status === 'APPROVED' && hasAcknowledged && (
+                            {doc.status === 'PUBLISHED' && hasAcknowledged && (
                               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontSize: '0.875rem', fontWeight: 500 }}>
                                 <CheckCircle size={14} /> Read
                               </span>
                             )}
 
-                            {(user?.role?.name === 'Admin' || user?.role?.name === 'Super Admin') && (
+                            {(user?.role?.name === 'Administrator' || user?.role?.name === 'Super Admin') && (
                               <select 
                                 value={doc.status}
                                 onChange={(e) => handleStatusChange(doc.id, e.target.value)}
@@ -249,8 +269,8 @@ const IsoDocuments: React.FC = () => {
                               >
                                 <option value="DRAFT">Draft</option>
                                 <option value="IN_REVIEW">In Review</option>
-                                <option value="APPROVED">Approve</option>
-                                <option value="OBSOLETE">Obsolete</option>
+                                <option value="PUBLISHED">Published</option>
+                                <option value="ARCHIVED">Archived</option>
                               </select>
                             )}
                           </div>

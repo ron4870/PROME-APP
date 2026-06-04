@@ -114,6 +114,9 @@ model User {
   // Form Relations
   formSubmissions     FormSubmission[]        @relation("UserFormSubmissions")
 
+  // External Manuals
+  uploadedManuals     Manual[]
+
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 }
@@ -147,6 +150,8 @@ model IsoDocument {
   revision        String   @default("1.0")
   status          String   @default("DRAFT")
   
+  format          String   @default("legacy") // "legacy" (PDF) or "native" (Rich Text)
+  content         String?  @db.Text
   fileUrl         String?
   workflows       WorkflowInstance[]
   
@@ -161,8 +166,23 @@ model IsoDocument {
   reviewer        User?    @relation("DocReviewer", fields: [reviewerId], references: [id])
   approver        User?    @relation("DocApprover", fields: [approverId], references: [id])
   
+  publishedAt     DateTime?
+  
   history         IsoDocumentHistory[]
   acknowledgments DocumentAcknowledgment[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Manual {
+  id              Int      @id @default(autoincrement())
+  title           String
+  category        String   // "International Standards", "Design Manuals", "Reference Documents"
+  fileUrl         String   @db.Text
+  
+  uploadedById    Int
+  uploadedBy      User     @relation(fields: [uploadedById], references: [id])
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -173,6 +193,8 @@ model IsoDocumentHistory {
   isoDocumentId   Int
   revision        String
   changeSummary   String
+  content         String?  @db.Text
+  status          String   @default("ARCHIVED")
   updatedById     Int
   updatedAt       DateTime @default(now())
   
