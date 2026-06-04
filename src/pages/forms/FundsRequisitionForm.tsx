@@ -47,9 +47,9 @@ export default function FundsRequisitionForm() {
   const totalExpenditure = items.reduce((sum, item) => sum + (item.expenditure || 0), 0);
 
   useEffect(() => {
-    if (barcodeRef.current) {
+    if (barcodeRef.current && uniqueId) {
       try {
-        JsBarcode(barcodeRef.current, uniqueId || 'PROME-IMSR-AFD-15', {
+        JsBarcode(barcodeRef.current, uniqueId, {
           format: 'CODE128',
           displayValue: true,
           height: 40,
@@ -210,18 +210,15 @@ export default function FundsRequisitionForm() {
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid black', paddingBottom: '10px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <img src="/prome.png" alt="PROME Logo" style={{ height: '60px' }} />
-                <div>
-                  <svg ref={barcodeRef}></svg>
-                </div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                 {uniqueId ? (
-                  <div style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: '600', color: '#334155', borderBottom: '1px solid #e2e8f0', padding: '4px 8px' }}>
-                    {uniqueId}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <svg ref={barcodeRef}></svg>
                   </div>
                 ) : (
-                  <div style={{ border: '1px dashed #ccc', padding: '4px 8px', color: '#999', fontSize: '12px' }}>
-                    ID generated upon save
+                  <div style={{ border: '1px dashed #ccc', padding: '4px 8px', color: '#999', fontSize: '12px', height: '60px', display: 'flex', alignItems: 'center' }}>
+                    Barcode generated upon save
                   </div>
                 )}
               </div>
@@ -385,7 +382,7 @@ export default function FundsRequisitionForm() {
 
             <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
               <QRCode 
-                value={`https://ims.promeconsult.com/forms/funds-requisition?id=${uniqueId || 'PROME-IMSR-AFD-15'}`}
+                value={`https://ims.promeconsult.com/forms/funds-requisition?id=${uniqueId || ''}`}
                 size={80} 
               />
             </div>
