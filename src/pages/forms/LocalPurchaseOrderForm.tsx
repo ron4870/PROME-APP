@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import JsBarcode from 'jsbarcode';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { ArrowLeft, Download, Save, Printer } from 'lucide-react';
-import QRCode from 'react-qr-code';
+import { QRCode } from 'react-qr-code';
 
 interface FormItem {
   id: string;
