@@ -225,7 +225,7 @@ export default function LocalPurchaseOrderForm() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px', border: '1px solid black', padding: '4px 8px', fontWeight: 'bold' }}>
               <div>I.D. No : PROME-QSR-AD-12</div>
               <div>Version No : 04</div>
-              <div>Date of issue : January 2019</div>
+              <div>Date of issue : June 2026</div>
             </div>
 
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -387,7 +387,7 @@ export default function LocalPurchaseOrderForm() {
             <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
               <QRCode 
                 value={`https://ims.promeconsult.com/forms/local-purchase-order?id=${uniqueId || ''}`}
-                size={80} 
+                size={60} 
               />
             </div>
 
