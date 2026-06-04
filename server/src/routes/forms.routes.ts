@@ -36,6 +36,7 @@ router.post('/', authenticateToken, async (req: any, res: any) => {
     // Generate unique ID based on form type (e.g. "FundsRequisition" -> "FRF")
     let prefix = 'FRM';
     if (formType === 'FundsRequisition') prefix = 'FRF';
+    else if (formType === 'LocalPurchaseOrder') prefix = 'LPO';
     // Add other form types here...
 
     // Find the highest sequence number for this prefix

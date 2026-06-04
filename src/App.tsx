@@ -38,6 +38,7 @@ import { ProjectsDashboard } from './pages/ProjectsDashboard';
 import { ProjectWorkspace } from './pages/ProjectWorkspace';
 import FormsDirectory from './pages/forms/FormsDirectory';
 import FundsRequisitionForm from './pages/forms/FundsRequisitionForm';
+import LocalPurchaseOrderForm from './pages/forms/LocalPurchaseOrderForm';
 import NotificationsPage from './pages/NotificationsPage';
 import AppLayout from './components/AppLayout';
 
@@ -138,6 +139,7 @@ function App() {
         {/* Forms Routes */}
         <Route path="/forms" element={<ProtectedRoute><FormsDirectory /></ProtectedRoute>} />
         <Route path="/forms/funds-requisition" element={<ProtectedRoute><FundsRequisitionForm /></ProtectedRoute>} />
+        <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
         
         {/* Division Routes */}
         <Route path="/division/pmbdd" element={<ProtectedRoute><PMBDD /></ProtectedRoute>} />
