@@ -303,7 +303,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <footer className="corporate-footer">
         <div className="layout-container footer-inner">
           <div className="footer-links">
-            <a href="#">About PROME</a>
+            <a href="https://promeconsult.com/about%20us.html" target="_blank" rel="noopener noreferrer">About PROME</a>
             <a href="#">Privacy Notice</a>
             <a href="#">Terms & Conditions</a>
             <a href="#">Cookie Notice</a>
