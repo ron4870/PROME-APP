@@ -223,8 +223,8 @@ export default function LocalPurchaseOrderForm() {
 
           <div style={{ pointerEvents: isReadOnly ? 'none' : 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '12px', border: '1px solid black', padding: '4px 8px', fontWeight: 'bold' }}>
-              <div>I.D. No : PROME-QSR-AD-12</div>
-              <div>Version No : 04</div>
+              <div>I.D. No : PROME-QSR-AFD-12</div>
+              <div>Version No : 05</div>
               <div>Date of issue : June 2026</div>
             </div>
 
