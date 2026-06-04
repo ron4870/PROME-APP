@@ -384,6 +384,11 @@ export default function LocalPurchaseOrderForm() {
               </tbody>
             </table>
 
+            <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
+              <div>PROME Consultants Ltd - ISO 9001:2015 Certified</div>
+              <div>&copy; {new Date().getFullYear()} PROME Consultants Ltd. All Rights Reserved.</div>
+            </div>
+
             <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
               <QRCode 
                 value={`https://ims.promeconsult.com/forms/local-purchase-order?id=${uniqueId || ''}`}
