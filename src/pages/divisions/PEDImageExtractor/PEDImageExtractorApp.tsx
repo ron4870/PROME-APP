@@ -12,7 +12,7 @@ import ThreeCanvas from './components/ThreeCanvas';
 import SettingsPanel from './components/SettingsPanel';
 import ModelQueue from './components/ModelQueue';
 import GeorefMapPreview from './components/GeorefMapPreview';
-import { Compass, Play, Layers, Download, Database, CheckSquare, FolderOpen, AlertCircle, Sparkles } from 'lucide-react';
+import { Compass, Play, Layers, Database, CheckSquare, FolderOpen, AlertCircle, Sparkles } from 'lucide-react';
 import * as THREE from 'three';
 import './PEDImageExtractorApp.css';
 
@@ -532,67 +532,30 @@ export default function PEDImageExtractorApp() {
   const activeItem = queue.find((q) => q.id === activeId) || null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-[#0B2240]/15 selection:text-[#0B2240] antialiased" id="application-root">
+    <div className="text-slate-800 flex flex-col font-sans selection:bg-[#0B2240]/15 selection:text-[#0B2240] antialiased w-full h-full pb-10" id="application-root">
       
       {/* PROME Corporate Spatial GIS Header Banner */}
-      <header className="h-14 bg-[#0B2240] px-6 flex flex-nowrap items-center justify-between sticky top-0 z-50 shadow-md">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            {/* PROME Consultants branding */}
-            <div className="h-10 px-3 bg-white/10 backdrop-blur-xs rounded border border-white/20 flex items-center justify-center gap-2.5 shadow-sm">
-              <img 
-                src="https://promeconsult.com/images/logo.png" 
-                alt="PROME logo" 
-                className="h-6 object-contain filter brightness-110"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <div className="flex flex-col text-left">
-                <div className="text-[10px] font-black tracking-widest text-orange-400 uppercase font-sans flex items-center gap-1 leading-none">
-                  PROME <span className="text-[7px] text-white font-bold tracking-wide px-1 rounded bg-orange-500 border border-orange-600">CONSULTANTS</span>
-                </div>
-                <span className="text-[8px] text-gray-300 uppercase tracking-widest font-mono font-bold">Precision In Engineering</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center h-8 w-px bg-white/20" />
-
-          {/* Software Labeling */}
-          <div className="hidden sm:flex items-center gap-2 text-white">
-            <Compass className="w-4 h-4 text-orange-400 animate-spin-slow" />
-            <h1 className="text-xs font-extrabold tracking-widest uppercase font-sans">
-              PROME GLFT/GLB IMAGE-EXTRACTOR
-            </h1>
-            <span className="text-[8px] font-mono font-extrabold bg-orange-600 text-white px-1.5 py-0.5 rounded leading-none">
-              PROME-GIS v2.4
-            </span>
-          </div>
-        </div>
-
-        {/* Global Action Header Button */}
-        <div className="flex gap-3 items-center">
-          {queue.length > 0 && (
-            <button
-              onClick={handleProcessBatch}
-              disabled={isProcessing}
-              className={`h-9 px-5 text-xs font-black uppercase tracking-wider rounded transition select-none shadow-md cursor-pointer flex items-center gap-1.5 ${
-                isProcessing
-                  ? 'bg-orange-700 text-white animate-pulse'
-                  : 'bg-orange-500 hover:bg-orange-600 text-white'
-              }`}
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isProcessing ? 'Processing...' : 'Run Extraction'}</span>
-            </button>
-          )}
-        </div>
-      </header>
+      
 
       {/* Primary Dashboard Workspace split */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 max-w-[1600px] w-full mx-auto">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 w-full mx-auto">
+
+        {/* Premium Page Header */}
+        <div className="lg:col-span-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 text-white">
+              <Compass className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-800 tracking-tight">3D Model Image Extractor</h1>
+              <p className="text-sm text-slate-500 font-medium mt-0.5 flex items-center gap-2">
+                PROME Geotechnical & GIS Engineering
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">v2.4</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
         
         {/* LEFT COLUMN: Queue Uploader + Geographic Alignment Structure */}
         <div className="lg:col-span-5 flex flex-col gap-6 animate-fadeIn" id="left-sidebar-controls">
@@ -660,7 +623,7 @@ export default function PEDImageExtractorApp() {
 
         {/* BOTTOM FULL-WIDTH: Image Extraction Launcher Dashboard */}
         <div className="lg:col-span-12 mt-4" id="image-extraction-launcher-dashboard">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6 transition-all duration-300">
+          <div className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-2xl p-6 shadow-xl shadow-slate-200/50 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden ring-1 ring-black/5">
             {/* Left Info Column */}
             <div className="flex flex-col gap-3 w-full lg:w-auto">
               <div className="flex items-center gap-3">
@@ -780,14 +743,7 @@ export default function PEDImageExtractorApp() {
       )}
 
       {/* Professional Corporate Footer */}
-      <footer className="border-t border-gray-250 py-4.5 text-center text-[10px] text-gray-400 font-sans mt-auto leading-relaxed flex flex-col gap-1 bg-white shadow-xs">
-        <span className="font-bold text-[#0B2240] tracking-wider uppercase">
-          © {new Date().getFullYear()} PROME Consultants Ltd. • Geotechnical & GIS Engineering Division
-        </span>
-        <span className="text-[9.5px] text-gray-400 font-medium max-w-xl mx-auto px-4 leading-normal normal-case">
-          All topographic, coordinate transform shifts and grid conversion algorithms abide strictly by official Geodetic Standard models (Molodensky translation, standard ellipsoids WGS 84 & Clarke 1880, and TM projection systems).
-        </span>
-      </footer>
+      
     </div>
   );
 }
