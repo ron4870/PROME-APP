@@ -139,7 +139,7 @@ export default function PEDRoadsHighways() {
               title="3D Model Image Extractor" 
               description="Extract high-resolution textured map tiles and georeference files from 3D GLB/GLTF models." 
               icon={<Box size={24} />} 
-              onClick={() => navigate('/division/ped/image-extractor')} 
+              onClick={() => window.open('https://ais-pre-sdyisxxv24232oakbl6afr-315674193862.europe-west2.run.app/', '_blank')} 
               colorStart="#ea580c" colorEnd="#7c2d12" shadowColor="#431407"
             />
 
