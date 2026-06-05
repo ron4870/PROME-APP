@@ -135,13 +135,7 @@ export default function PEDRoadsHighways() {
               colorStart="#4f46e5" colorEnd="#312e81" shadowColor="#1e1b4b"
             />
 
-            <AppButton 
-              title="Image Extractor (GLB)" 
-              description="Extract 3D models and images for highway visualizations." 
-              icon={<Box size={24} />} 
-              onClick={() => window.open('/ImageExtractorGLB/index.html', '_blank')} 
-              colorStart="#ea580c" colorEnd="#7c2d12" shadowColor="#431407"
-            />
+
 
             <AppButton 
               title="Pavement Designer" 
