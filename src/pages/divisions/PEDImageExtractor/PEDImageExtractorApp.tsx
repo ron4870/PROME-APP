@@ -627,7 +627,7 @@ export default function PEDImageExtractorApp() {
         <div className="lg:col-span-12 mt-2 pb-6 flex flex-col gap-6" id="image-extraction-launcher-dashboard">
           
           {/* Output Destination Settings */}
-          <div className="panel-3d p-8 bg-white flex flex-col gap-4">
+          <div className="card-3d p-8 flex flex-col gap-4">
             <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
               <FolderOpen className="w-6 h-6 text-orange-500" />
               <h3 className="text-base font-black text-[#0B2240] uppercase tracking-wider font-sans opacity-95">Output Destination Settings</h3>
@@ -723,7 +723,7 @@ export default function PEDImageExtractorApp() {
           </div>
 
           {/* Launcher Dashboard */}
-          <div className="panel-3d p-6 flex flex-col sm:flex-row bg-[#0B2240] text-white shadow-2xl items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden">
+          <div className="panel-3d p-6 flex flex-col sm:flex-row bg-white/60 text-slate-800 backdrop-blur-md shadow-2xl items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden">
             
             {/* Left branding */}
             <div className="flex items-center gap-4">
@@ -731,7 +731,7 @@ export default function PEDImageExtractorApp() {
                 <Play className="w-6 h-6 text-orange-500 fill-orange-500" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">Raster Deployment System</h3>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Raster Deployment System</h3>
                 <div className="mt-1">
                   {queue.length === 0 ? (
                     <div className="flex items-center gap-1.5 text-red-500 font-bold text-xs uppercase font-sans">

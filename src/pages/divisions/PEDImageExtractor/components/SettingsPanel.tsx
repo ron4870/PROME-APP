@@ -325,7 +325,7 @@ export default function SettingsPanel({
     <div className="flex flex-col gap-6" id="gltf-settings-panel-root">
 
       {/* 2. SPECIFY LOADED FILE origin LOCATION (INPUT COORDINATE SYSTEM) */}
-      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+      <div className="card-3d p-6">
         <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
           <Globe className="w-5 h-5 text-orange-500 shrink-0" />
           <div>
@@ -956,7 +956,7 @@ export default function SettingsPanel({
       </div>
 
       {/* 3. TARGET EXPORT COORDINATE SYSTEM (OUTPUT Projections) */}
-      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+      <div className="card-3d p-6">
         <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
           <Settings className="w-5 h-5 text-orange-400 shrink-0" />
           <div>
@@ -1194,7 +1194,7 @@ export default function SettingsPanel({
       </div>
 
       {/* 4. High-LOD Image Extraction Settings */}
-      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+      <div className="card-3d p-6">
         <div className="flex items-center gap-2 mb-4">
           <Sliders className="w-5 h-5 text-orange-500" />
           <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Image Render Resolution</h3>
@@ -1280,7 +1280,7 @@ export default function SettingsPanel({
       </div>
 
       {/* 5. Select Perspectives & Texture Exports */}
-      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+      <div className="card-3d p-6">
         <div className="flex items-center gap-2 mb-4">
           <Layers className="w-5 h-5 text-orange-500" />
           <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Extraction Pipelines</h3>
