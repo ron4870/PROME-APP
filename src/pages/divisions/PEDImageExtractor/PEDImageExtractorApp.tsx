@@ -534,7 +534,7 @@ export default function PEDImageExtractorApp() {
   const activeItem = queue.find((q) => q.id === activeId) || null;
 
   return (
-    <div className="text-slate-800 flex flex-col font-sans selection:bg-[#0B2240]/15 selection:text-[#0B2240] antialiased w-full min-h-full pb-10 bg-gradient-to-br from-slate-50 to-slate-200/50" id="application-root">
+    <div className="text-slate-800 flex flex-col font-sans selection:bg-[#0B2240]/15 selection:text-[#0B2240] antialiased w-full min-h-full pb-10 bg-[#f5f5f5]" id="application-root">
       
       {/* PROME Corporate Spatial GIS Header Banner */}
       
@@ -545,7 +545,7 @@ export default function PEDImageExtractorApp() {
         {/* Premium Page Header */}
         <div className="lg:col-span-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 text-white">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#cc0000] to-[#aa0000] flex items-center justify-center shadow-lg shadow-red-500/30 text-white">
               <Compass className="w-6 h-6 animate-pulse" />
             </div>
             <div>
@@ -563,10 +563,10 @@ export default function PEDImageExtractorApp() {
         <div className="lg:col-span-5 flex flex-col gap-6 animate-fadeIn" id="left-sidebar-controls">
           
           {/* Section: Queue Processor */}
-          <section className="panel-3d p-6 flex flex-col gap-5 !bg-emerald-50/60">
+          <section className="panel-corporate p-6 flex flex-col gap-5 bg-white">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
               <div className="flex items-center gap-2">
-                <Database className="w-4.5 h-4.5 text-orange-500" />
+                <Database className="w-4.5 h-4.5 text-[#cc0000]" />
                 <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Extraction Queue</h3>
               </div>
               <span className="text-xs font-mono text-slate-400 bg-gray-50 px-2 py-0.5 rounded font-bold uppercase transition">
@@ -627,9 +627,9 @@ export default function PEDImageExtractorApp() {
         <div className="lg:col-span-12 mt-2 pb-6 flex flex-col gap-6" id="image-extraction-launcher-dashboard">
           
           {/* Output Destination Settings */}
-          <div className="card-3d p-8 flex flex-col gap-4">
+          <div className="card-corporate p-8 flex flex-col gap-4">
             <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
-              <FolderOpen className="w-6 h-6 text-orange-500" />
+              <FolderOpen className="w-6 h-6 text-[#cc0000]" />
               <h3 className="text-base font-black text-[#0B2240] uppercase tracking-wider font-sans opacity-95">Output Destination Settings</h3>
             </div>
             
@@ -646,7 +646,7 @@ export default function PEDImageExtractorApp() {
                     type="text"
                     value={outputFileName}
                     onChange={(e) => setOutputFileName(e.target.value)}
-                    className="w-full input-3d pl-10 pr-4 py-3 text-sm text-[#0B2240] font-bold focus:ring-2 focus:ring-orange-500/50 transition-all bg-white"
+                    className="w-full input-corporate pl-10 pr-4 py-3 text-sm text-[#0B2240] font-bold focus:ring-2 focus:ring-[#cc0000]/50 transition-all bg-white"
                     placeholder="PROME_GIS_Georeferenced_Orthos"
                   />
                 </div>
@@ -663,7 +663,7 @@ export default function PEDImageExtractorApp() {
                     onClick={handleSelectDirectory}
                     className={`flex-1 py-3 px-4 text-sm font-bold uppercase tracking-wider rounded border transition cursor-pointer ${
                       selectedDirName
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                        ? 'bg-red-50 text-[#cc0000] border-[#cc0000] hover:bg-red-100'
                         : 'bg-[#0B2240] hover:bg-[#123866] text-white border-transparent'
                     }`}
                   >
@@ -713,8 +713,8 @@ export default function PEDImageExtractorApp() {
                 )}
                 
                 {selectedDirName && (
-                  <div className="mt-2 px-3 py-2 bg-emerald-50/50 rounded border border-emerald-200 text-sm font-mono text-emerald-700 break-all flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                  <div className="mt-2 px-3 py-2 bg-red-50/50 rounded border border-red-200 text-sm font-mono text-[#cc0000] break-all flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
                     <span>OS Path: {selectedDirName}</span>
                   </div>
                 )}
@@ -723,12 +723,12 @@ export default function PEDImageExtractorApp() {
           </div>
 
           {/* Launcher Dashboard */}
-          <div className="panel-3d p-6 flex flex-col sm:flex-row bg-white/60 text-slate-800 backdrop-blur-md shadow-2xl items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden">
+          <div className="panel-corporate p-6 flex flex-col sm:flex-row  text-slate-800  shadow-2xl items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden">
             
             {/* Left branding */}
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-white shadow-inner border border-slate-200 flex items-center justify-center shrink-0">
-                <Play className="w-6 h-6 text-orange-500 fill-orange-500" />
+                <Play className="w-6 h-6 text-[#cc0000] fill-[#cc0000]" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Raster Deployment System</h3>
@@ -760,12 +760,12 @@ export default function PEDImageExtractorApp() {
               disabled={isProcessing || queue.length === 0 || renderingSettings.views.filter(v => v.enabled).length === 0}
               className={`w-full sm:w-auto h-14 px-10 text-sm font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-3 shrink-0 ${
                 isProcessing
-                  ? 'bg-orange-700 text-white cursor-not-allowed animate-pulse shadow-none rounded-xl'
+                  ? 'bg-[#990000] text-white cursor-not-allowed animate-pulse shadow-none rounded-xl'
                   : queue.length === 0
                   ? 'bg-slate-700 border border-slate-600 text-slate-400 cursor-not-allowed shadow-none rounded-xl'
                   : renderingSettings.views.filter(v => v.enabled).length === 0
                   ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed hover:bg-amber-200 rounded-xl'
-                  : 'btn-3d-orange'
+                  : 'btn-prome-red'
               }`}
             >
               <Sparkles className={`w-5 h-5 ${isProcessing ? 'animate-spin text-white' : 'text-white'}`} />
@@ -777,10 +777,10 @@ export default function PEDImageExtractorApp() {
 
       {/* Floating Processing Banner */}
       {isProcessing && (
-        <div className="fixed bottom-6 right-6 max-w-sm w-full bg-white px-5 py-4 rounded border border-orange-200 shadow-2xl z-50 flex flex-col gap-3 font-sans animate-slideUp">
+        <div className="fixed bottom-6 right-6 max-w-sm w-full bg-white px-5 py-4 rounded border border-red-200 shadow-2xl z-50 flex flex-col gap-3 font-sans animate-slideUp">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-orange-50 flex items-center justify-center border border-orange-200 shrink-0">
-              <Sparkles className="w-4 h-4 text-orange-500 animate-spin" />
+            <div className="w-8 h-8 rounded bg-red-50 flex items-center justify-center border border-red-200 shrink-0">
+              <Sparkles className="w-4 h-4 text-[#cc0000] animate-spin" />
             </div>
             <div className="min-w-0 flex-1">
               <h4 className="text-xs uppercase tracking-wider font-extrabold text-white">Raster Geoprocess Active</h4>
@@ -791,13 +791,13 @@ export default function PEDImageExtractorApp() {
           <div className="flex flex-col gap-1">
             <div className="flex justify-between items-center text-xs font-mono">
               <span className="text-slate-400 font-bold uppercase">Overall progress</span>
-              <span className="text-orange-600 font-bold">
+              <span className="text-[#cc0000] font-bold">
                 {processingProgress.current} of {processingProgress.total} Files
               </span>
             </div>
             <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-orange-500 transition-all duration-300"
+                className="h-full bg-[#cc0000] transition-all duration-300"
                 style={{ width: `${(processingProgress.current / processingProgress.total) * 100}%` }}
               ></div>
             </div>

@@ -66,10 +66,10 @@ export default function GeorefMapPreview({ activeFile, geoSettings, outputGeoSet
     <div className="bg-white border border-gray-200 rounded p-5 flex flex-col gap-5 h-full" id="georef-spatial-preview-panel">
       <div className="flex items-center justify-between border-b border-gray-100 pb-3">
         <div className="flex items-center gap-2">
-          <Map className="w-4 h-4 text-orange-500" />
+          <Map className="w-4 h-4 text-[#cc0000]" />
           <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Spatial GIS Footprint Preview</h3>
         </div>
-        <span className="text-sm font-mono bg-orange-50 px-2 py-0.5 rounded border border-orange-200 text-orange-700 font-bold uppercase tracking-wider">
+        <span className="text-sm font-mono bg-red-50 px-2 py-0.5 rounded border border-red-200 text-orange-700 font-bold uppercase tracking-wider">
           {projectionLabel}
         </span>
       </div>
@@ -88,15 +88,15 @@ export default function GeorefMapPreview({ activeFile, geoSettings, outputGeoSet
             </div>
 
             {/* Bounding box representation */}
-            <div className="z-10 bg-orange-50/30 border-2 border-dashed border-orange-500/85 rounded flex flex-col items-center justify-center p-6 shadow-sm transition-all duration-300" 
+            <div className="z-10 bg-red-50/30 border-2 border-dashed border-[#cc0000]/85 rounded flex flex-col items-center justify-center p-6 shadow-sm transition-all duration-300" 
               style={{ width: '60%', height: '65%' }}
             >
               {/* Center Anchor Point */}
-              <div className="absolute w-2 h-2 rounded-full bg-orange-600">
+              <div className="absolute w-2 h-2 rounded-full bg-[#cc0000]">
                 <div className="absolute -inset-1.5 rounded-full border border-orange-400 animate-ping"></div>
               </div>
 
-              <div className="text-sm font-bold text-orange-700 uppercase tracking-widest bg-white px-2 py-0.5 rounded border border-orange-200 mb-1 shadow-sm">
+              <div className="text-sm font-bold text-orange-700 uppercase tracking-widest bg-white px-2 py-0.5 rounded border border-red-200 mb-1 shadow-sm">
                 GLTF Footprint
               </div>
               <div className="text-[9px] font-mono text-gray-500 text-center font-bold">
@@ -121,7 +121,7 @@ export default function GeorefMapPreview({ activeFile, geoSettings, outputGeoSet
             {/* True Origin Anchor pin */}
             <div className="absolute bottom-3 left-3 flex flex-col gap-1 bg-white p-2 rounded border border-gray-200 z-10 shadow-sm min-w-[170px]">
               <div className="flex items-center gap-1 select-none">
-                <Globe className="w-3 h-3 text-orange-500" />
+                <Globe className="w-3 h-3 text-[#cc0000]" />
                 <span className="text-gray-400 font-bold uppercase tracking-wider text-[7.5px]">World Anchor Center:</span>
               </div>
               <div className="flex flex-col gap-0.5 text-[8px] font-mono leading-none border-t border-gray-100 pt-1">
@@ -131,8 +131,8 @@ export default function GeorefMapPreview({ activeFile, geoSettings, outputGeoSet
                 </div>
                 {geoSettings.coordinateSystem !== coordinateSystem && (
                   <div className="flex justify-between gap-2 border-t border-dotted border-gray-150 pt-1 pb-0.5">
-                    <span className="text-orange-600 font-black uppercase">Output:</span>
-                    <span className="text-orange-600 font-black">{convertedX.toFixed(coordinateSystem === 'WGS84' ? 5 : 2)}{unit}, {convertedY.toFixed(coordinateSystem === 'WGS84' ? 5 : 2)}{unit}</span>
+                    <span className="text-[#cc0000] font-black uppercase">Output:</span>
+                    <span className="text-[#cc0000] font-black">{convertedX.toFixed(coordinateSystem === 'WGS84' ? 5 : 2)}{unit}, {convertedY.toFixed(coordinateSystem === 'WGS84' ? 5 : 2)}{unit}</span>
                   </div>
                 )}
               </div>
@@ -142,7 +142,7 @@ export default function GeorefMapPreview({ activeFile, geoSettings, outputGeoSet
           {/* World File Live Formula Template */}
           <div className="flex flex-col gap-1.5 flex-1 select-none">
             <div className="flex items-center gap-1.5 text-sm text-[#0B2240] font-bold mb-1">
-              <Code className="w-4 h-4 text-orange-500" />
+              <Code className="w-4 h-4 text-[#cc0000]" />
               <span>Accompanying World File Output (*.pgw)</span>
             </div>
             
@@ -166,7 +166,7 @@ export default function GeorefMapPreview({ activeFile, geoSettings, outputGeoSet
               })}
             </div>
             <div className="flex gap-2 items-start mt-1">
-              <Info className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5 animate-pulse" />
+              <Info className="w-3.5 h-3.5 text-[#cc0000] shrink-0 mt-0.5 animate-pulse" />
               <p className="text-sm text-gray-400 leading-normal">
                 When opened in GIS softwares like QGIS, ArcGIS, or Global Mapper along with the PNG, 
                 this world file defines the exact scaling, coordinate offset, and location dynamically!

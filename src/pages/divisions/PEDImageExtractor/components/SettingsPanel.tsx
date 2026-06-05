@@ -325,9 +325,9 @@ export default function SettingsPanel({
     <div className="flex flex-col gap-6" id="gltf-settings-panel-root">
 
       {/* 2. SPECIFY LOADED FILE origin LOCATION (INPUT COORDINATE SYSTEM) */}
-      <div className="card-3d p-8 !bg-red-50/60 flex flex-col gap-4">
+      <div className="card-corporate p-8 !bg-red-50/60 flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2 border-b border-gray-100 pb-3">
-          <Globe className="w-6 h-6 text-orange-500 shrink-0" />
+          <Globe className="w-6 h-6 text-[#cc0000] shrink-0" />
           <div>
             <h3 className="text-base font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">Loaded File Coordinate Frame & Origin</h3>
           </div>
@@ -335,11 +335,11 @@ export default function SettingsPanel({
 
         {/* Selected Coordinate Reference System (CRS) */}
         <div className="mb-4 flex flex-col gap-4">
-          <div className="inset-panel-3d p-5">
+          <div className="inset-panel-corporate p-5">
             <label className="block text-gray-500 font-bold uppercase tracking-wide text-[10px] mb-3 font-sans border-b border-gray-200/50 pb-2">Input Projection System (CRS)</label>
           
           {prjSuccessMsg && (
-            <div className="mb-2.5 p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] rounded font-medium animate-fadeIn">
+            <div className="mb-2.5 p-2 bg-red-50 border border-red-200 text-emerald-800 text-[10.5px] rounded font-medium animate-fadeIn">
               ✅ {prjSuccessMsg}
             </div>
           )}
@@ -370,9 +370,9 @@ export default function SettingsPanel({
                       onClick={() => document.getElementById('prj-file-loader')?.click()}
                       className={`w-full h-full py-2 px-3 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-center leading-snug ${
                         geoSettings.loadedPrjName
-                          ? 'bg-emerald-50/70 border-emerald-500 text-emerald-700 font-bold'
+                          ? 'bg-red-50/70 border-emerald-500 text-[#cc0000] font-bold'
                           : geoSettings.coordinateSystem === 'CUSTOM_METERS'
-                          ? 'bg-orange-50/70 border-orange-500 text-orange-600 font-bold'
+                          ? 'bg-red-50/70 border-[#cc0000] text-[#cc0000] font-bold'
                           : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:border-gray-300'
                       }`}
                     >
@@ -400,7 +400,7 @@ export default function SettingsPanel({
                   onClick={() => handleCoordinateSystemChange(sys)}
                   className={`py-2 px-3 text-left rounded text-sm transition cursor-pointer border ${
                     isSelected
-                      ? 'bg-orange-50/70 border-orange-500 text-orange-600 font-bold'
+                      ? 'bg-red-50/70 border-[#cc0000] text-[#cc0000] font-bold'
                       : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:border-gray-300'
                   }`}
                 >
@@ -464,7 +464,7 @@ export default function SettingsPanel({
               }}
               className={`w-full py-2.5 px-3 rounded text-sm transition cursor-pointer border flex items-center justify-between font-bold leading-snug shadow-sm ${
                 geoSettings.coordinateSystem === 'CUSTOM_TM'
-                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
+                  ? 'bg-red-50 border-emerald-500 text-emerald-800'
                   : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300'
               }`}
             >
@@ -491,7 +491,7 @@ export default function SettingsPanel({
           </div>
 
           {/* Dynamic Interactive RoadRunner Custom Projection Generator */}
-          <div className="inset-panel-3d p-5 text-[11px] text-slate-700 animate-fadeIn">
+          <div className="inset-panel-corporate p-5 text-[11px] text-slate-700 animate-fadeIn">
             <div className="flex items-center justify-between mb-4 border-b border-gray-200/50 pb-2">
               <span className="font-bold text-[#0B2240] uppercase tracking-wider text-[10px] flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -764,7 +764,7 @@ export default function SettingsPanel({
 
         {/* Origin Coordinates Input mapping to (0,0,0) of the model */}
         {geoSettings.coordinateSystem === 'CUSTOM_TM' && geoSettings.customTM ? (
-          <div className="grid grid-cols-2 gap-6 mb-4 p-3.5 bg-emerald-50/40 border border-emerald-200 rounded animate-fadeIn">
+          <div className="grid grid-cols-2 gap-6 mb-4 p-3.5 bg-red-50/40 border border-red-200 rounded animate-fadeIn">
             <div>
               <label className="block text-emerald-900 font-extrabold text-sm uppercase tracking-wider mb-1 px-1">
                 Design Origin Longitude (λ₀)
@@ -787,7 +787,7 @@ export default function SettingsPanel({
                     utmZone: targetZone,
                   }));
                 }}
-                className="w-full bg-white border border-emerald-300 rounded px-2.5 py-1.5 text-sm text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-650"
+                className="w-full bg-white border border-[#cc0000] rounded px-2.5 py-1.5 text-sm text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-650"
               />
               <span className="text-[8.5px] text-emerald-600 mt-1 block px-1 leading-tight font-medium font-sans">Sets local TM Central Meridian.</span>
             </div>
@@ -814,7 +814,7 @@ export default function SettingsPanel({
                     utmHemisphere: targetHemisphere,
                   }));
                 }}
-                className="w-full bg-white border border-emerald-300 rounded px-2.5 py-1.5 text-sm text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-655"
+                className="w-full bg-white border border-[#cc0000] rounded px-2.5 py-1.5 text-sm text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-655"
               />
               <span className="text-[8.5px] text-emerald-600 mt-1 block px-1 leading-tight font-medium font-sans">Sets local TM Origin Latitude.</span>
             </div>
@@ -829,7 +829,7 @@ export default function SettingsPanel({
                 type="text"
                 value={geoSettings.originX}
                 onChange={(e) => handleGeoChange('originX', e.target.value)}
-                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-sm text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-orange-50/5"
+                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-sm text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-red-50/5"
               />
               {latLonErrors.originX && (
                 <span className="text-sm text-red-500 mt-1 block font-semibold">{latLonErrors.originX}</span>
@@ -844,7 +844,7 @@ export default function SettingsPanel({
                 type="text"
                 value={geoSettings.originY}
                 onChange={(e) => handleGeoChange('originY', e.target.value)}
-                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-sm text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-orange-50/5"
+                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-sm text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-red-50/5"
               />
               {latLonErrors.originY && (
                 <span className="text-sm text-red-500 mt-1 block font-semibold">{latLonErrors.originY}</span>
@@ -859,7 +859,7 @@ export default function SettingsPanel({
             Georeference Origin Anchor
           </label>
           {geoSettings.coordinateSystem === 'CUSTOM_TM' ? (
-            <div className="p-3 bg-emerald-50/40 border border-emerald-200 text-[10.5px] text-emerald-850 rounded leading-relaxed animate-fadeIn font-medium">
+            <div className="p-3 bg-red-50/40 border border-red-200 text-[10.5px] text-emerald-850 rounded leading-relaxed animate-fadeIn font-medium">
               🔒 <strong className="font-bold text-emerald-950">Calibration Lock Active</strong>: The local design origin is anchored exactly to the model's coordinate center <code className="bg-emerald-100 px-1 py-0.5 rounded text-sm font-mono text-emerald-900">(0,0,0)</code>. This ensures zero-translation scale convergence and prevents physical shifts on the map.
             </div>
           ) : (
@@ -869,7 +869,7 @@ export default function SettingsPanel({
                 onClick={() => handleGeoChange('alignmentAnchor', 'ORIGIN')}
                 className={`py-2 px-2 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-between leading-snug h-22 ${
                   (geoSettings.alignmentAnchor || 'ORIGIN') === 'ORIGIN'
-                    ? 'bg-orange-50/75 border-orange-500 text-orange-705 font-bold shadow-sm'
+                    ? 'bg-red-50/75 border-[#cc0000] text-orange-705 font-bold shadow-sm'
                     : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100'
                 }`}
               >
@@ -883,7 +883,7 @@ export default function SettingsPanel({
                 onClick={() => handleGeoChange('alignmentAnchor', 'CUSTOM')}
                 className={`py-2 px-2 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-between leading-snug h-22 ${
                   geoSettings.alignmentAnchor === 'CUSTOM'
-                    ? 'bg-orange-50/75 border-orange-500 text-orange-705 font-bold shadow-sm'
+                    ? 'bg-red-50/75 border-[#cc0000] text-orange-705 font-bold shadow-sm'
                     : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100'
                 }`}
               >
@@ -935,7 +935,7 @@ export default function SettingsPanel({
         <div className="pt-3 border-t border-gray-150">
           <div className="flex justify-between items-center mb-1">
             <label className="block text-gray-650 text-[11px] font-semibold">Model Scale Factor</label>
-            <span className="text-sm font-mono text-orange-600 font-bold">{geoSettings.scaleFactor}x</span>
+            <span className="text-sm font-mono text-[#cc0000] font-bold">{geoSettings.scaleFactor}x</span>
           </div>
           <p className="text-sm text-gray-400 mb-2 leading-relaxed">
             Multiplication factor converting your GLTF files unit dimension to real-world meters.
@@ -953,7 +953,7 @@ export default function SettingsPanel({
       </div>
 
       {/* 3. TARGET EXPORT COORDINATE SYSTEM (OUTPUT Projections) */}
-      <div className="card-3d p-6">
+      <div className="card-corporate p-6">
         <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
           <Settings className="w-5 h-5 text-orange-400 shrink-0" />
           <div>
@@ -976,7 +976,7 @@ export default function SettingsPanel({
                   onClick={() => handleOutputCoordinateSystemChange(sys)}
                   className={`py-2 px-3 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-center leading-snug ${
                     isSelected
-                      ? 'bg-orange-50/75 border-orange-500 text-orange-705 font-bold shadow-sm'
+                      ? 'bg-red-50/75 border-[#cc0000] text-orange-705 font-bold shadow-sm'
                       : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:border-gray-300'
                   }`}
                 >
@@ -1191,9 +1191,9 @@ export default function SettingsPanel({
       </div>
 
       {/* 4. High-LOD Image Extraction Settings */}
-      <div className="card-3d p-6">
+      <div className="card-corporate p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Sliders className="w-5 h-5 text-orange-500" />
+          <Sliders className="w-5 h-5 text-[#cc0000]" />
           <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Image Render Resolution</h3>
         </div>
 
@@ -1201,7 +1201,7 @@ export default function SettingsPanel({
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <label className="block text-gray-650 text-[11px] font-semibold">Export Pixel Dimensions</label>
-            <span className="text-sm font-mono text-orange-600 font-bold">
+            <span className="text-sm font-mono text-[#cc0000] font-bold">
               {renderingSettings.resolutionWidth} × {renderingSettings.resolutionHeight} px
             </span>
           </div>
@@ -1252,7 +1252,7 @@ export default function SettingsPanel({
         <div className="mb-4">
           <div className="flex justify-between items-center mb-1">
             <label className="block text-gray-650 text-[11px] font-semibold">Ortho framing Padding</label>
-            <span className="text-sm font-mono text-orange-600 font-bold">
+            <span className="text-sm font-mono text-[#cc0000] font-bold">
               {(renderingSettings.paddingRatio * 100).toFixed(0)}%
             </span>
           </div>
@@ -1277,9 +1277,9 @@ export default function SettingsPanel({
       </div>
 
       {/* 5. Select Perspectives & Texture Exports */}
-      <div className="card-3d p-6">
+      <div className="card-corporate p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Layers className="w-5 h-5 text-orange-500" />
+          <Layers className="w-5 h-5 text-[#cc0000]" />
           <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Extraction Pipelines</h3>
         </div>
 
@@ -1295,7 +1295,7 @@ export default function SettingsPanel({
                   type="checkbox"
                   checked={v.enabled}
                   onChange={() => toggleView(v.alignment)}
-                  className="rounded border-gray-350 text-orange-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 accent-orange-500"
+                  className="rounded border-gray-350 text-[#cc0000] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 accent-orange-500"
                 />
                 <span className="text-sm text-slate-700 font-semibold">{v.label}</span>
               </div>
@@ -1319,7 +1319,7 @@ export default function SettingsPanel({
               />
               <span className="text-sm text-slate-700 font-semibold">Extract Internal Maps</span>
             </div>
-            <Image className="w-3.5 h-3.5 text-orange-500" />
+            <Image className="w-3.5 h-3.5 text-[#cc0000]" />
           </label>
         </div>
       </div>

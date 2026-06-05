@@ -56,7 +56,7 @@ export default function ModelQueue({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className="inset-panel-3d p-10 flex flex-col items-center justify-center cursor-pointer transition text-center group border-2 border-dashed hover:border-orange-500 hover:bg-orange-50/30"
+        className="inset-panel-corporate p-10 flex flex-col items-center justify-center cursor-pointer transition text-center group border-2 border-dashed hover:border-[#cc0000] hover:bg-red-50/30"
       >
         <input
           type="file"
@@ -66,8 +66,8 @@ export default function ModelQueue({
           accept=".gltf,.glb"
           className="hidden"
         />
-        <div className="w-12 h-12 rounded bg-orange-50 flex items-center justify-center border border-orange-200 group-hover:scale-105 transition mb-3">
-          <UploadCloud className="w-5 h-5 text-orange-500" />
+        <div className="w-12 h-12 rounded bg-red-50 flex items-center justify-center border border-red-200 group-hover:scale-105 transition mb-3">
+          <UploadCloud className="w-5 h-5 text-[#cc0000]" />
         </div>
         <h4 className="text-sm font-bold uppercase tracking-wider text-[#0B2240] mb-1">Drag & Drop 3D Files</h4>
         <p className="text-[11px] text-gray-400 max-w-xs leading-normal">
@@ -96,7 +96,7 @@ export default function ModelQueue({
                 statusBg = 'bg-blue-50 border border-blue-200 text-blue-700 animate-pulse';
                 statusText = 'Rendering Orthos...';
               } else if (item.status === 'completed') {
-                statusBg = 'bg-emerald-50 border border-emerald-200 text-emerald-700';
+                statusBg = 'bg-red-50 border border-red-200 text-[#cc0000]';
                 statusText = 'Ready / Processed';
               } else if (item.status === 'failed') {
                 statusBg = 'bg-red-50 border border-red-200 text-red-700';
@@ -107,9 +107,9 @@ export default function ModelQueue({
                 <div
                   key={item.id}
                   onClick={() => onSelectActive(item.id)}
-                  className={`card-3d p-5 transition cursor-pointer flex flex-col gap-2 relative group/item overflow-hidden ${
+                  className={`card-corporate p-5 transition cursor-pointer flex flex-col gap-2 relative group/item overflow-hidden ${
                     isActive
-                      ? 'border-orange-400 bg-orange-50/30'
+                      ? 'border-orange-400 bg-red-50/30'
                       : ''
                   }`}
                 >
@@ -125,7 +125,7 @@ export default function ModelQueue({
                           {item.dimensions && (
                             <>
                               <span className="text-gray-300">•</span>
-                              <span className="text-orange-600 font-bold uppercase tracking-wider text-[9px]">
+                              <span className="text-[#cc0000] font-bold uppercase tracking-wider text-[9px]">
                                 {item.dimensions.width.toFixed(1)}m × {item.dimensions.depth.toFixed(1)}m
                               </span>
                             </>
@@ -174,7 +174,7 @@ export default function ModelQueue({
                   {(item.status === 'loading' || item.status === 'rendering') && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-100">
                       <div
-                        className="h-full bg-orange-500 transition-all duration-300"
+                        className="h-full bg-[#cc0000] transition-all duration-300"
                         style={{ width: `${item.progress}%` }}
                       ></div>
                     </div>

@@ -612,7 +612,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
     <div className="relative w-full h-full bg-slate-50 rounded overflow-hidden border border-gray-200 flex flex-col justify-between group shadow-sm" id="webgl-viewport-card">
       {/* Top Controller Bar */}
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-        <div className="flex gap-2 pointer-events-auto bg-[#0B2240]/90 backdrop-blur-md px-3 py-1.5 rounded text-xs text-white font-medium select-none shadow-md border border-blue-900/45">
+        <div className="flex gap-2 pointer-events-auto bg-[#0B2240]/90  px-3 py-1.5 rounded text-xs text-white font-medium select-none shadow-md border border-blue-900/45">
           <Eye className="w-3.5 h-3.5 text-orange-400" />
           <span>Interactive 3D Preview Engine</span>
           {activeFile && (
@@ -624,25 +624,25 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
 
         <div className="flex gap-2 pointer-events-auto">
           {/* Layer controls */}
-          <div className="flex bg-[#0B2240]/90 backdrop-blur-md p-1 rounded border border-blue-900/45 shadow-md">
+          <div className="flex bg-[#0B2240]/90  p-1 rounded border border-blue-900/45 shadow-md">
             <button
               onClick={() => setShowGrid(!showGrid)}
               title="Toggle Grid (G)"
-              className={`p-1.5 rounded transition cursor-pointer ${showGrid ? 'bg-orange-600 text-white' : 'text-gray-300 hover:text-white'}`}
+              className={`p-1.5 rounded transition cursor-pointer ${showGrid ? 'bg-[#cc0000] text-white' : 'text-gray-300 hover:text-white'}`}
             >
               <GridIcon className="w-5 h-5" />
             </button>
             <button
               onClick={() => setShowAxes(!showAxes)}
               title="Toggle Axis Helper (A)"
-              className={`p-1.5 rounded transition cursor-pointer ${showAxes ? 'bg-orange-600 text-white' : 'text-gray-300 hover:text-white'}`}
+              className={`p-1.5 rounded transition cursor-pointer ${showAxes ? 'bg-[#cc0000] text-white' : 'text-gray-300 hover:text-white'}`}
             >
               <Compass className="w-5 h-5" />
             </button>
             <button
               onClick={() => setShowBox(!showBox)}
               title="Toggle Selection Box (B)"
-              className={`p-1.5 rounded transition cursor-pointer ${showBox ? 'bg-orange-600 text-white' : 'text-gray-300 hover:text-white'}`}
+              className={`p-1.5 rounded transition cursor-pointer ${showBox ? 'bg-[#cc0000] text-white' : 'text-gray-300 hover:text-white'}`}
             >
               <Maximize className="w-5 h-5" />
             </button>
@@ -656,7 +656,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
           </div>
 
           {/* Quick Cameras */}
-          <div className="flex bg-[#0B2240]/90 backdrop-blur-md p-1 rounded border border-blue-900/45 shadow-md gap-1">
+          <div className="flex bg-[#0B2240]/90  p-1 rounded border border-blue-900/45 shadow-md gap-1">
             <button
               onClick={setPerspectiveView}
               className="px-2.5 py-1 text-xs rounded transition text-gray-300 hover:text-white cursor-pointer font-bold"
@@ -675,7 +675,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
 
       {/* Map Provider Selector Overlay */}
       {showMap && (
-        <div className="absolute top-15 right-3 z-10 flex flex-col gap-2 bg-[#0B2240]/95 backdrop-blur-md p-3 rounded-lg border border-emerald-950/45 shadow-lg w-64 select-none animate-fadeIn transition-all pointer-events-auto">
+        <div className="absolute top-15 right-3 z-10 flex flex-col gap-2 bg-[#0B2240]/95  p-3 rounded-lg border border-emerald-950/45 shadow-lg w-64 select-none animate-fadeIn transition-all pointer-events-auto">
           <div className="flex items-center justify-between border-b border-blue-800/40 pb-1.5 mb-1.5">
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
               <Map className="w-3.5 h-3.5" /> Background Map Setup
@@ -751,7 +751,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
 
       {/* Loading overlay - rendered as a sibling absolute overlay to protect React's virtual DOM */}
       {loading && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0B2240]/80 backdrop-blur-xs gap-4">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0B2240]/80  gap-4">
           <div className="relative flex items-center justify-center">
             <div className="w-12 h-12 rounded-full border-4 border-blue-900/40 border-t-orange-500 animate-spin"></div>
             <Play className="w-5 h-5 absolute text-orange-400" />
@@ -764,7 +764,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
       {!activeFile && !loading && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-8 text-center">
           <div className="w-16 h-16 rounded bg-white flex items-center justify-center border border-gray-200 mb-4 shadow-xs">
-            <Compass className="w-6 h-6 text-orange-500" />
+            <Compass className="w-6 h-6 text-[#cc0000]" />
           </div>
           <h3 className="text-[#0B2240] font-bold text-xs uppercase tracking-wider mb-1">Interactive 3D Workspace</h3>
           <p className="max-w-xs text-xs">
@@ -776,7 +776,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
       {/* Model dimensions bar at the bottom */}
       {activeFile && activeFile.dimensions && (
         <div className="absolute bottom-3 left-3 right-3 pointer-events-none flex justify-between gap-4">
-          <div className="pointer-events-auto bg-[#0B2240]/95 backdrop-blur-md px-3 py-2 rounded border border-blue-900/35 flex flex-nowrap items-center text-xs text-white gap-4 shadow-md divide-x divide-blue-800/40 font-mono">
+          <div className="pointer-events-auto bg-[#0B2240]/95  px-3 py-2 rounded border border-blue-900/35 flex flex-nowrap items-center text-xs text-white gap-4 shadow-md divide-x divide-blue-800/40 font-mono">
             <div className="flex items-center gap-1.5">
               <span className="text-gray-300 uppercase font-sans text-xs font-bold tracking-wide">Width (X)</span>
               <span className="text-orange-400 font-bold">{activeFile.dimensions.width.toFixed(2)}m</span>
@@ -791,7 +791,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
             </div>
           </div>
 
-          <div className="pointer-events-auto bg-[#0B2240]/95 backdrop-blur-md px-3 py-2 rounded border border-blue-900/35 flex items-center text-gray-300 font-mono text-xs shadow-sm">
+          <div className="pointer-events-auto bg-[#0B2240]/95  px-3 py-2 rounded border border-blue-900/35 flex items-center text-gray-300 font-mono text-xs shadow-sm">
             {activeFile.trianglesCount ? (
               <span>▲ {activeFile.trianglesCount.toLocaleString()} Triangles</span>
             ) : (
