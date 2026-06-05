@@ -325,12 +325,11 @@ export default function SettingsPanel({
     <div className="flex flex-col gap-6" id="gltf-settings-panel-root">
 
       {/* 2. SPECIFY LOADED FILE origin LOCATION (INPUT COORDINATE SYSTEM) */}
-      <div className="card-3d p-6">
-        <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
-          <Globe className="w-5 h-5 text-orange-500 shrink-0" />
+      <div className="card-3d p-8 !bg-red-50/60 flex flex-col gap-4">
+        <div className="flex items-center gap-2 mb-2 border-b border-gray-100 pb-3">
+          <Globe className="w-6 h-6 text-orange-500 shrink-0" />
           <div>
-            <h3 className="text-sm font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">Loaded File Coordinate Frame & Origin</h3>
-            <p className="text-sm text-gray-400 mt-1 leading-none lowercase italic">Specify original captured coordinates & scale context.</p>
+            <h3 className="text-base font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">Loaded File Coordinate Frame & Origin</h3>
           </div>
         </div>
 
@@ -491,19 +490,15 @@ export default function SettingsPanel({
 
           {/* Dynamic Interactive RoadRunner Custom Projection Generator */}
           <div className="mt-3.5 bg-slate-50 border border-slate-200 rounded p-3.5 text-[11px] text-slate-700 animate-fadeIn shadow-inner">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-bold text-[#0B2240] uppercase tracking-wider text-[9px] flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-bold text-[#0B2240] uppercase tracking-wider text-[10px] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                 RoadRunner Custom CS Anchor
               </span>
-              <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.5 rounded uppercase">
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded uppercase">
                 Compound CS
               </span>
             </div>
-            
-            <p className="text-sm text-slate-500 mb-2.5 leading-relaxed">
-              Define the coordinate origin parameters below to generate a real-time Compound CS projection with EGM96 Geoid heights.
-            </p>
 
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
