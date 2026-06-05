@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { GeoSettings, OutputGeoSettings, RenderingSettings, CoordinateSystemType, ViewAlignment } from '../types';
-import { Settings, Globe, Layers, Sliders, FolderOpen, Image, AlertCircle, Sparkles } from 'lucide-react';
+import { Settings, Globe, Layers, Sliders, Image, Sparkles } from 'lucide-react';
 import { validateCoordinate, parsePRJ, convertCoordinates } from '../utils/geoUtils';
 
 interface SettingsPanelProps {
@@ -30,10 +30,10 @@ export default function SettingsPanel({
   renderingSettings,
   setRenderingSettings,
   localDirectoryAvailable: _localDirectoryAvailable,
-  onSelectLocalDirectory,
-  selectedDirectoryName,
-  directoryError,
-  setDirectoryError,
+  
+  
+  
+  
 }: SettingsPanelProps) {
   const [latLonErrors, setLatLonErrors] = useState<{ originX?: string; originY?: string }>({});
   const [rrLatInput, setRrLatInput] = useState<string>('0.314209260523411');
@@ -323,83 +323,13 @@ export default function SettingsPanel({
 
   return (
     <div className="flex flex-col gap-6" id="gltf-settings-panel-root">
-      {/* 1. Automated Output Destination (Native Browser FS API) */}
-      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <FolderOpen className="w-5 h-5 text-orange-500" />
-          <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider font-sans opacity-95">Automated Output Folder</h3>
-        </div>
-        <p className="text-sm text-slate-500 mb-4 leading-relaxed">
-          Through modern browser filesystems, you can designate an actual local output folder. 
-          Extracted images and PGW world files will be saved **automatically** directly into your selected folder!
-        </p>
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onSelectLocalDirectory}
-            className={`flex-1 py-1.5 px-3 text-[11px] font-bold uppercase tracking-wider rounded border transition cursor-pointer ${
-              selectedDirectoryName
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
-                : 'bg-[#0B2240] hover:bg-[#123866] text-white border-transparent'
-            }`}
-          >
-            {selectedDirectoryName ? 'Change Local Folder' : 'Select Local Location'}
-          </button>
-        </div>
-        {directoryError && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700 animate-fadeIn" id="dir-error-msg">
-            <div className="flex items-center gap-2.5 font-bold mb-1">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-              <span>{directoryError.title}</span>
-            </div>
-            <p className="leading-relaxed text-[11px] text-red-650">
-              {directoryError.message}
-            </p>
-            {directoryError.isSandbox && (
-              <div className="mt-2.5 flex items-center gap-2">
-                <a 
-                  href={window.location.origin + window.location.pathname}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-2 py-1 bg-[#0B2240] hover:bg-[#123866] text-white font-extrabold text-[9px] uppercase tracking-wider rounded transition"
-                >
-                  <Sparkles className="w-3 h-3 text-orange-400" />
-                  Open standalone tab
-                </a>
-                <button
-                  onClick={() => setDirectoryError(null)}
-                  className="text-[9px] text-red-500 hover:text-red-700 uppercase font-black tracking-wider transition ml-auto"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-            {!directoryError.isSandbox && (
-              <div className="mt-2 flex">
-                <button
-                  onClick={() => setDirectoryError(null)}
-                  className="text-[9px] text-red-500 hover:text-red-700 uppercase font-black tracking-wider transition ml-auto"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-        {selectedDirectoryName && (
-          <div className="mt-3 px-2.5 py-1.5 bg-emerald-50/50 rounded border border-emerald-200 text-sm font-mono text-emerald-700 break-all flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>OS Path: {selectedDirectoryName}</span>
-          </div>
-        )}
-      </div>
 
       {/* 2. SPECIFY LOADED FILE origin LOCATION (INPUT COORDINATE SYSTEM) */}
       <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
           <Globe className="w-5 h-5 text-orange-500 shrink-0" />
           <div>
-            <h3 className="text-sm font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">1. Loaded File Coordinate Frame & Origin</h3>
+            <h3 className="text-sm font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">Loaded File Coordinate Frame & Origin</h3>
             <p className="text-sm text-gray-400 mt-1 leading-none lowercase italic">Specify original captured coordinates & scale context.</p>
           </div>
         </div>
