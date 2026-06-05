@@ -334,8 +334,9 @@ export default function SettingsPanel({
         </div>
 
         {/* Selected Coordinate Reference System (CRS) */}
-        <div className="mb-4">
-          <label className="block text-gray-400 font-bold uppercase tracking-wide text-[9px] mb-1.5 font-sans">Input Projection System (CRS)</label>
+        <div className="mb-4 flex flex-col gap-4">
+          <div className="inset-panel-3d p-5">
+            <label className="block text-gray-500 font-bold uppercase tracking-wide text-[10px] mb-3 font-sans border-b border-gray-200/50 pb-2">Input Projection System (CRS)</label>
           
           {prjSuccessMsg && (
             <div className="mb-2.5 p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] rounded font-medium animate-fadeIn">
@@ -487,10 +488,11 @@ export default function SettingsPanel({
               </span>
             </button>
           </div>
+          </div>
 
           {/* Dynamic Interactive RoadRunner Custom Projection Generator */}
-          <div className="mt-3.5 bg-slate-50 border border-slate-200 rounded p-3.5 text-[11px] text-slate-700 animate-fadeIn shadow-inner">
-            <div className="flex items-center justify-between mb-4">
+          <div className="inset-panel-3d p-5 text-[11px] text-slate-700 animate-fadeIn">
+            <div className="flex items-center justify-between mb-4 border-b border-gray-200/50 pb-2">
               <span className="font-bold text-[#0B2240] uppercase tracking-wider text-[10px] flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                 RoadRunner Custom CS Anchor

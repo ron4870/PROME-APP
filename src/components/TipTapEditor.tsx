@@ -59,7 +59,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`p-1.5 rounded text-gray-700 hover:bg-gray-100 transition-colors ${
+      className={`p-2 rounded text-gray-700 hover:bg-gray-100 transition-colors ${
         isActive ? 'bg-blue-100 text-blue-700' : ''
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
@@ -72,90 +72,90 @@ const MenuBar = ({ editor }: { editor: any }) => {
       <div className="flex flex-wrap items-center gap-1">
         {/* History */}
         <MenuButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().chain().focus().undo().run()}>
-          <Undo size={16} />
+          <Undo size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().chain().focus().redo().run()}>
-          <Redo size={16} />
+          <Redo size={20} />
         </MenuButton>
 
         <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Text Style */}
         <MenuButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')}>
-          <Bold size={16} />
+          <Bold size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')}>
-          <Italic size={16} />
+          <Italic size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive('underline')}>
-          <UnderlineIcon size={16} />
+          <UnderlineIcon size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive('strike')}>
-          <Strikethrough size={16} />
+          <Strikethrough size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleSubscript().run()} isActive={editor.isActive('subscript')}>
-          <SubscriptIcon size={16} />
+          <SubscriptIcon size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleSuperscript().run()} isActive={editor.isActive('superscript')}>
-          <SuperscriptIcon size={16} />
+          <SuperscriptIcon size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleHighlight().run()} isActive={editor.isActive('highlight')}>
-          <Highlighter size={16} />
+          <Highlighter size={20} />
         </MenuButton>
 
         <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Headings */}
         <MenuButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} isActive={editor.isActive('heading', { level: 1 })}>
-          <Heading1 size={16} />
+          <Heading1 size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor.isActive('heading', { level: 2 })}>
-          <Heading2 size={16} />
+          <Heading2 size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={editor.isActive('heading', { level: 3 })}>
-          <Heading3 size={16} />
+          <Heading3 size={20} />
         </MenuButton>
 
         <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Alignment */}
         <MenuButton onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={editor.isActive({ textAlign: 'left' })}>
-          <AlignLeft size={16} />
+          <AlignLeft size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={editor.isActive({ textAlign: 'center' })}>
-          <AlignCenter size={16} />
+          <AlignCenter size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={editor.isActive({ textAlign: 'right' })}>
-          <AlignRight size={16} />
+          <AlignRight size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().setTextAlign('justify').run()} isActive={editor.isActive({ textAlign: 'justify' })}>
-          <AlignJustify size={16} />
+          <AlignJustify size={20} />
         </MenuButton>
 
         <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Lists */}
         <MenuButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')}>
-          <List size={16} />
+          <List size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive('orderedList')}>
-          <ListOrdered size={16} />
+          <ListOrdered size={20} />
         </MenuButton>
         <MenuButton onClick={() => editor.chain().focus().toggleTaskList().run()} isActive={editor.isActive('taskList')}>
-          <CheckSquare size={16} />
+          <CheckSquare size={20} />
         </MenuButton>
 
         <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
         {/* Insertions */}
         <MenuButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
-          <TableIcon size={16} />
+          <TableIcon size={20} />
         </MenuButton>
         <MenuButton onClick={addImage}>
-          <ImageIcon size={16} />
+          <ImageIcon size={20} />
         </MenuButton>
         <MenuButton onClick={setLink} isActive={editor.isActive('link')}>
-          <LinkIcon size={16} />
+          <LinkIcon size={20} />
         </MenuButton>
       </div>
 
