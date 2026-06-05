@@ -58,7 +58,7 @@ import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManualsDirectory from './pages/ManualsDirectory';
-import PEDImageExtractorApp from './pages/divisions/PEDImageExtractor/PEDImageExtractorApp';
+
 
 // Simple protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -153,7 +153,7 @@ function App() {
         <Route path="/division/cpsd" element={<ProtectedRoute><CPSD /></ProtectedRoute>} />
         <Route path="/division/ped" element={<ProtectedRoute><PED /></ProtectedRoute>} />
         <Route path="/division/ped/roads-highways" element={<ProtectedRoute><PEDRoadsHighways /></ProtectedRoute>} />
-        <Route path="/division/ped/image-extractor" element={<ProtectedRoute><PEDImageExtractorApp /></ProtectedRoute>} />
+
         <Route path="/division/ped/alignment-design" element={<ProtectedRoute><PEDAlignmentDesign /></ProtectedRoute>} />
         <Route path="/division/ped/route-optimizer" element={<ProtectedRoute><PEDRouteOptimizer /></ProtectedRoute>} />
         <Route path="/division/ped/hydrology" element={<ProtectedRoute><PEDHydrology /></ProtectedRoute>} />
