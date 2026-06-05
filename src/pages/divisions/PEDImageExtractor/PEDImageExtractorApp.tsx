@@ -90,6 +90,7 @@ export default function PEDImageExtractorApp() {
   const [directoryError, setDirectoryError] = useState<{ title: string; message: string; isSandbox: boolean } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, phase: '' });
+  const [outputFileName, setOutputFileName] = useState('PROME_GIS_Georeferenced_Orthos');
 
   // Clean object URL creators
   const objectUrlsMap = React.useRef<Map<string, string>>(new Map());
@@ -513,7 +514,8 @@ export default function PEDImageExtractorApp() {
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(zipBlob);
-        link.download = `PROME_GIS_Georeferenced_Orthos_${new Date().toISOString().slice(0, 10)}.zip`;
+        const finalName = outputFileName.trim() || 'PROME_GIS_Georeferenced_Orthos';
+        link.download = `${finalName}_${new Date().toISOString().slice(0, 10)}.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -671,7 +673,17 @@ export default function PEDImageExtractorApp() {
             </div>
 
             {/* Right Button/Action segment */}
-            <div className="shrink-0 w-full lg:w-auto flex flex-col items-center lg:items-end gap-2">
+            <div className="shrink-0 w-full lg:w-auto flex flex-col items-center lg:items-end gap-3">
+              <div className="w-full flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-inner">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider shrink-0 pl-2">Output Name:</span>
+                <input
+                  type="text"
+                  value={outputFileName}
+                  onChange={(e) => setOutputFileName(e.target.value)}
+                  className="w-full lg:w-48 input-3d px-3 py-1.5 text-xs text-[#0B2240] font-bold"
+                  placeholder="PROME_GIS_Georeferenced_Orthos"
+                />
+              </div>
               <button
                 id="begin-image-extraction-btn"
                 onClick={handleProcessBatch}
