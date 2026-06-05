@@ -561,7 +561,7 @@ export default function PEDImageExtractorApp() {
         <div className="lg:col-span-5 flex flex-col gap-6 animate-fadeIn" id="left-sidebar-controls">
           
           {/* Section: Queue Processor */}
-          <section className="bg-white border border-gray-200 rounded p-5 shadow-sm flex flex-col gap-4">
+          <section className="panel-3d p-6 flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <Database className="w-4.5 h-4.5 text-orange-500" />
@@ -623,7 +623,7 @@ export default function PEDImageExtractorApp() {
 
         {/* BOTTOM FULL-WIDTH: Image Extraction Launcher Dashboard */}
         <div className="lg:col-span-12 mt-4" id="image-extraction-launcher-dashboard">
-          <div className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-2xl p-6 shadow-xl shadow-slate-200/50 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden ring-1 ring-black/5">
+          <div className="panel-3d p-6 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all duration-300 relative overflow-hidden">
             {/* Left Info Column */}
             <div className="flex flex-col gap-3 w-full lg:w-auto">
               <div className="flex items-center gap-3">
@@ -639,31 +639,31 @@ export default function PEDImageExtractorApp() {
               {/* Status pills group */}
               <div className="flex flex-wrap gap-2.5 text-[10.5px] font-mono font-bold leading-normal">
                 {/* Queue status */}
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-gray-200 rounded px-2.5 py-1 text-gray-700 shadow-3xs uppercase">
+                <div className="flex items-center gap-2 pill-3d px-3 py-1.5 text-gray-700 uppercase">
                   <Database className="w-3.5 h-3.5 text-gray-400" />
                   <span>Models Prepared: <strong className="text-orange-600 font-extrabold">{queue.length}</strong></span>
                 </div>
 
                 {/* Target Projection */}
-                <span className="flex items-center gap-1.5 bg-slate-50 border border-gray-200 rounded px-2.5 py-1 text-gray-700 shadow-3xs uppercase">
+                <span className="flex items-center gap-2 pill-3d px-3 py-1.5 text-gray-700 uppercase">
                   <Compass className="w-3.5 h-3.5 text-gray-400" />
                   <span>CRS Coordinate Grid: <strong className="text-[#0B2240] font-extrabold">{geoSettings.coordinateSystem === 'WGS84_UTM' ? `WGS84 UTM Zone ${geoSettings.utmZone || 36}${geoSettings.utmHemisphere || 'N'}` : geoSettings.coordinateSystem}</strong></span>
                 </span>
 
                 {/* Resolution */}
-                <span className="flex items-center gap-1.5 bg-slate-50 border border-gray-200 rounded px-2.5 py-1 text-gray-700 shadow-3xs uppercase">
+                <span className="flex items-center gap-2 pill-3d px-3 py-1.5 text-gray-700 uppercase">
                   <Layers className="w-3.5 h-3.5 text-gray-400" />
                   <span>Target Mesh Res: <strong className="text-orange-600 font-extrabold">{renderingSettings.resolutionWidth} × {renderingSettings.resolutionHeight}px</strong></span>
                 </span>
 
                 {/* Target Outputs */}
-                <span className="flex items-center gap-1.5 bg-slate-50 border border-gray-200 rounded px-2.5 py-1 text-gray-700 shadow-3xs uppercase">
+                <span className="flex items-center gap-2 pill-3d px-3 py-1.5 text-gray-700 uppercase">
                   <CheckSquare className="w-3.5 h-3.5 text-gray-400" />
                   <span>Enabled Views: <strong className="text-[#0B2240] font-extrabold">{renderingSettings.views.filter(v => v.enabled).length} alignment(s)</strong></span>
                 </span>
 
                 {/* Destination */}
-                <span className="flex items-center gap-1.5 bg-slate-50 border border-gray-200 rounded px-2.5 py-1 text-gray-700 shadow-3xs uppercase text-orange-700 bg-orange-50/45 border-orange-100">
+                <span className="flex items-center gap-2 pill-3d px-3 py-1.5 uppercase text-orange-700 bg-orange-50/45 border-orange-200">
                   <FolderOpen className="w-3.5 h-3.5 text-orange-500" />
                   <span>Destination Target: <strong className="text-orange-600 font-extrabold">{selectedDirName ? `Direct Folder [${selectedDirName}]` : 'Bulk ZIP Output Archive'}</strong></span>
                 </span>
@@ -676,14 +676,14 @@ export default function PEDImageExtractorApp() {
                 id="begin-image-extraction-btn"
                 onClick={handleProcessBatch}
                 disabled={isProcessing || queue.length === 0 || renderingSettings.views.filter(v => v.enabled).length === 0}
-                className={`w-full lg:w-auto h-12 px-8 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-300 shadow-lg cursor-pointer flex items-center justify-center gap-2.5 ${
+                className={`w-full lg:w-auto h-12 px-8 text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2.5 ${
                   isProcessing
                     ? 'bg-orange-700 text-white cursor-not-allowed animate-pulse shadow-none'
                     : queue.length === 0
                     ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                     : renderingSettings.views.filter(v => v.enabled).length === 0
                     ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed hover:bg-amber-200'
-                    : 'bg-orange-500 hover:bg-orange-600 text-white hover:shadow-orange-500/25 active:scale-98'
+                    : 'btn-3d-orange'
                 }`}
               >
                 <Sparkles className={`w-4 h-4 ${isProcessing ? 'animate-spin text-white' : 'text-white'}`} />

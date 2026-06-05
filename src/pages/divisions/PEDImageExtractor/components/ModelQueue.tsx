@@ -56,7 +56,7 @@ export default function ModelQueue({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className="border-2 border-dashed border-gray-250 hover:border-orange-500 bg-white p-6 rounded flex flex-col items-center justify-center cursor-pointer transition text-center shadow-xs group"
+        className="inset-panel-3d p-8 flex flex-col items-center justify-center cursor-pointer transition text-center group border-2 border-dashed hover:border-orange-500 hover:bg-orange-50/30"
       >
         <input
           type="file"
@@ -83,7 +83,7 @@ export default function ModelQueue({
         </div>
 
         {queue.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded p-8 text-center text-gray-500 text-xs">
+          <div className="inset-panel-3d p-8 text-center text-gray-500 text-xs">
             No files currently loaded. Select or drag some GLTF/GLB files to start GIS georeferenced ortho-extraction.
           </div>
         ) : (
@@ -111,10 +111,10 @@ export default function ModelQueue({
                 <div
                   key={item.id}
                   onClick={() => onSelectActive(item.id)}
-                  className={`p-3.5 rounded border transition cursor-pointer flex flex-col gap-2 relative group/item overflow-hidden ${
+                  className={`card-3d p-4 transition cursor-pointer flex flex-col gap-2 relative group/item overflow-hidden ${
                     isActive
-                      ? 'bg-orange-50/15 border-orange-500 shadow-sm'
-                      : 'bg-white border-gray-200 hover:bg-gray-50/50'
+                      ? 'border-orange-400 bg-orange-50/30'
+                      : ''
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -155,7 +155,7 @@ export default function ModelQueue({
 
                   {/* Processing Status Badge */}
                   <div className="flex items-center justify-between mt-1 text-[11px]">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusBg}`}>{statusText}</span>
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border shadow-inner ${statusBg}`}>{statusText}</span>
                     
                     {item.status === 'completed' && item.renderedViews && item.renderedViews.length > 0 && (
                       <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-bold font-sans">
