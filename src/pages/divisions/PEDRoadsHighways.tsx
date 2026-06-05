@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Compass, Layers, ChevronRight, Map, Signpost, Waves, Box } from 'lucide-react';
+import { Compass, Layers, ChevronRight, Map, Signpost, Waves } from 'lucide-react';
 import { useState } from 'react';
 
 const AppButton = ({ title, description, icon, onClick, colorStart, colorEnd, shadowColor }: any) => {
