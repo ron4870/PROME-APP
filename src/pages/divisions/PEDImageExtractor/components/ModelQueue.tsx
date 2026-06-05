@@ -82,11 +82,7 @@ export default function ModelQueue({
           {queue.length > 0 && <span className="text-[9px] font-mono">Select to view</span>}
         </div>
 
-        {queue.length === 0 ? (
-          <div className="inset-panel-3d p-10 text-center text-slate-600 text-sm">
-            No files currently loaded. Select or drag some GLTF/GLB files to start GIS georeferenced ortho-extraction.
-          </div>
-        ) : (
+        {queue.length === 0 ? null : (
           <div className="max-h-[350px] overflow-y-auto space-y-2.5 pr-1" id="file-queue-scroll">
             {queue.map((item) => {
               const isActive = item.id === activeId;

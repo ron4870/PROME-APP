@@ -563,7 +563,7 @@ export default function PEDImageExtractorApp() {
         <div className="lg:col-span-5 flex flex-col gap-6 animate-fadeIn" id="left-sidebar-controls">
           
           {/* Section: Queue Processor */}
-          <section className="panel-3d p-6 flex flex-col gap-5">
+          <section className="panel-3d p-6 flex flex-col gap-5 !bg-emerald-50/60">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <Database className="w-4.5 h-4.5 text-orange-500" />
