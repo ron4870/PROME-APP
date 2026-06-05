@@ -225,7 +225,7 @@ export default function FundsRequisitionForm() {
             </div>
 
             <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#334155', textDecoration: 'underline' }}>FUNDS REQUISITION FORM</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: 'red', textDecoration: 'underline' }}>FUNDS REQUISITION FORM</h3>
             </div>
 
             {/* Form Fields */}
@@ -373,7 +373,7 @@ export default function FundsRequisitionForm() {
             <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
               <QRCode 
                 value={`https://ims.promeconsult.com/forms/funds-requisition?id=${uniqueId || ''}`}
-                size={80} 
+                size={50} 
               />
             </div>
 
