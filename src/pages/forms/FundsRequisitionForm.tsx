@@ -260,17 +260,7 @@ export default function FundsRequisitionForm() {
                     {totalAmount.toLocaleString()}
                   </td>
                 </tr>
-                <tr>
-                  <td style={{ padding: '8px 0', fontWeight: '600', color: '#334155' }}>Amount in Words:</td>
-                  <td style={{ borderBottom: '1px solid #cbd5e1' }}>
-                    <input 
-                      type="text" 
-                      value={formData.amountInWords}
-                      onChange={(e) => setFormData({...formData, amountInWords: e.target.value})}
-                      style={{ border: 'none', width: '100%', fontFamily: 'inherit', fontSize: '14px', outline: 'none', backgroundColor: 'transparent', color: '#0f172a' }} 
-                    />
-                  </td>
-                </tr>
+
                 <tr>
                   <td style={{ padding: '8px 0', fontWeight: '600', verticalAlign: 'top' }}>Purpose:</td>
                   <td style={{ borderBottom: '1px solid #cbd5e1' }}>
