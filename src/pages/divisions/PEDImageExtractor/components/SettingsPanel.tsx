@@ -324,12 +324,12 @@ export default function SettingsPanel({
   return (
     <div className="flex flex-col gap-6" id="gltf-settings-panel-root">
       {/* 1. Automated Output Destination (Native Browser FS API) */}
-      <div className="bg-white border border-gray-200 rounded p-5 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <FolderOpen className="w-4 h-4 text-orange-500" />
-          <h3 className="text-xs font-bold text-[#0B2240] uppercase tracking-wider font-sans opacity-95">Automated Output Folder</h3>
+          <FolderOpen className="w-5 h-5 text-orange-500" />
+          <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider font-sans opacity-95">Automated Output Folder</h3>
         </div>
-        <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+        <p className="text-sm text-slate-500 mb-4 leading-relaxed">
           Through modern browser filesystems, you can designate an actual local output folder. 
           Extracted images and PGW world files will be saved **automatically** directly into your selected folder!
         </p>
@@ -347,9 +347,9 @@ export default function SettingsPanel({
           </button>
         </div>
         {directoryError && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 animate-fadeIn" id="dir-error-msg">
-            <div className="flex items-center gap-1.5 font-bold mb-1">
-              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700 animate-fadeIn" id="dir-error-msg">
+            <div className="flex items-center gap-2.5 font-bold mb-1">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
               <span>{directoryError.title}</span>
             </div>
             <p className="leading-relaxed text-[11px] text-red-650">
@@ -361,7 +361,7 @@ export default function SettingsPanel({
                   href={window.location.origin + window.location.pathname}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-[#0B2240] hover:bg-[#123866] text-white font-extrabold text-[9px] uppercase tracking-wider rounded transition"
+                  className="inline-flex items-center gap-2 px-2 py-1 bg-[#0B2240] hover:bg-[#123866] text-white font-extrabold text-[9px] uppercase tracking-wider rounded transition"
                 >
                   <Sparkles className="w-3 h-3 text-orange-400" />
                   Open standalone tab
@@ -387,7 +387,7 @@ export default function SettingsPanel({
           </div>
         )}
         {selectedDirectoryName && (
-          <div className="mt-3 px-2.5 py-1.5 bg-emerald-50/50 rounded border border-emerald-200 text-[10px] font-mono text-emerald-700 break-all flex items-center gap-2">
+          <div className="mt-3 px-2.5 py-1.5 bg-emerald-50/50 rounded border border-emerald-200 text-sm font-mono text-emerald-700 break-all flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>OS Path: {selectedDirectoryName}</span>
           </div>
@@ -395,12 +395,12 @@ export default function SettingsPanel({
       </div>
 
       {/* 2. SPECIFY LOADED FILE origin LOCATION (INPUT COORDINATE SYSTEM) */}
-      <div className="bg-white border border-gray-200 rounded p-5 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
-          <Globe className="w-4 h-4 text-orange-500 shrink-0" />
+          <Globe className="w-5 h-5 text-orange-500 shrink-0" />
           <div>
-            <h3 className="text-xs font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">1. Loaded File Coordinate Frame & Origin</h3>
-            <p className="text-[10px] text-gray-400 mt-1 leading-none lowercase italic">Specify original captured coordinates & scale context.</p>
+            <h3 className="text-sm font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">1. Loaded File Coordinate Frame & Origin</h3>
+            <p className="text-sm text-gray-400 mt-1 leading-none lowercase italic">Specify original captured coordinates & scale context.</p>
           </div>
         </div>
 
@@ -438,7 +438,7 @@ export default function SettingsPanel({
                     <button
                       type="button"
                       onClick={() => document.getElementById('prj-file-loader')?.click()}
-                      className={`w-full h-full py-2 px-3 text-left rounded text-xs transition cursor-pointer border flex flex-col justify-center leading-snug ${
+                      className={`w-full h-full py-2 px-3 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-center leading-snug ${
                         geoSettings.loadedPrjName
                           ? 'bg-emerald-50/70 border-emerald-500 text-emerald-700 font-bold'
                           : geoSettings.coordinateSystem === 'CUSTOM_METERS'
@@ -468,7 +468,7 @@ export default function SettingsPanel({
                   key={sys}
                   type="button"
                   onClick={() => handleCoordinateSystemChange(sys)}
-                  className={`py-2 px-3 text-left rounded text-xs transition cursor-pointer border ${
+                  className={`py-2 px-3 text-left rounded text-sm transition cursor-pointer border ${
                     isSelected
                       ? 'bg-orange-50/70 border-orange-500 text-orange-600 font-bold'
                       : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:border-gray-300'
@@ -532,7 +532,7 @@ export default function SettingsPanel({
                   }));
                 }
               }}
-              className={`w-full py-2.5 px-3 rounded text-xs transition cursor-pointer border flex items-center justify-between font-bold leading-snug shadow-sm ${
+              className={`w-full py-2.5 px-3 rounded text-sm transition cursor-pointer border flex items-center justify-between font-bold leading-snug shadow-sm ${
                 geoSettings.coordinateSystem === 'CUSTOM_TM'
                   ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
                   : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300'
@@ -542,7 +542,7 @@ export default function SettingsPanel({
                 <span className="text-sm">🚗</span>
                 <div className="text-left">
                   <span className="block font-black text-[10.5px] uppercase tracking-wide font-sans">MathWorks RoadRunner Calibration</span>
-                  <span className="block text-[9px] font-medium text-gray-500 font-sans leading-tight mt-0.5">
+                  <span className="block text-[9px] font-medium text-slate-500 font-sans leading-tight mt-0.5">
                     {geoSettings.coordinateSystem === 'CUSTOM_TM'
                       ? 'Local LTM calibration active (Zero-Rotation). Click to reset.'
                       : 'Zero-Rotation LTM calibration for local high-fidelity road designs.'}
@@ -562,7 +562,7 @@ export default function SettingsPanel({
           {/* Dynamic Interactive RoadRunner Custom Projection Generator */}
           <div className="mt-3.5 bg-slate-50 border border-slate-200 rounded p-3.5 text-[11px] text-slate-700 animate-fadeIn shadow-inner">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-bold text-[#0B2240] uppercase tracking-wider text-[9px] flex items-center gap-1">
+              <span className="font-bold text-[#0B2240] uppercase tracking-wider text-[9px] flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                 RoadRunner Custom CS Anchor
               </span>
@@ -571,7 +571,7 @@ export default function SettingsPanel({
               </span>
             </div>
             
-            <p className="text-[10px] text-gray-500 mb-2.5 leading-relaxed">
+            <p className="text-sm text-slate-500 mb-2.5 leading-relaxed">
               Define the coordinate origin parameters below to generate a real-time Compound CS projection with EGM96 Geoid heights.
             </p>
 
@@ -586,7 +586,7 @@ export default function SettingsPanel({
                   value={rrLatInput}
                   onChange={(e) => setRrLatInput(e.target.value)}
                   placeholder="e.g. 0.314209"
-                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-slate-800 font-mono focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm text-slate-800 font-mono focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -599,7 +599,7 @@ export default function SettingsPanel({
                   value={rrLonInput}
                   onChange={(e) => setRrLonInput(e.target.value)}
                   placeholder="e.g. 32.578420"
-                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-slate-800 font-mono focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm text-slate-800 font-mono focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
             </div>
@@ -658,7 +658,7 @@ export default function SettingsPanel({
               <button
                 type="button"
                 onClick={handleDownloadCustomPrj}
-                className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-1.5 px-2 rounded font-bold text-[9.5px] text-center transition shadow-xs cursor-pointer"
+                className="flex-1 bg-white hover:bg-gray-50 text-slate-700 border border-gray-300 py-1.5 px-2 rounded font-bold text-[9.5px] text-center transition shadow-xs cursor-pointer"
               >
                 📥 Download .prj
               </button>
@@ -669,7 +669,7 @@ export default function SettingsPanel({
         {/* UTM zone and hemisphere settings */}
         {(geoSettings.coordinateSystem === 'WGS84_UTM') && (
           <div className="mb-4 bg-gray-50/75 p-3.5 rounded border border-gray-200 flex flex-col gap-3 animate-fadeIn">
-            <div className="text-[10px] font-black text-[#0B2240] uppercase tracking-widest border-b border-gray-200 pb-1.5">
+            <div className="text-sm font-black text-[#0B2240] uppercase tracking-widest border-b border-gray-200 pb-1.5">
               WGS 84 UTM Grid Zone
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -678,7 +678,7 @@ export default function SettingsPanel({
                 <select
                   value={geoSettings.utmZone || 36}
                   onChange={(e) => handleGeoChange('utmZone', parseInt(e.target.value))}
-                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-850 focus:outline-none focus:border-[#0B2240] font-mono transition shadow-sm"
+                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-850 focus:outline-none focus:border-[#0B2240] font-mono transition shadow-sm"
                 >
                   {Array.from({ length: 60 }, (_, i) => i + 1).map((z) => (
                     <option key={z} value={z}>
@@ -689,16 +689,16 @@ export default function SettingsPanel({
               </div>
               <div>
                 <label className="block text-gray-400 font-bold text-[9px] uppercase tracking-wider mb-1.5">Hemisphere</label>
-                <div className="flex gap-1.5">
+                <div className="flex gap-2.5">
                   {(['N', 'S'] as const).map((h) => (
                     <button
                       key={h}
                       type="button"
                       onClick={() => handleGeoChange('utmHemisphere', h)}
-                      className={`flex-1 py-1.5 rounded text-xs font-black transition cursor-pointer border ${
+                      className={`flex-1 py-1.5 rounded text-sm font-black transition cursor-pointer border ${
                         geoSettings.utmHemisphere === h
                           ? 'bg-[#0B2240] border-transparent text-white'
-                          : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800'
+                          : 'bg-white border-gray-200 text-slate-500 hover:text-gray-800'
                       }`}
                     >
                       {h === 'N' ? 'N' : 'S'}
@@ -713,7 +713,7 @@ export default function SettingsPanel({
         {/* Custom Transverse Mercator Parameters Panel */}
         {geoSettings.coordinateSystem === 'CUSTOM_TM' && geoSettings.customTM && (
           <div className="mb-4 bg-gray-50/75 p-3.5 rounded border border-gray-200 flex flex-col gap-3">
-            <span className="text-[10px] font-black text-[#0B2240] uppercase tracking-widest block border-b border-gray-200 pb-1.5">
+            <span className="text-sm font-black text-[#0B2240] uppercase tracking-widest block border-b border-gray-200 pb-1.5">
               Custom Transverse Mercator Properties (Input)
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -737,7 +737,7 @@ export default function SettingsPanel({
                       utmZone: targetZone,
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-850 font-mono focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-850 font-mono focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -760,7 +760,7 @@ export default function SettingsPanel({
                       utmHemisphere: targetHemisphere,
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-850 font-mono focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-850 font-mono focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
             </div>
@@ -779,7 +779,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, scaleFactor: isNaN(val) ? 1.0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-xs text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-sm text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -794,7 +794,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, falseEasting: isNaN(val) ? 0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-xs text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-sm text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -809,7 +809,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, falseNorthing: isNaN(val) ? 0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-xs text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-sm text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
             </div>
@@ -825,7 +825,7 @@ export default function SettingsPanel({
                     customTM: prev.customTM ? { ...prev.customTM, datumName: val } : undefined
                   }));
                 }}
-                className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#0B2240] font-mono shadow-sm"
+                className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-[#0B2240] font-mono shadow-sm"
               >
                 <option value="WGS 84">WGS 84 (WGS 84 Ellipsoid)</option>
                 <option value="Clarke 1880">Clarke 1880 (Cape Datum / local)</option>
@@ -837,9 +837,9 @@ export default function SettingsPanel({
 
         {/* Origin Coordinates Input mapping to (0,0,0) of the model */}
         {geoSettings.coordinateSystem === 'CUSTOM_TM' && geoSettings.customTM ? (
-          <div className="grid grid-cols-2 gap-4 mb-4 p-3.5 bg-emerald-50/40 border border-emerald-200 rounded animate-fadeIn">
+          <div className="grid grid-cols-2 gap-6 mb-4 p-3.5 bg-emerald-50/40 border border-emerald-200 rounded animate-fadeIn">
             <div>
-              <label className="block text-emerald-900 font-extrabold text-[10px] uppercase tracking-wider mb-1 px-1">
+              <label className="block text-emerald-900 font-extrabold text-sm uppercase tracking-wider mb-1 px-1">
                 Design Origin Longitude (λ₀)
               </label>
               <input
@@ -860,13 +860,13 @@ export default function SettingsPanel({
                     utmZone: targetZone,
                   }));
                 }}
-                className="w-full bg-white border border-emerald-300 rounded px-2.5 py-1.5 text-xs text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-650"
+                className="w-full bg-white border border-emerald-300 rounded px-2.5 py-1.5 text-sm text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-650"
               />
               <span className="text-[8.5px] text-emerald-600 mt-1 block px-1 leading-tight font-medium font-sans">Sets local TM Central Meridian.</span>
             </div>
 
             <div>
-              <label className="block text-emerald-900 font-extrabold text-[10px] uppercase tracking-wider mb-1 px-1">
+              <label className="block text-emerald-900 font-extrabold text-sm uppercase tracking-wider mb-1 px-1">
                 Design Origin Latitude (φ₀)
               </label>
               <input
@@ -887,40 +887,40 @@ export default function SettingsPanel({
                     utmHemisphere: targetHemisphere,
                   }));
                 }}
-                className="w-full bg-white border border-emerald-300 rounded px-2.5 py-1.5 text-xs text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-655"
+                className="w-full bg-white border border-emerald-300 rounded px-2.5 py-1.5 text-sm text-emerald-800 font-bold font-mono transition shadow-sm focus:outline-none focus:border-emerald-655"
               />
               <span className="text-[8.5px] text-emerald-600 mt-1 block px-1 leading-tight font-medium font-sans">Sets local TM Origin Latitude.</span>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-6 mb-4">
             <div>
-              <label className="block text-[#0B2240] font-bold text-[10px] uppercase tracking-wider mb-1.5">
+              <label className="block text-[#0B2240] font-bold text-sm uppercase tracking-wider mb-1.5">
                 {geoSettings.coordinateSystem === 'WGS84' ? 'Longitude (Origin X)' : 'Easting X (Meters)'}
               </label>
               <input
                 type="text"
                 value={geoSettings.originX}
                 onChange={(e) => handleGeoChange('originX', e.target.value)}
-                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-xs text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-orange-50/5"
+                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-sm text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-orange-50/5"
               />
               {latLonErrors.originX && (
-                <span className="text-[10px] text-red-500 mt-1 block font-semibold">{latLonErrors.originX}</span>
+                <span className="text-sm text-red-500 mt-1 block font-semibold">{latLonErrors.originX}</span>
               )}
             </div>
 
             <div>
-              <label className="block text-[#0B2240] font-bold text-[10px] uppercase tracking-wider mb-1.5">
+              <label className="block text-[#0B2240] font-bold text-sm uppercase tracking-wider mb-1.5">
                 {geoSettings.coordinateSystem === 'WGS84' ? 'Latitude (Origin Y)' : 'Northing Y (Meters)'}
               </label>
               <input
                 type="text"
                 value={geoSettings.originY}
                 onChange={(e) => handleGeoChange('originY', e.target.value)}
-                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-xs text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-orange-50/5"
+                className="w-full bg-white border border-[#F97316]/50 rounded px-3 py-1.5 text-sm text-gray-800 font-semibold focus:outline-none focus:border-[#F97316] font-mono transition shadow-sm bg-orange-50/5"
               />
               {latLonErrors.originY && (
-                <span className="text-[10px] text-red-500 mt-1 block font-semibold">{latLonErrors.originY}</span>
+                <span className="text-sm text-red-500 mt-1 block font-semibold">{latLonErrors.originY}</span>
               )}
             </div>
           </div>
@@ -928,25 +928,25 @@ export default function SettingsPanel({
 
         {/* Geographic Alignment Anchor selector */}
         <div className="pt-3 border-t border-gray-150 mb-3">
-          <label className="block text-[#0B2240] font-bold text-[10px] uppercase tracking-wider mb-1.5 font-sans">
+          <label className="block text-[#0B2240] font-bold text-sm uppercase tracking-wider mb-1.5 font-sans">
             Georeference Origin Anchor
           </label>
           {geoSettings.coordinateSystem === 'CUSTOM_TM' ? (
             <div className="p-3 bg-emerald-50/40 border border-emerald-200 text-[10.5px] text-emerald-850 rounded leading-relaxed animate-fadeIn font-medium">
-              🔒 <strong className="font-bold text-emerald-950">Calibration Lock Active</strong>: The local design origin is anchored exactly to the model's coordinate center <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs font-mono text-emerald-900">(0,0,0)</code>. This ensures zero-translation scale convergence and prevents physical shifts on the map.
+              🔒 <strong className="font-bold text-emerald-950">Calibration Lock Active</strong>: The local design origin is anchored exactly to the model's coordinate center <code className="bg-emerald-100 px-1 py-0.5 rounded text-sm font-mono text-emerald-900">(0,0,0)</code>. This ensures zero-translation scale convergence and prevents physical shifts on the map.
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleGeoChange('alignmentAnchor', 'ORIGIN')}
-                className={`py-2 px-2 text-left rounded text-xs transition cursor-pointer border flex flex-col justify-between leading-snug h-22 ${
+                className={`py-2 px-2 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-between leading-snug h-22 ${
                   (geoSettings.alignmentAnchor || 'ORIGIN') === 'ORIGIN'
                     ? 'bg-orange-50/75 border-orange-500 text-orange-705 font-bold shadow-sm'
                     : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100'
                 }`}
               >
-                <span className="font-semibold block text-[10px]">Origin (0,0)</span>
+                <span className="font-semibold block text-sm">Origin (0,0)</span>
                 <span className="text-[8.5px] text-gray-400 font-normal leading-tight mt-1 mb-0.5 block">
                   Maps coordinate exactly to glTF internal (0,0,0).
                 </span>
@@ -954,13 +954,13 @@ export default function SettingsPanel({
               <button
                 type="button"
                 onClick={() => handleGeoChange('alignmentAnchor', 'CUSTOM')}
-                className={`py-2 px-2 text-left rounded text-xs transition cursor-pointer border flex flex-col justify-between leading-snug h-22 ${
+                className={`py-2 px-2 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-between leading-snug h-22 ${
                   geoSettings.alignmentAnchor === 'CUSTOM'
                     ? 'bg-orange-50/75 border-orange-500 text-orange-705 font-bold shadow-sm'
                     : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100'
                 }`}
               >
-                <span className="font-semibold block text-[10px]">Manual Entry</span>
+                <span className="font-semibold block text-sm">Manual Entry</span>
                 <span className="text-[8.5px] text-gray-400 font-normal leading-tight mt-1 mb-0.5 block">
                   Define a specific internal glb point.
                 </span>
@@ -977,7 +977,7 @@ export default function SettingsPanel({
                   step="any"
                   value={geoSettings.internalOriginX || 0}
                   onChange={(e) => handleGeoChange('internalOriginX', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs font-mono"
+                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm font-mono"
                 />
               </div>
               <div>
@@ -987,7 +987,7 @@ export default function SettingsPanel({
                   step="any"
                   value={geoSettings.internalOriginY || 0}
                   onChange={(e) => handleGeoChange('internalOriginY', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs font-mono"
+                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm font-mono"
                 />
               </div>
               <div>
@@ -997,7 +997,7 @@ export default function SettingsPanel({
                   step="any"
                   value={geoSettings.internalOriginZ || 0}
                   onChange={(e) => handleGeoChange('internalOriginZ', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs font-mono"
+                  className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm font-mono"
                 />
               </div>
             </div>
@@ -1008,9 +1008,9 @@ export default function SettingsPanel({
         <div className="pt-3 border-t border-gray-150">
           <div className="flex justify-between items-center mb-1">
             <label className="block text-gray-650 text-[11px] font-semibold">Model Scale Factor</label>
-            <span className="text-xs font-mono text-orange-600 font-bold">{geoSettings.scaleFactor}x</span>
+            <span className="text-sm font-mono text-orange-600 font-bold">{geoSettings.scaleFactor}x</span>
           </div>
-          <p className="text-[10px] text-gray-400 mb-2 leading-relaxed">
+          <p className="text-sm text-gray-400 mb-2 leading-relaxed">
             Multiplication factor converting your GLTF files unit dimension to real-world meters.
           </p>
           <input
@@ -1026,12 +1026,12 @@ export default function SettingsPanel({
       </div>
 
       {/* 3. TARGET EXPORT COORDINATE SYSTEM (OUTPUT Projections) */}
-      <div className="bg-white border border-gray-200 rounded p-5 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2.5">
-          <Settings className="w-4 h-4 text-orange-400 shrink-0" />
+          <Settings className="w-5 h-5 text-orange-400 shrink-0" />
           <div>
-            <h3 className="text-xs font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">2. Extracted Output Coordinate Projection</h3>
-            <p className="text-[10px] text-gray-400 mt-0.5 leading-none lowercase italic">Choose the final GIS projection of generated PNG & .pgw files.</p>
+            <h3 className="text-sm font-black text-[#0B2240] uppercase tracking-wider font-sans leading-none">2. Extracted Output Coordinate Projection</h3>
+            <p className="text-sm text-gray-400 mt-0.5 leading-none lowercase italic">Choose the final GIS projection of generated PNG & .pgw files.</p>
           </div>
         </div>
 
@@ -1047,7 +1047,7 @@ export default function SettingsPanel({
                   key={sys}
                   type="button"
                   onClick={() => handleOutputCoordinateSystemChange(sys)}
-                  className={`py-2 px-3 text-left rounded text-xs transition cursor-pointer border flex flex-col justify-center leading-snug ${
+                  className={`py-2 px-3 text-left rounded text-sm transition cursor-pointer border flex flex-col justify-center leading-snug ${
                     isSelected
                       ? 'bg-orange-50/75 border-orange-500 text-orange-705 font-bold shadow-sm'
                       : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:border-gray-300'
@@ -1079,7 +1079,7 @@ export default function SettingsPanel({
           <button
             type="button"
             onClick={handleMatchInputCRS}
-            className={`mt-2 w-full py-2 px-3.5 text-left rounded text-xs transition border flex items-center justify-between cursor-pointer leading-snug ${
+            className={`mt-2 w-full py-2 px-3.5 text-left rounded text-sm transition border flex items-center justify-between cursor-pointer leading-snug ${
               isMatchingInput
                 ? 'bg-indigo-50/75 border-indigo-500 text-indigo-805 font-bold shadow-sm ring-1 ring-indigo-500/10'
                 : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:border-gray-300'
@@ -1110,7 +1110,7 @@ export default function SettingsPanel({
           {/* Output UTM zone and hemisphere settings */}
          {(outputGeoSettings.coordinateSystem === 'WGS84_UTM') && (
            <div className="mb-4 bg-gray-50/75 p-3.5 rounded border border-gray-200 flex flex-col gap-3 animate-fadeIn">
-             <div className="text-[10px] font-black text-[#0B2240] uppercase tracking-widest border-b border-gray-200 pb-1.5 bg-white px-2 py-1 rounded">
+             <div className="text-sm font-black text-[#0B2240] uppercase tracking-widest border-b border-gray-200 pb-1.5 bg-white px-2 py-1 rounded">
                Output WGS 84 UTM Zone Selection
              </div>
              <div className="grid grid-cols-2 gap-3">
@@ -1119,7 +1119,7 @@ export default function SettingsPanel({
                 <select
                   value={outputGeoSettings.utmZone || 36}
                   onChange={(e) => handleOutputGeoChange('utmZone', parseInt(e.target.value))}
-                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#0B2240] font-mono transition shadow-sm"
+                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-[#0B2240] font-mono transition shadow-sm"
                 >
                   {Array.from({ length: 60 }, (_, i) => i + 1).map((z) => (
                     <option key={z} value={z}>
@@ -1130,16 +1130,16 @@ export default function SettingsPanel({
               </div>
               <div>
                 <label className="block text-gray-400 font-bold text-[9px] uppercase tracking-wider mb-1.5">Hemisphere</label>
-                <div className="flex gap-1.5">
+                <div className="flex gap-2.5">
                   {(['N', 'S'] as const).map((h) => (
                     <button
                       key={h}
                       type="button"
                       onClick={() => handleOutputGeoChange('utmHemisphere', h)}
-                      className={`flex-1 py-1.5 rounded text-xs font-black transition cursor-pointer border ${
+                      className={`flex-1 py-1.5 rounded text-sm font-black transition cursor-pointer border ${
                         outputGeoSettings.utmHemisphere === h
                           ? 'bg-[#0B2240] border-transparent text-white'
-                          : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800'
+                          : 'bg-white border-gray-200 text-slate-500 hover:text-gray-800'
                       }`}
                     >
                       {h === 'N' ? 'N' : 'S'}
@@ -1154,7 +1154,7 @@ export default function SettingsPanel({
         {/* Output Custom Transverse Mercator Params */}
         {outputGeoSettings.coordinateSystem === 'CUSTOM_TM' && outputGeoSettings.customTM && (
           <div className="mb-4 bg-gray-50/75 p-3.5 rounded border border-gray-200 flex flex-col gap-3">
-            <span className="text-[10px] font-black text-[#0B2240] uppercase tracking-widest block border-b border-gray-200 pb-1.5">
+            <span className="text-sm font-black text-[#0B2240] uppercase tracking-widest block border-b border-gray-200 pb-1.5">
               Custom Transverse Mercator Properties (Output)
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -1171,7 +1171,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, centralMeridian: isNaN(val) ? 0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-850 font-mono focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-850 font-mono focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -1187,7 +1187,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, latitudeOfOrigin: isNaN(val) ? 0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-855 font-mono focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-855 font-mono focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
             </div>
@@ -1206,7 +1206,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, scaleFactor: isNaN(val) ? 1.0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-xs text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-sm text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -1221,7 +1221,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, falseEasting: isNaN(val) ? 0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-xs text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-200 rounded px-1.5 py-1.5 text-sm text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
               <div>
@@ -1236,7 +1236,7 @@ export default function SettingsPanel({
                       customTM: prev.customTM ? { ...prev.customTM, falseNorthing: isNaN(val) ? 0 : val } : undefined
                     }));
                   }}
-                  className="w-full bg-white border border-gray-205 rounded px-1.5 py-1.5 text-xs text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
+                  className="w-full bg-white border border-gray-205 rounded px-1.5 py-1.5 text-sm text-gray-855 font-mono text-center focus:outline-none focus:border-[#0B2240]"
                 />
               </div>
             </div>
@@ -1252,7 +1252,7 @@ export default function SettingsPanel({
                     customTM: prev.customTM ? { ...prev.customTM, datumName: val } : undefined
                   }));
                 }}
-                className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#0B2240] font-mono shadow-sm"
+                className="w-full bg-white border border-gray-200 rounded px-2.5 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-[#0B2240] font-mono shadow-sm"
               >
                 <option value="WGS 84">WGS 84 (WGS 84 Ellipsoid)</option>
                 <option value="Clarke 1880">Clarke 1880 (Cape Datum / local)</option>
@@ -1264,37 +1264,37 @@ export default function SettingsPanel({
       </div>
 
       {/* 4. High-LOD Image Extraction Settings */}
-      <div className="bg-white border border-gray-200 rounded p-5 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Sliders className="w-4 h-4 text-orange-500" />
-          <h3 className="text-xs font-bold text-[#0B2240] uppercase tracking-wider">Image Render Resolution</h3>
+          <Sliders className="w-5 h-5 text-orange-500" />
+          <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Image Render Resolution</h3>
         </div>
 
         {/* Adjustable Resolution Setting */}
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <label className="block text-gray-650 text-[11px] font-semibold">Export Pixel Dimensions</label>
-            <span className="text-xs font-mono text-orange-600 font-bold">
+            <span className="text-sm font-mono text-orange-600 font-bold">
               {renderingSettings.resolutionWidth} × {renderingSettings.resolutionHeight} px
             </span>
           </div>
-          <div className="grid grid-cols-4 gap-1.5 mb-2">
+          <div className="grid grid-cols-4 gap-2.5 mb-2">
             {[4096, 8192, 16384, 32768].map((res) => (
               <button
                 key={res}
                 type="button"
                 onClick={() => handleResWidthChange(res)}
-                className={`py-1 px-1 text-center rounded text-xs font-mono transition cursor-pointer border ${
+                className={`py-1 px-1 text-center rounded text-sm font-mono transition cursor-pointer border ${
                   renderingSettings.resolutionWidth === res
                     ? 'bg-[#0B2240] text-white border-transparent'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                    : 'bg-gray-50 border-gray-200 text-slate-500 hover:bg-gray-100'
                 }`}
               >
                 {res >= 1024 ? `${res / 1024}K` : `${res}px`}
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-gray-400 leading-relaxed">
+          <p className="text-sm text-gray-400 leading-relaxed">
             Resolutions represent highly detailed GIS orthophotos. Available options are calibrated for maximum compatibility and GPU resource availability to prevent web context crashes while yielding exceptionally crisp aerial maps.
           </p>
         </div>
@@ -1302,8 +1302,8 @@ export default function SettingsPanel({
         {/* Transparent Background */}
         <div className="flex items-center justify-between mb-4 bg-gray-50 p-2.5 rounded border border-gray-200/80">
           <div>
-            <label className="text-xs text-gray-800 font-bold block">Alpha Transparency</label>
-            <span className="text-[10px] text-gray-450">Enable transparent background for GIS overlay.</span>
+            <label className="text-sm text-gray-800 font-bold block">Alpha Transparency</label>
+            <span className="text-sm text-gray-450">Enable transparent background for GIS overlay.</span>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -1325,11 +1325,11 @@ export default function SettingsPanel({
         <div className="mb-4">
           <div className="flex justify-between items-center mb-1">
             <label className="block text-gray-650 text-[11px] font-semibold">Ortho framing Padding</label>
-            <span className="text-xs font-mono text-orange-600 font-bold">
+            <span className="text-sm font-mono text-orange-600 font-bold">
               {(renderingSettings.paddingRatio * 100).toFixed(0)}%
             </span>
           </div>
-          <p className="text-[10px] text-gray-400 mb-2 leading-relaxed">
+          <p className="text-sm text-gray-400 mb-2 leading-relaxed">
             Adds a safe boundary buffer around the model boundary so vertical details are safe in orthographic bounds.
           </p>
           <input
@@ -1350,14 +1350,14 @@ export default function SettingsPanel({
       </div>
 
       {/* 5. Select Perspectives & Texture Exports */}
-      <div className="bg-white border border-gray-200 rounded p-5 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Layers className="w-4 h-4 text-orange-500" />
-          <h3 className="text-xs font-bold text-[#0B2240] uppercase tracking-wider">Extraction Pipelines</h3>
+          <Layers className="w-5 h-5 text-orange-500" />
+          <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Extraction Pipelines</h3>
         </div>
 
         <div className="space-y-2.5">
-          <div className="text-[10px] tracking-widest uppercase font-extrabold text-[#0B2240] mb-2 border-b border-gray-100 pb-1">PERSPECTIVE MAPPINGS:</div>
+          <div className="text-sm tracking-widest uppercase font-extrabold text-[#0B2240] mb-2 border-b border-gray-100 pb-1">PERSPECTIVE MAPPINGS:</div>
           {renderingSettings.views.map((v) => (
             <label
               key={v.alignment}
@@ -1370,13 +1370,13 @@ export default function SettingsPanel({
                   onChange={() => toggleView(v.alignment)}
                   className="rounded border-gray-350 text-orange-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 accent-orange-500"
                 />
-                <span className="text-xs text-gray-700 font-semibold">{v.label}</span>
+                <span className="text-sm text-slate-700 font-semibold">{v.label}</span>
               </div>
-              <span className="text-[10px] text-gray-400 font-mono">*{v.suffix} file</span>
+              <span className="text-sm text-gray-400 font-mono">*{v.suffix} file</span>
             </label>
           ))}
 
-          <div className="text-[10px] tracking-widest uppercase font-extrabold text-[#0B2240] pt-3 border-t border-gray-150 mb-2">RAW EMBEDDED TEXTURES:</div>
+          <div className="text-sm tracking-widest uppercase font-extrabold text-[#0B2240] pt-3 border-t border-gray-150 mb-2">RAW EMBEDDED TEXTURES:</div>
           <label className="flex items-center justify-between p-2.5 rounded bg-gray-50 border border-gray-200 hover:bg-gray-100/55 transition cursor-pointer">
             <div className="flex items-center gap-2">
               <input
@@ -1390,7 +1390,7 @@ export default function SettingsPanel({
                 }
                 className="rounded border-gray-350 text-orange-400 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 accent-orange-500"
               />
-              <span className="text-xs text-gray-700 font-semibold">Extract Internal Maps</span>
+              <span className="text-sm text-slate-700 font-semibold">Extract Internal Maps</span>
             </div>
             <Image className="w-3.5 h-3.5 text-orange-500" />
           </label>

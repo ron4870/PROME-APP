@@ -630,28 +630,28 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
               title="Toggle Grid (G)"
               className={`p-1.5 rounded transition cursor-pointer ${showGrid ? 'bg-orange-600 text-white' : 'text-gray-300 hover:text-white'}`}
             >
-              <GridIcon className="w-4 h-4" />
+              <GridIcon className="w-5 h-5" />
             </button>
             <button
               onClick={() => setShowAxes(!showAxes)}
               title="Toggle Axis Helper (A)"
               className={`p-1.5 rounded transition cursor-pointer ${showAxes ? 'bg-orange-600 text-white' : 'text-gray-300 hover:text-white'}`}
             >
-              <Compass className="w-4 h-4" />
+              <Compass className="w-5 h-5" />
             </button>
             <button
               onClick={() => setShowBox(!showBox)}
               title="Toggle Selection Box (B)"
               className={`p-1.5 rounded transition cursor-pointer ${showBox ? 'bg-orange-600 text-white' : 'text-gray-300 hover:text-white'}`}
             >
-              <Maximize className="w-4 h-4" />
+              <Maximize className="w-5 h-5" />
             </button>
             <button
               onClick={() => setShowMap(!showMap)}
               title="Toggle Background Map (M)"
               className={`p-1.5 rounded transition cursor-pointer ${showMap ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:text-white'}`}
             >
-              <Map className="w-4 h-4" />
+              <Map className="w-5 h-5" />
             </button>
           </div>
 
@@ -680,14 +680,14 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
               <Map className="w-3.5 h-3.5" /> Background Map Setup
             </span>
-            <span className="text-[10px] font-mono text-gray-300">
+            <span className="text-xs font-mono text-gray-300">
               {wgsCoords.lat.toFixed(5)}°, {wgsCoords.lon.toFixed(5)}°
             </span>
           </div>
 
           {/* Provider Select */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">Image Provider</label>
+            <label className="text-xs font-bold text-gray-300 uppercase tracking-wide">Image Provider</label>
             <select
               value={providerId}
               onChange={(e) => setProviderId(e.target.value)}
@@ -704,7 +704,7 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
           {/* Zoom Selector */}
           <div className="flex flex-col gap-1 mt-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">Zoom Level</label>
+              <label className="text-xs font-bold text-gray-300 uppercase tracking-wide">Zoom Level</label>
               <span className="text-xs font-mono font-bold text-orange-400">{zoom}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -778,20 +778,20 @@ export default function ThreeCanvas({ activeFile, sceneData, loading, geoSetting
         <div className="absolute bottom-3 left-3 right-3 pointer-events-none flex justify-between gap-4">
           <div className="pointer-events-auto bg-[#0B2240]/95 backdrop-blur-md px-3 py-2 rounded border border-blue-900/35 flex flex-nowrap items-center text-xs text-white gap-4 shadow-md divide-x divide-blue-800/40 font-mono">
             <div className="flex items-center gap-1.5">
-              <span className="text-gray-300 uppercase font-sans text-[10px] font-bold tracking-wide">Width (X)</span>
+              <span className="text-gray-300 uppercase font-sans text-xs font-bold tracking-wide">Width (X)</span>
               <span className="text-orange-400 font-bold">{activeFile.dimensions.width.toFixed(2)}m</span>
             </div>
             <div className="flex items-center gap-1.5 pl-4">
-              <span className="text-gray-300 uppercase font-sans text-[10px] font-bold tracking-wide">Length (Z)</span>
+              <span className="text-gray-300 uppercase font-sans text-xs font-bold tracking-wide">Length (Z)</span>
               <span className="text-orange-400 font-bold">{activeFile.dimensions.depth.toFixed(2)}m</span>
             </div>
             <div className="flex items-center gap-1.5 pl-4">
-              <span className="text-gray-300 uppercase font-sans text-[10px] font-bold tracking-wide">Height (Y)</span>
+              <span className="text-gray-300 uppercase font-sans text-xs font-bold tracking-wide">Height (Y)</span>
               <span className="text-amber-400 font-bold">{activeFile.dimensions.height.toFixed(2)}m</span>
             </div>
           </div>
 
-          <div className="pointer-events-auto bg-[#0B2240]/95 backdrop-blur-md px-3 py-2 rounded border border-blue-900/35 flex items-center text-gray-300 font-mono text-[10px] shadow-sm">
+          <div className="pointer-events-auto bg-[#0B2240]/95 backdrop-blur-md px-3 py-2 rounded border border-blue-900/35 flex items-center text-gray-300 font-mono text-xs shadow-sm">
             {activeFile.trianglesCount ? (
               <span>▲ {activeFile.trianglesCount.toLocaleString()} Triangles</span>
             ) : (

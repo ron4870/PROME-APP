@@ -549,10 +549,10 @@ export default function PEDImageExtractorApp() {
               <Compass className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight">3D Model Image Extractor</h1>
-              <p className="text-sm text-slate-500 font-medium mt-0.5 flex items-center gap-2">
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight">3D Model Image Extractor</h1>
+              <p className="text-base text-slate-500 font-medium mt-0.5 flex items-center gap-2">
                 PROME Geotechnical & GIS Engineering
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">v2.4</span>
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">v2.4</span>
               </p>
             </div>
           </div>
@@ -567,9 +567,9 @@ export default function PEDImageExtractorApp() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <Database className="w-4.5 h-4.5 text-orange-500" />
-                <h3 className="text-xs font-bold text-[#0B2240] uppercase tracking-wider">Extraction Queue</h3>
+                <h3 className="text-sm font-bold text-[#0B2240] uppercase tracking-wider">Extraction Queue</h3>
               </div>
-              <span className="text-[10px] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded font-bold uppercase transition">
+              <span className="text-xs font-mono text-slate-400 bg-gray-50 px-2 py-0.5 rounded font-bold uppercase transition">
                 {queue.length} files loaded
               </span>
             </div>
@@ -625,7 +625,7 @@ export default function PEDImageExtractorApp() {
 
         {/* BOTTOM FULL-WIDTH: Image Extraction Launcher Dashboard */}
         <div className="lg:col-span-12 mt-2 pb-6" id="image-extraction-launcher-dashboard">
-          <div className="panel-3d p-6 flex flex-col xl:flex-row items-center justify-between gap-8 transition-all duration-300 relative overflow-hidden">
+          <div className="panel-3d p-6 flex flex-col xl:flex-row bg-[#0B2240] text-white shadow-2xl items-center justify-between gap-8 transition-all duration-300 relative overflow-hidden">
             
             {/* Left branding */}
             <div className="flex items-center gap-4 xl:w-1/4">
@@ -633,45 +633,45 @@ export default function PEDImageExtractorApp() {
                 <Play className="w-6 h-6 text-orange-500 fill-orange-500" />
               </div>
               <div>
-                <h3 className="text-[13px] font-black text-[#0B2240] uppercase tracking-wider">Raster Generation</h3>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Deployment System</p>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Raster Generation</h3>
+                <p className="text-xs text-slate-300 font-bold uppercase tracking-wider mt-0.5">Deployment System</p>
               </div>
             </div>
 
             {/* Center Info Grid */}
             <div className="flex-1 w-full flex items-center justify-center">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
-                <div className="inset-panel-3d p-3 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Queue</span>
-                  <span className="text-lg font-black text-[#0B2240]">{queue.length} <span className="text-xs text-gray-400 font-medium tracking-normal">models</span></span>
+                <div className="bg-[#112D52] border border-slate-700/50 rounded-xl shadow-inner p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs text-slate-300 font-bold uppercase tracking-wider mb-1">Queue</span>
+                  <span className="text-lg font-black text-white">{queue.length} <span className="text-xs text-slate-400 font-medium tracking-normal">models</span></span>
                 </div>
-                <div className="inset-panel-3d p-3 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Resolution</span>
-                  <span className="text-sm font-black text-orange-600">{renderingSettings.resolutionWidth}<span className="text-gray-400 mx-0.5 font-normal">x</span>{renderingSettings.resolutionHeight}</span>
+                <div className="bg-[#112D52] border border-slate-700/50 rounded-xl shadow-inner p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs text-slate-300 font-bold uppercase tracking-wider mb-1">Resolution</span>
+                  <span className="text-sm font-black text-orange-600">{renderingSettings.resolutionWidth}<span className="text-slate-400 mx-0.5 font-normal">x</span>{renderingSettings.resolutionHeight}</span>
                 </div>
-                <div className="inset-panel-3d p-3 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Grid Target</span>
-                  <span className="text-xs font-black text-[#0B2240]">{geoSettings.coordinateSystem === 'WGS84_UTM' ? `UTM ${geoSettings.utmZone || 36}${geoSettings.utmHemisphere || 'N'}` : 'Custom'}</span>
+                <div className="bg-[#112D52] border border-slate-700/50 rounded-xl shadow-inner p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs text-slate-300 font-bold uppercase tracking-wider mb-1">Grid Target</span>
+                  <span className="text-xs font-black text-white">{geoSettings.coordinateSystem === 'WGS84_UTM' ? `UTM ${geoSettings.utmZone || 36}${geoSettings.utmHemisphere || 'N'}` : 'Custom'}</span>
                 </div>
-                <div className="inset-panel-3d p-3 flex flex-col items-center justify-center text-center bg-orange-50/50">
-                  <span className="text-[10px] text-orange-600/70 font-bold uppercase tracking-wider mb-1">Destination</span>
-                  <span className="text-[10px] font-black text-orange-700 truncate w-full px-2" title={selectedDirName ? selectedDirName : 'Bulk ZIP Archive'}>{selectedDirName ? `Dir: ${selectedDirName}` : 'Bulk ZIP Archive'}</span>
+                <div className="bg-[#112D52] border border-slate-700/50 rounded-xl shadow-inner p-3 flex flex-col items-center justify-center text-center bg-[#15345E] border-orange-500/30 border">
+                  <span className="text-xs text-orange-300 font-bold uppercase tracking-wider mb-1">Destination</span>
+                  <span className="text-xs font-black text-orange-200 truncate w-full px-2" title={selectedDirName ? selectedDirName : 'Bulk ZIP Archive'}>{selectedDirName ? `Dir: ${selectedDirName}` : 'Bulk ZIP Archive'}</span>
                 </div>
               </div>
             </div>
 
             {/* Right Action Stack */}
-            <div className="xl:w-1/3 w-full flex flex-col items-end gap-3 border-t xl:border-t-0 xl:border-l border-slate-200/60 pt-4 xl:pt-0 xl:pl-8">
+            <div className="xl:w-1/3 w-full flex flex-col items-end gap-3 border-t xl:border-t-0 xl:border-l border-slate-700 pt-4 xl:pt-0 xl:pl-8">
               
               <div className="w-full flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1">Output Package Name</label>
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider ml-1">Output Package Name</label>
                 <div className="relative w-full">
-                  <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     value={outputFileName}
                     onChange={(e) => setOutputFileName(e.target.value)}
-                    className="w-full input-3d pl-9 pr-3 py-2.5 text-xs text-[#0B2240] font-bold focus:ring-2 focus:ring-orange-500/50 transition-all"
+                    className="w-full input-3d pl-9 pr-3 py-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-orange-500/50 transition-all"
                     placeholder="PROME_GIS_Georeferenced_Orthos"
                   />
                 </div>
@@ -681,11 +681,11 @@ export default function PEDImageExtractorApp() {
                 id="begin-image-extraction-btn"
                 onClick={handleProcessBatch}
                 disabled={isProcessing || queue.length === 0 || renderingSettings.views.filter(v => v.enabled).length === 0}
-                className={`w-full h-12 mt-1 px-6 text-[13px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2.5 ${
+                className={`w-full h-12 mt-1 px-6 text-sm font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2.5 ${
                   isProcessing
                     ? 'bg-orange-700 text-white cursor-not-allowed animate-pulse shadow-none rounded-xl'
                     : queue.length === 0
-                    ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed shadow-none rounded-xl'
+                    ? 'bg-gray-100 border border-gray-200 text-slate-400 cursor-not-allowed shadow-none rounded-xl'
                     : renderingSettings.views.filter(v => v.enabled).length === 0
                     ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed hover:bg-amber-200 rounded-xl'
                     : 'btn-3d-orange'
@@ -697,17 +697,17 @@ export default function PEDImageExtractorApp() {
 
               <div className="w-full flex justify-center mt-1">
                 {queue.length === 0 ? (
-                  <div className="flex items-center gap-1.5 text-red-500 font-bold text-[10px] uppercase font-sans">
+                  <div className="flex items-center gap-1.5 text-red-500 font-bold text-xs uppercase font-sans">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>Queue is empty</span>
                   </div>
                 ) : renderingSettings.views.filter(v => v.enabled).length === 0 ? (
-                  <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[10px] uppercase font-sans">
+                  <div className="flex items-center gap-1.5 text-amber-600 font-bold text-xs uppercase font-sans">
                     <AlertCircle className="w-3.5 h-3.5 animate-pulse" />
                     <span>No views enabled</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-green-600 font-bold text-[10px] uppercase font-sans">
+                  <div className="flex items-center gap-1.5 text-green-600 font-bold text-xs uppercase font-sans">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
                     <span>System Ready for Deployment</span>
                   </div>
@@ -726,14 +726,14 @@ export default function PEDImageExtractorApp() {
               <Sparkles className="w-4 h-4 text-orange-500 animate-spin" />
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-[10px] uppercase tracking-wider font-extrabold text-[#0B2240]">Raster Geoprocess Active</h4>
-              <p className="text-[10px] text-gray-500 truncate mt-0.5">{processingProgress.phase}</p>
+              <h4 className="text-xs uppercase tracking-wider font-extrabold text-white">Raster Geoprocess Active</h4>
+              <p className="text-xs text-slate-300 truncate mt-0.5">{processingProgress.phase}</p>
             </div>
           </div>
           
           <div className="flex flex-col gap-1">
-            <div className="flex justify-between items-center text-[10px] font-mono">
-              <span className="text-gray-400 font-bold uppercase">Overall progress</span>
+            <div className="flex justify-between items-center text-xs font-mono">
+              <span className="text-slate-400 font-bold uppercase">Overall progress</span>
               <span className="text-orange-600 font-bold">
                 {processingProgress.current} of {processingProgress.total} Files
               </span>

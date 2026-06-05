@@ -50,13 +50,13 @@ export default function ModelQueue({
   };
 
   return (
-    <div className="flex flex-col gap-4 animate-fadeIn" id="model-queue-container">
+    <div className="flex flex-col gap-5 animate-fadeIn" id="model-queue-container">
       {/* Drag and Drop Uploader Zone */}
       <div
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className="inset-panel-3d p-8 flex flex-col items-center justify-center cursor-pointer transition text-center group border-2 border-dashed hover:border-orange-500 hover:bg-orange-50/30"
+        className="inset-panel-3d p-10 flex flex-col items-center justify-center cursor-pointer transition text-center group border-2 border-dashed hover:border-orange-500 hover:bg-orange-50/30"
       >
         <input
           type="file"
@@ -69,7 +69,7 @@ export default function ModelQueue({
         <div className="w-12 h-12 rounded bg-orange-50 flex items-center justify-center border border-orange-200 group-hover:scale-105 transition mb-3">
           <UploadCloud className="w-5 h-5 text-orange-500" />
         </div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-[#0B2240] mb-1">Drag & Drop 3D Files</h4>
+        <h4 className="text-sm font-bold uppercase tracking-wider text-[#0B2240] mb-1">Drag & Drop 3D Files</h4>
         <p className="text-[11px] text-gray-400 max-w-xs leading-normal">
           Supports <span className="text-[#0B2240] font-bold">.gltf / .glb</span> models up to 150MB. Click to browse.
         </p>
@@ -77,13 +77,13 @@ export default function ModelQueue({
 
       {/* Batch list Section */}
       <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-widest px-1">
+        <div className="flex justify-between items-center text-sm text-gray-400 font-bold uppercase tracking-widest px-1">
           <span>Files in processing queue ({queue.length})</span>
           {queue.length > 0 && <span className="text-[9px] font-mono">Select to view</span>}
         </div>
 
         {queue.length === 0 ? (
-          <div className="inset-panel-3d p-8 text-center text-gray-500 text-xs">
+          <div className="inset-panel-3d p-10 text-center text-slate-600 text-sm">
             No files currently loaded. Select or drag some GLTF/GLB files to start GIS georeferenced ortho-extraction.
           </div>
         ) : (
@@ -111,20 +111,20 @@ export default function ModelQueue({
                 <div
                   key={item.id}
                   onClick={() => onSelectActive(item.id)}
-                  className={`card-3d p-4 transition cursor-pointer flex flex-col gap-2 relative group/item overflow-hidden ${
+                  className={`card-3d p-5 transition cursor-pointer flex flex-col gap-2 relative group/item overflow-hidden ${
                     isActive
                       ? 'border-orange-400 bg-orange-50/30'
                       : ''
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-5">
                     <div className="flex gap-2.5 items-center min-w-0">
                       <div className={`p-2 rounded ${isActive ? 'bg-[#0B2240] text-white' : 'bg-gray-100 text-gray-400 group-hover/item:text-gray-750'}`}>
                         <Box className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <h5 className="text-xs font-bold text-gray-800 truncate pr-4 leading-normal">{item.name}</h5>
-                        <div className="flex gap-2 items-center text-[10px] text-gray-400 mt-0.5 font-mono">
+                        <h5 className="text-sm font-bold text-gray-800 truncate pr-4 leading-normal">{item.name}</h5>
+                        <div className="flex gap-2 items-center text-sm text-gray-400 mt-0.5 font-mono">
                           <span>{formatSize(item.sizeBytes)}</span>
                           {item.dimensions && (
                             <>
@@ -155,17 +155,17 @@ export default function ModelQueue({
 
                   {/* Processing Status Badge */}
                   <div className="flex items-center justify-between mt-1 text-[11px]">
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border shadow-inner ${statusBg}`}>{statusText}</span>
+                    <span className={`px-2.5 py-1 rounded-md text-sm font-bold border shadow-inner ${statusBg}`}>{statusText}</span>
                     
                     {item.status === 'completed' && item.renderedViews && item.renderedViews.length > 0 && (
-                      <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-bold font-sans">
+                      <span className="text-sm text-emerald-600 flex items-center gap-1 font-bold font-sans">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                         {item.renderedViews.length} Orthos Exported
                       </span>
                     )}
 
                     {item.errorMessage && (
-                      <div className="flex items-center gap-1 text-[10px] text-red-500 font-bold">
+                      <div className="flex items-center gap-1 text-sm text-red-500 font-bold">
                         <AlertTriangle className="w-3 h-3" />
                         <span className="truncate max-w-[120px]" title={item.errorMessage}>
                           {item.errorMessage}
