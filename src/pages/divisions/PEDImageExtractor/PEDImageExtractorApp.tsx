@@ -540,7 +540,7 @@ export default function PEDImageExtractorApp() {
       
 
       {/* Primary Dashboard Workspace split */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-6">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 w-full pt-6">
 
         {/* Premium Page Header */}
         <div className="lg:col-span-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
