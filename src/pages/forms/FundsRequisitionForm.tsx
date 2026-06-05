@@ -209,7 +209,7 @@ export default function FundsRequisitionForm() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid black', paddingBottom: '10px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <img src="/prome.png" alt="PROME Logo" style={{ height: '60px' }} />
+                <img src="/prome.png" alt="PROME Logo" style={{ height: '48px' }} />
               </div>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                 {uniqueId ? (
