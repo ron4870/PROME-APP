@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Compass, Layers, ChevronRight, Map, Signpost, Waves } from 'lucide-react';
+import { Compass, Layers, ChevronRight, Map, Signpost, Waves, Box } from 'lucide-react';
 import { useState } from 'react';
 
 const AppButton = ({ title, description, icon, onClick, colorStart, colorEnd, shadowColor }: any) => {
@@ -135,7 +135,13 @@ export default function PEDRoadsHighways() {
               colorStart="#4f46e5" colorEnd="#312e81" shadowColor="#1e1b4b"
             />
 
-
+            <AppButton 
+              title="3D Model Image Extractor" 
+              description="Extract high-resolution textured map tiles and georeference files from 3D GLB/GLTF models." 
+              icon={<Box size={24} />} 
+              onClick={() => window.open('/ImageExtractorGLB/index.html', '_blank')} 
+              colorStart="#ea580c" colorEnd="#7c2d12" shadowColor="#431407"
+            />
 
             <AppButton 
               title="Pavement Designer" 
