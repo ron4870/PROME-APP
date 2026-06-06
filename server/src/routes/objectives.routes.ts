@@ -161,4 +161,40 @@ router.post('/:id/measurements', authenticateToken, async (req: any, res) => {
   }
 });
 
+// Delete an objective
+router.delete('/:id', authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const objective = await prisma.qualityObjective.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!objective) {
+      return res.status(404).json({ message: 'Objective not found' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true }
+    });
+    
+    const isAdministrator = user?.role?.name === 'Administrator' || user?.role?.name === 'Admin' || user?.role?.name === 'Super Admin';
+
+    if (objective.ownerId !== userId && !isAdministrator) {
+      return res.status(403).json({ message: 'Forbidden. Only the owner or an administrator can delete this objective.' });
+    }
+
+    await prisma.qualityObjective.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ success: true, message: 'Objective deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete objective:', error);
+    res.status(500).json({ message: 'Failed to delete objective' });
+  }
+});
+
 export default router;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Target, Activity, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Search, Plus, Target, Activity, CheckCircle2, TrendingUp, Trash2 } from 'lucide-react';
 
 interface QualityObjective {
   id: number;
@@ -58,6 +58,28 @@ const ObjectivesDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this objective?")) return;
+    
+    try {
+      const response = await fetch(`/api/objectives/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        setObjectives(objectives.filter(o => o.id !== id));
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to delete objective');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to delete objective');
     }
   };
 
@@ -155,6 +177,7 @@ const ObjectivesDashboard: React.FC = () => {
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Owner</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Target Date</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.875rem' }}>
@@ -214,6 +237,15 @@ const ObjectivesDashboard: React.FC = () => {
                         }}>
                           {obj.status}
                         </span>
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                        <button 
+                          onClick={(e) => handleDelete(obj.id, e)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}
+                          title="Delete Objective"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </td>
                     </tr>
                   );
