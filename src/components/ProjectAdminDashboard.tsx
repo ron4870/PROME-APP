@@ -4,7 +4,7 @@ import { Shield, Plus, Save, UserPlus, CheckCircle, AlertTriangle } from 'lucide
 interface ProjectAdminDashboardProps {
   project: any;
   onAssignUser: (userId: string, role: string) => void;
-  onUpdatePermissions: (updates: { role: string; module: string; accessLevel: string }[]) => void;
+  onUpdatePermissions: (updates: { userId: string; module: string; accessLevel: string }[]) => void;
 }
 
 export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ project, onAssignUser, onUpdatePermissions }) => {
@@ -12,7 +12,7 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
   const [selectedRole, setSelectedRole] = useState('Project Staff');
   
   // Local state for permissions matrix
-  const [permissions, setPermissions] = useState<any[]>(project?.rolePermissions || []);
+  const [permissions, setPermissions] = useState<any[]>(project?.userPermissions || []);
   const [hasChanges, setHasChanges] = useState(false);
 
   const availableRoles = [
@@ -43,13 +43,13 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
     }
   };
 
-  const handlePermissionChange = (role: string, mod: string, accessLevel: string) => {
-    const existingIndex = permissions.findIndex(p => p.role === role && p.module === mod);
+  const handlePermissionChange = (userId: string, mod: string, accessLevel: string) => {
+    const existingIndex = permissions.findIndex(p => p.userId.toString() === userId.toString() && p.module === mod);
     let newPerms = [...permissions];
     if (existingIndex >= 0) {
       newPerms[existingIndex] = { ...newPerms[existingIndex], accessLevel };
     } else {
-      newPerms.push({ role, module: mod, accessLevel });
+      newPerms.push({ userId, module: mod, accessLevel });
     }
     setPermissions(newPerms);
     setHasChanges(true);
@@ -60,8 +60,8 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
     setHasChanges(false);
   };
 
-  const getPermission = (role: string, mod: string) => {
-    return permissions.find(p => p.role === role && p.module === mod)?.accessLevel || 'None';
+  const getPermission = (userId: string, mod: string) => {
+    return permissions.find(p => p.userId.toString() === userId.toString() && p.module === mod)?.accessLevel || 'None';
   };
 
   return (
@@ -127,7 +127,7 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', color: '#1e293b' }}>
-            <Shield size={20} color="#10b981" /> Role Permissions Matrix
+            <Shield size={20} color="#10b981" /> User Permissions Matrix
           </h3>
           <button 
             className={`btn ${hasChanges ? 'btn-primary' : 'btn-secondary'}`} 
@@ -148,8 +148,11 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
               <th style={{ padding: '1rem', textAlign: 'left', minWidth: '150px' }}>Module</th>
-              {availableRoles.map(role => (
-                <th key={role} style={{ padding: '1rem', textAlign: 'center', minWidth: '110px', fontWeight: 600 }}>{role}</th>
+              {(project?.members || []).map((m: any) => (
+                <th key={m.userId} style={{ padding: '1rem', textAlign: 'center', minWidth: '110px', fontWeight: 600 }}>
+                  {m.user?.name || m.name} <br/>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8' }}>{m.role}</span>
+                </th>
               ))}
             </tr>
           </thead>
@@ -157,18 +160,18 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
             {modules.map(mod => (
               <tr key={mod} style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: '#334155' }}>{mod}</td>
-                {availableRoles.map(role => {
-                  const val = getPermission(role, mod);
+                {(project?.members || []).map((m: any) => {
+                  const val = getPermission(m.userId || m.user?.id, mod);
                   let bgColor = '#ffffff';
                   if (val === 'Edit') bgColor = '#dcfce7';
                   if (val === 'Read') bgColor = '#e0f2fe';
                   if (val === 'None') bgColor = '#fee2e2';
 
                   return (
-                    <td key={role} style={{ padding: '0.5rem', textAlign: 'center' }}>
+                    <td key={m.userId} style={{ padding: '0.5rem', textAlign: 'center' }}>
                       <select 
                         value={val}
-                        onChange={(e) => handlePermissionChange(role, mod, e.target.value)}
+                        onChange={(e) => handlePermissionChange(m.userId || m.user?.id, mod, e.target.value)}
                         style={{ 
                           width: '100%', 
                           padding: '0.35rem', 

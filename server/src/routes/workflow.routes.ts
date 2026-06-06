@@ -18,7 +18,7 @@ const checkAuth = (req: Request, res: Response, next: express.NextFunction) => {
  */
 router.get('/inbox', checkAuth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
 
     const pendingSteps = await prisma.workflowStep.findMany({
       where: {
@@ -51,7 +51,7 @@ router.get('/inbox', checkAuth, async (req: Request, res: Response) => {
  */
 router.get('/dashboard', checkAuth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
 
     const steps = await prisma.workflowStep.findMany({
       where: { assigneeId: userId },
@@ -91,7 +91,7 @@ router.get('/dashboard', checkAuth, async (req: Request, res: Response) => {
 router.post('/step/:id/action', checkAuth, async (req: Request, res: Response) => {
   try {
     const stepId = parseInt(req.params.id);
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
     const { action, comments } = req.body;
 
     if (!['Approved', 'Rejected'].includes(action)) {

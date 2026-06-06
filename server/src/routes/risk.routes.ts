@@ -191,7 +191,7 @@ router.post('/:id/capa', authenticateToken, async (req: Request, res: Response) 
           source: 'Daily Operation',
           severity: risk.residualScore && risk.residualScore > 12 ? 'High' : (risk.score && risk.score > 12 ? 'High' : 'Medium'),
           description: `This CAPA was automatically generated from a realized risk: ${risk.riskNumber}\n\nOriginal Risk Description:\n${risk.description}\n\nMitigation Plan that was in place:\n${risk.mitigationPlan || 'None'}`,
-          reportedById: (req as any).user.id,
+          reportedById: (req as any).user.userId,
           status: 'Reported'
         }
       });

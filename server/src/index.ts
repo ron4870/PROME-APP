@@ -76,14 +76,16 @@ app.use('/api/forms', formsRoutes);
 app.use('/api/manuals', manualsRoutes);
 
 // Setup Google Drive Auth
-const KEYFILEPATH = path.join(__dirname, '../google-credentials.json');
-const SCOPES = ['https://www.googleapis.com/auth/drive'];
-const googleAuth = new google.auth.GoogleAuth({
-  keyFile: KEYFILEPATH,
-  scopes: SCOPES,
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  'https://developers.google.com/oauthplayground'
+);
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN
 });
-const driveService = google.drive({ version: 'v3', auth: googleAuth });
-const GOOGLE_DRIVE_FOLDER_ID = '1pp_7kCKrmCk1pfDJn20XxZYpIzJGzk_c';
+const driveService = google.drive({ version: 'v3', auth: oauth2Client });
+const GOOGLE_DRIVE_FOLDER_ID = '1hxR57lA0wbI_LfVFdn-F1avgFeAgVwzz';
 
 // Setup file uploads using memory storage
 const upload = multer({ 

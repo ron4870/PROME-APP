@@ -11,7 +11,7 @@ interface Project {
   status: string;
   startDate: string;
   members?: any[];
-  rolePermissions?: any[];
+  userPermissions?: any[];
 }
 
 // Fallback Mock Data
@@ -141,10 +141,10 @@ export const ProjectWorkspace: React.FC = () => {
   
   const getModuleAccess = (moduleName: string) => {
     if (isAdministrator) return 'Edit';
-    if (!project?.rolePermissions) return 'Read'; // Fallback
+    if (!project?.userPermissions) return 'Read'; // Fallback
 
-    const rolePerm = project.rolePermissions.find((p: any) => p.role === currentUserMembership?.role && p.module === moduleName);
-    return rolePerm?.accessLevel || 'None';
+    const userPerm = project.userPermissions.find((p: any) => p.userId === user?.id && p.module === moduleName);
+    return userPerm?.accessLevel || 'None';
   };
 
   const canViewFinancials = getModuleAccess('Financials') !== 'None';

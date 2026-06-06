@@ -17,47 +17,47 @@ model Role {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
-  email               String     @unique
+  id                  Int            @id @default(autoincrement())
+  email               String         @unique
   passwordHash        String?
-  needsPasswordChange Boolean    @default(true)
+  needsPasswordChange Boolean        @default(true)
   name                String?
   phone               String?
   location            String?
   roleId              Int?
-  role                Role?      @relation(fields: [roleId], references: [id])
+  role                Role?          @relation(fields: [roleId], references: [id])
   division            String?
   bio                 String?
   skills              String?
   qualifications      String?
   documents           Document[]
   userDocuments       UserDocument[]
-  
+
   // ISO Document Relations
-  authoredDocs        IsoDocument[] @relation("DocAuthor")
-  reviewedDocs        IsoDocument[] @relation("DocReviewer")
-  approvedDocs        IsoDocument[] @relation("DocApprover")
-  isoDocHistory       IsoDocumentHistory[]
-  isoAcknowledgments  DocumentAcknowledgment[]
+  authoredDocs       IsoDocument[]            @relation("DocAuthor")
+  reviewedDocs       IsoDocument[]            @relation("DocReviewer")
+  approvedDocs       IsoDocument[]            @relation("DocApprover")
+  isoDocHistory      IsoDocumentHistory[]
+  isoAcknowledgments DocumentAcknowledgment[]
 
   // CAPA Relations
-  capasReported       CapaReport[] @relation("CapaReporter")
-  capasAssigned       CapaReport[] @relation("CapaAssignee")
+  capasReported CapaReport[] @relation("CapaReporter")
+  capasAssigned CapaReport[] @relation("CapaAssignee")
 
   // Audit Relations
-  auditsConducted     Audit[]      @relation("AuditsConducted")
-  auditsReceived      Audit[]      @relation("AuditsReceived")
+  auditsConducted Audit[] @relation("AuditsConducted")
+  auditsReceived  Audit[] @relation("AuditsReceived")
 
-  ownedRisks          Risk[]       @relation("RiskOwner")
+  ownedRisks Risk[] @relation("RiskOwner")
 
   // Management Review Relations
-  reviewsChaired      ManagementReview[] @relation("ReviewChairperson")
-  reviewsAttended     ManagementReview[] @relation("ReviewAttendees")
-  reviewActions       ReviewActionItem[] @relation("ReviewActionAssignee")
+  reviewsChaired  ManagementReview[] @relation("ReviewChairperson")
+  reviewsAttended ManagementReview[] @relation("ReviewAttendees")
+  reviewActions   ReviewActionItem[] @relation("ReviewActionAssignee")
 
   // Objectives & KPIs Relations
-  ownedObjectives     QualityObjective[] @relation("ObjectiveOwner")
-  kpiMeasurements     KpiMeasurement[]   @relation("MeasurementReporter")
+  ownedObjectives QualityObjective[] @relation("ObjectiveOwner")
+  kpiMeasurements KpiMeasurement[]   @relation("MeasurementReporter")
 
   // Training & Competence Relations
   trainingsConducted  TrainingRecord[]     @relation("InternalTrainer")
@@ -65,71 +65,72 @@ model User {
   evaluationsDone     TrainingAttendance[] @relation("CompetencyEvaluator")
 
   // Equipment Relations
-  ownedEquipment      Equipment[]          @relation("EquipmentOwner")
+  ownedEquipment Equipment[] @relation("EquipmentOwner")
 
   // Customer Feedback Relations
-  assignedFeedback    CustomerFeedback[]   @relation("FeedbackAssignee")
+  assignedFeedback CustomerFeedback[] @relation("FeedbackAssignee")
 
   // Supplier Relations
   supplierEvaluations SupplierEvaluation[] @relation("SupplierEvaluator")
 
   // Document Control Relations
-  ownedDocuments      MasterDocument[]     @relation("DocumentOwner")
-  approvedDocuments   MasterDocument[]     @relation("DocumentApprover")
+  ownedDocuments    MasterDocument[] @relation("DocumentOwner")
+  approvedDocuments MasterDocument[] @relation("DocumentApprover")
 
   // Compliance Relations
-  ownedRequirements   ComplianceRequirement[] @relation("ComplianceOwner")
-  complianceEvals     ComplianceEvaluation[]  @relation("ComplianceEvaluator")
+  ownedRequirements ComplianceRequirement[] @relation("ComplianceOwner")
+  complianceEvals   ComplianceEvaluation[]  @relation("ComplianceEvaluator")
 
   // Org Context Relations
-  orgIssues           OrganizationIssue[]     @relation("IssueOwner")
-  interestedParties   InterestedParty[]       @relation("PartyOwner")
+  orgIssues                   OrganizationIssue[]          @relation("IssueOwner")
+  interestedParties           InterestedParty[]            @relation("PartyOwner")
   // HSE Relations
-  reportedIncidents   HseIncident[]           @relation("IncidentReporter")
-  conductedDrills     EmergencyDrill[]        @relation("DrillConductor")
+  reportedIncidents           HseIncident[]                @relation("IncidentReporter")
+  conductedDrills             EmergencyDrill[]             @relation("DrillConductor")
   // NCR Relations
-  reportedNcrs        NonConformityReport[]   @relation("NcrReporter")
-  assignedNcrs        NonConformityReport[]   @relation("NcrAssignee")
+  reportedNcrs                NonConformityReport[]        @relation("NcrReporter")
+  assignedNcrs                NonConformityReport[]        @relation("NcrAssignee")
   // Project Relations
-  projectMemberships  ProjectMember[]
+  projectMemberships          ProjectMember[]
   // Project Module Relations
-  assignedProjectTasks ProjectTask[] @relation("TaskAssignee")
-  loggedFinancials     ProjectFinancial[] @relation("FinancialLogger")
-  resourceAllocations  ProjectResource[] @relation("ResourcePersonnel")
-  uploadedProjectDocs  ProjectDocument[] @relation("ProjectDocumentUploader")
+  assignedProjectTasks        ProjectTask[]                @relation("TaskAssignee")
+  loggedFinancials            ProjectFinancial[]           @relation("FinancialLogger")
+  resourceAllocations         ProjectResource[]            @relation("ResourcePersonnel")
+  uploadedProjectDocs         ProjectDocument[]            @relation("ProjectDocumentUploader")
   // Advanced Project Module Relations
   projectMaterialRequisitions ProjectMaterialRequisition[] @relation("ProjectRequisitioner")
-  projectDailyReports         ProjectDailyReport[] @relation("ProjectReportAuthor")
-  projectSnagsReported        ProjectSnag[] @relation("ProjectSnagReporter")
-  projectSnagsAssigned        ProjectSnag[] @relation("ProjectSnagAssignee")
+  projectDailyReports         ProjectDailyReport[]         @relation("ProjectReportAuthor")
+  projectSnagsReported        ProjectSnag[]                @relation("ProjectSnagReporter")
+  projectSnagsAssigned        ProjectSnag[]                @relation("ProjectSnagAssignee")
   // MOC Relations
-  requestedChanges    ChangeRequest[]         @relation("MocRequester")
-  reviewedChanges     ChangeRequest[]         @relation("MocReviewer")
-  approvedChanges     ChangeRequest[]         @relation("MocApprover")
+  requestedChanges            ChangeRequest[]              @relation("MocRequester")
+  reviewedChanges             ChangeRequest[]              @relation("MocReviewer")
+  approvedChanges             ChangeRequest[]              @relation("MocApprover")
   // Noticeboard Relations
-  notices             Notice[]                @relation("NoticeAuthor")
+  notices                     Notice[]                     @relation("NoticeAuthor")
   // Workflow Relations
-  workflowsInitiated  WorkflowInstance[]      @relation("WorkflowInitiator")
-  workflowStepsAssigned WorkflowStep[]      @relation("WorkflowAssignee")
+  workflowsInitiated          WorkflowInstance[]           @relation("WorkflowInitiator")
+  workflowStepsAssigned       WorkflowStep[]               @relation("WorkflowAssignee")
   // Form Relations
-  formSubmissions     FormSubmission[]        @relation("UserFormSubmissions")
+  formSubmissions             FormSubmission[]             @relation("UserFormSubmissions")
 
   // External Manuals
-  uploadedManuals     Manual[]
+  uploadedManuals Manual[]
 
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  ProjectUserPermission ProjectUserPermission[]
 }
 
 model Document {
-  id           Int      @id @default(autoincrement())
-  title        String
+  id            Int      @id @default(autoincrement())
+  title         String
   googleDriveId String   @unique
-  url          String
-  uploaderId   Int
-  uploader     User     @relation(fields: [uploaderId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  url           String
+  uploaderId    Int
+  uploader      User     @relation(fields: [uploaderId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model UserDocument {
@@ -142,687 +143,687 @@ model UserDocument {
 }
 
 model IsoDocument {
-  id              Int      @id @default(autoincrement())
-  documentNumber  String   @unique
-  title           String
-  category        String
-  
-  revision        String   @default("1.0")
-  status          String   @default("DRAFT")
-  
-  format          String   @default("legacy") // "legacy" (PDF) or "native" (Rich Text)
-  content         String?  @db.Text
-  fileUrl         String?
-  workflows       WorkflowInstance[]
-  
-  authorId        Int
-  reviewerId      Int?
-  approverId      Int?
-  
-  effectiveDate   DateTime?
-  nextReviewDate  DateTime?
-  
-  author          User     @relation("DocAuthor", fields: [authorId], references: [id])
-  reviewer        User?    @relation("DocReviewer", fields: [reviewerId], references: [id])
-  approver        User?    @relation("DocApprover", fields: [approverId], references: [id])
-  
-  publishedAt     DateTime?
-  
+  id             Int    @id @default(autoincrement())
+  documentNumber String @unique
+  title          String
+  category       String
+
+  revision String @default("1.0")
+  status   String @default("DRAFT")
+
+  format    String             @default("legacy") // "legacy" (PDF) or "native" (Rich Text)
+  content   String?            @db.Text
+  fileUrl   String?
+  workflows WorkflowInstance[]
+
+  authorId   Int
+  reviewerId Int?
+  approverId Int?
+
+  effectiveDate  DateTime?
+  nextReviewDate DateTime?
+
+  author   User  @relation("DocAuthor", fields: [authorId], references: [id])
+  reviewer User? @relation("DocReviewer", fields: [reviewerId], references: [id])
+  approver User? @relation("DocApprover", fields: [approverId], references: [id])
+
+  publishedAt DateTime?
+
   history         IsoDocumentHistory[]
   acknowledgments DocumentAcknowledgment[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Manual {
-  id              Int      @id @default(autoincrement())
-  title           String
-  category        String   // "International Standards", "Design Manuals", "Reference Documents"
-  fileUrl         String   @db.Text
-  
-  uploadedById    Int
-  uploadedBy      User     @relation(fields: [uploadedById], references: [id])
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id       Int    @id @default(autoincrement())
+  title    String
+  category String // "International Standards", "Design Manuals", "Reference Documents"
+  fileUrl  String @db.Text
+
+  uploadedById Int
+  uploadedBy   User @relation(fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model IsoDocumentHistory {
-  id              Int      @id @default(autoincrement())
-  isoDocumentId   Int
-  revision        String
-  changeSummary   String
-  content         String?  @db.Text
-  status          String   @default("ARCHIVED")
-  updatedById     Int
-  updatedAt       DateTime @default(now())
-  
-  document        IsoDocument @relation(fields: [isoDocumentId], references: [id], onDelete: Cascade)
-  updatedBy       User        @relation(fields: [updatedById], references: [id])
+  id            Int      @id @default(autoincrement())
+  isoDocumentId Int
+  revision      String
+  changeSummary String
+  content       String?  @db.Text
+  status        String   @default("ARCHIVED")
+  updatedById   Int
+  updatedAt     DateTime @default(now())
+
+  document  IsoDocument @relation(fields: [isoDocumentId], references: [id], onDelete: Cascade)
+  updatedBy User        @relation(fields: [updatedById], references: [id])
 }
 
 model DocumentAcknowledgment {
-  id              Int      @id @default(autoincrement())
-  isoDocumentId   Int
-  userId          Int
-  acknowledgedAt  DateTime @default(now())
-  
-  document        IsoDocument @relation(fields: [isoDocumentId], references: [id], onDelete: Cascade)
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             Int      @id @default(autoincrement())
+  isoDocumentId  Int
+  userId         Int
+  acknowledgedAt DateTime @default(now())
+
+  document IsoDocument @relation(fields: [isoDocumentId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([isoDocumentId, userId])
 }
 
 model CapaReport {
-  id                    Int       @id @default(autoincrement())
-  reportNumber          String    @unique
-  title                 String
-  type                  String    // "Non-Conformance", "Opportunity for Improvement", "Safety Incident"
-  description           String    @db.Text
-  source                String    // "Internal Audit", "External Audit", "Client Complaint", "Daily Operation"
-  severity              String    // "Low", "Medium", "High", "Critical"
-  status                String    @default("Reported") // "Reported", "Under Investigation", "Action Pending", "Closed"
-  
-  reportedById          Int
-  assignedToId          Int?
-  
-  rootCause             String?   @db.Text
-  correction            String?   @db.Text // Immediate fix
-  correctiveAction      String?   @db.Text // Long term fix
-  
-  targetCompletionDate  DateTime?
-  closedDate            DateTime?
-  
-  reportedBy            User      @relation("CapaReporter", fields: [reportedById], references: [id])
-  assignedTo            User?     @relation("CapaAssignee", fields: [assignedToId], references: [id])
-  
-  auditFindings         AuditFinding[]
-  risks                 Risk[]
-  customerFeedback      CustomerFeedback[]
-  complianceEvals       ComplianceEvaluation[]
-  hseIncidents          HseIncident[]
-  emergencyDrills       EmergencyDrill[]
-  linkedNcrs            NonConformityReport[]
+  id           Int    @id @default(autoincrement())
+  reportNumber String @unique
+  title        String
+  type         String // "Non-Conformance", "Opportunity for Improvement", "Safety Incident"
+  description  String @db.Text
+  source       String // "Internal Audit", "External Audit", "Client Complaint", "Daily Operation"
+  severity     String // "Low", "Medium", "High", "Critical"
+  status       String @default("Reported") // "Reported", "Under Investigation", "Action Pending", "Closed"
 
-  projectId             Int?
-  project               Project?   @relation(fields: [projectId], references: [id])
+  reportedById Int
+  assignedToId Int?
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  rootCause        String? @db.Text
+  correction       String? @db.Text // Immediate fix
+  correctiveAction String? @db.Text // Long term fix
+
+  targetCompletionDate DateTime?
+  closedDate           DateTime?
+
+  reportedBy User  @relation("CapaReporter", fields: [reportedById], references: [id])
+  assignedTo User? @relation("CapaAssignee", fields: [assignedToId], references: [id])
+
+  auditFindings    AuditFinding[]
+  risks            Risk[]
+  customerFeedback CustomerFeedback[]
+  complianceEvals  ComplianceEvaluation[]
+  hseIncidents     HseIncident[]
+  emergencyDrills  EmergencyDrill[]
+  linkedNcrs       NonConformityReport[]
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ManagementReview {
-  id                    Int       @id @default(autoincrement())
-  meetingNumber         String    @unique
-  scheduledDate         DateTime?
-  conductedDate         DateTime?
-  status                String    @default("Scheduled") // "Scheduled", "Conducted", "Closed"
-  
-  chairpersonId         Int
-  chairperson           User      @relation("ReviewChairperson", fields: [chairpersonId], references: [id])
-  
-  attendees             User[]    @relation("ReviewAttendees")
-  
-  // High-level notes
-  auditResultsSummary   String?   @db.Text
-  capaSummary           String?   @db.Text
-  riskSummary           String?   @db.Text
-  generalNotes          String?   @db.Text
-  decisions             String?   @db.Text
-  
-  actionItems           ReviewActionItem[]
+  id            Int       @id @default(autoincrement())
+  meetingNumber String    @unique
+  scheduledDate DateTime?
+  conductedDate DateTime?
+  status        String    @default("Scheduled") // "Scheduled", "Conducted", "Closed"
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  chairpersonId Int
+  chairperson   User @relation("ReviewChairperson", fields: [chairpersonId], references: [id])
+
+  attendees User[] @relation("ReviewAttendees")
+
+  // High-level notes
+  auditResultsSummary String? @db.Text
+  capaSummary         String? @db.Text
+  riskSummary         String? @db.Text
+  generalNotes        String? @db.Text
+  decisions           String? @db.Text
+
+  actionItems ReviewActionItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ReviewActionItem {
-  id                    Int       @id @default(autoincrement())
-  reviewId              Int
-  review                ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  
-  description           String    @db.Text
-  assignedToId          Int?
-  assignedTo            User?     @relation("ReviewActionAssignee", fields: [assignedToId], references: [id])
-  
-  dueDate               DateTime?
-  status                String    @default("Open") // "Open", "In Progress", "Completed"
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id       Int              @id @default(autoincrement())
+  reviewId Int
+  review   ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  description  String @db.Text
+  assignedToId Int?
+  assignedTo   User?  @relation("ReviewActionAssignee", fields: [assignedToId], references: [id])
+
+  dueDate DateTime?
+  status  String    @default("Open") // "Open", "In Progress", "Completed"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Audit {
-  id              Int       @id @default(autoincrement())
-  auditNumber     String    @unique
-  title           String
-  type            String    // Internal, External, Management Review
-  scope           String    @db.Text
-  plannedDate     DateTime
-  executionDate   DateTime?
-  status          String    @default("Planned") // Planned, In Progress, Completed, Cancelled
-  
-  auditorId       Int?
-  auditor         User?     @relation("AuditsConducted", fields: [auditorId], references: [id])
-  
-  auditeeId       Int?
-  auditee         User?     @relation("AuditsReceived", fields: [auditeeId], references: [id])
-  
-  findings              AuditFinding[]
-  
-  projectId             Int?
-  project               Project?   @relation(fields: [projectId], references: [id])
+  id            Int       @id @default(autoincrement())
+  auditNumber   String    @unique
+  title         String
+  type          String // Internal, External, Management Review
+  scope         String    @db.Text
+  plannedDate   DateTime
+  executionDate DateTime?
+  status        String    @default("Planned") // Planned, In Progress, Completed, Cancelled
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  auditorId Int?
+  auditor   User? @relation("AuditsConducted", fields: [auditorId], references: [id])
+
+  auditeeId Int?
+  auditee   User? @relation("AuditsReceived", fields: [auditeeId], references: [id])
+
+  findings AuditFinding[]
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AuditFinding {
-  id              Int       @id @default(autoincrement())
-  findingNumber   String    @unique
-  auditId         Int
-  audit           Audit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  
-  description     String    @db.Text
-  type            String    // "Major NC", "Minor NC", "Observation", "OFI"
-  severity        String
-  status          String    @default("Open") // "Open", "Closed", "Escalated"
-  
-  capaId          Int?
-  capa            CapaReport? @relation(fields: [capaId], references: [id])
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id            Int    @id @default(autoincrement())
+  findingNumber String @unique
+  auditId       Int
+  audit         Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  description String @db.Text
+  type        String // "Major NC", "Minor NC", "Observation", "OFI"
+  severity    String
+  status      String @default("Open") // "Open", "Closed", "Escalated"
+
+  capaId Int?
+  capa   CapaReport? @relation(fields: [capaId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Risk {
-  id                    Int       @id @default(autoincrement())
-  riskNumber            String    @unique // e.g. PROME-RSK-2026-001 or PROME-OPP-2026-001
-  title                 String
-  type                  String    // "Risk", "Opportunity"
-  category              String    // "Operational", "Strategic", "Financial", "Compliance", "Project", "HSE"
-  description           String    @db.Text
-  status                String    @default("Identified") // "Identified", "Assessed", "Mitigated", "Closed", "Realized"
-  
-  ownerId               Int?
-  owner                 User?     @relation("RiskOwner", fields: [ownerId], references: [id])
-  
+  id          Int    @id @default(autoincrement())
+  riskNumber  String @unique // e.g. PROME-RSK-2026-001 or PROME-OPP-2026-001
+  title       String
+  type        String // "Risk", "Opportunity"
+  category    String // "Operational", "Strategic", "Financial", "Compliance", "Project", "HSE"
+  description String @db.Text
+  status      String @default("Identified") // "Identified", "Assessed", "Mitigated", "Closed", "Realized"
+
+  ownerId Int?
+  owner   User? @relation("RiskOwner", fields: [ownerId], references: [id])
+
   // Initial Assessment
-  likelihood            Int?      // 1 to 5
-  impact                Int?      // 1 to 5
-  score                 Int?      // likelihood * impact
-  
-  mitigationPlan        String?   @db.Text
-  actionDeadline        DateTime?
-  
+  likelihood Int? // 1 to 5
+  impact     Int? // 1 to 5
+  score      Int? // likelihood * impact
+
+  mitigationPlan String?   @db.Text
+  actionDeadline DateTime?
+
   // Residual Assessment
-  residualLikelihood    Int?      // 1 to 5
-  residualImpact        Int?      // 1 to 5
-  residualScore         Int?      // calculated
-  residualRiskLevel     String?
-  
-  projectId             Int?
-  project               Project?   @relation(fields: [projectId], references: [id])
-  
+  residualLikelihood Int? // 1 to 5
+  residualImpact     Int? // 1 to 5
+  residualScore      Int? // calculated
+  residualRiskLevel  String?
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+
   // Dates
-  identifiedDate        DateTime  @default(now())
-  nextReviewDate        DateTime?
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  identifiedDate DateTime  @default(now())
+  nextReviewDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Link to CAPA if a risk is Realized
-  capaId                Int?
-  capa                  CapaReport? @relation(fields: [capaId], references: [id])
+  capaId Int?
+  capa   CapaReport? @relation(fields: [capaId], references: [id])
 }
 
 model QualityObjective {
-  id                    Int       @id @default(autoincrement())
-  objectiveNumber       String    @unique
-  title                 String
-  description           String?   @db.Text
-  division              String?
-  
-  ownerId               Int
-  owner                 User      @relation("ObjectiveOwner", fields: [ownerId], references: [id])
-  
-  targetValue           Float
-  currentValue          Float     @default(0)
-  unit                  String    // e.g., "%", "Days", "Count"
-  
-  targetDate            DateTime?
-  status                String    @default("Active") // "Draft", "Active", "Achieved", "Off-Track", "Cancelled"
-  
-  measurements          KpiMeasurement[]
+  id              Int     @id @default(autoincrement())
+  objectiveNumber String  @unique
+  title           String
+  description     String? @db.Text
+  division        String?
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  ownerId Int
+  owner   User @relation("ObjectiveOwner", fields: [ownerId], references: [id])
+
+  targetValue  Float
+  currentValue Float  @default(0)
+  unit         String // e.g., "%", "Days", "Count"
+
+  targetDate DateTime?
+  status     String    @default("Active") // "Draft", "Active", "Achieved", "Off-Track", "Cancelled"
+
+  measurements KpiMeasurement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model KpiMeasurement {
-  id                    Int       @id @default(autoincrement())
-  objectiveId           Int
-  objective             QualityObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
-  
-  measuredDate          DateTime
-  value                 Float
-  notes                 String?   @db.Text
-  
-  measuredById          Int
-  measuredBy            User      @relation("MeasurementReporter", fields: [measuredById], references: [id])
-  
-  createdAt             DateTime  @default(now())
+  id          Int              @id @default(autoincrement())
+  objectiveId Int
+  objective   QualityObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  measuredDate DateTime
+  value        Float
+  notes        String?  @db.Text
+
+  measuredById Int
+  measuredBy   User @relation("MeasurementReporter", fields: [measuredById], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model TrainingRecord {
-  id                    Int       @id @default(autoincrement())
-  trainingNumber        String    @unique
-  title                 String
-  description           String?   @db.Text
-  
-  trainerName           String?   // For external trainers
-  internalTrainerId     Int?      // For internal trainers
-  internalTrainer       User?     @relation("InternalTrainer", fields: [internalTrainerId], references: [id])
-  
-  scheduledDate         DateTime?
-  completedDate         DateTime?
-  status                String    @default("Scheduled") // "Scheduled", "In Progress", "Completed", "Cancelled"
-  
-  attendees             TrainingAttendance[]
+  id             Int     @id @default(autoincrement())
+  trainingNumber String  @unique
+  title          String
+  description    String? @db.Text
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  trainerName       String? // For external trainers
+  internalTrainerId Int? // For internal trainers
+  internalTrainer   User?   @relation("InternalTrainer", fields: [internalTrainerId], references: [id])
+
+  scheduledDate DateTime?
+  completedDate DateTime?
+  status        String    @default("Scheduled") // "Scheduled", "In Progress", "Completed", "Cancelled"
+
+  attendees TrainingAttendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingAttendance {
-  id                    Int       @id @default(autoincrement())
-  
-  trainingId            Int
-  training              TrainingRecord @relation(fields: [trainingId], references: [id], onDelete: Cascade)
-  
-  attendeeId            Int
-  attendee              User      @relation("TrainingAttendee", fields: [attendeeId], references: [id])
-  
-  status                String    @default("Registered") // "Registered", "Attended", "Absent"
-  
+  id Int @id @default(autoincrement())
+
+  trainingId Int
+  training   TrainingRecord @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  attendeeId Int
+  attendee   User @relation("TrainingAttendee", fields: [attendeeId], references: [id])
+
+  status String @default("Registered") // "Registered", "Attended", "Absent"
+
   // Competence Evaluation (ISO 9001: 7.2.c)
-  competenceEval        String?   // "Pending", "Pass", "Fail", or comments
-  evaluationNotes       String?   @db.Text
-  
-  evaluatorId           Int?
-  evaluator             User?     @relation("CompetencyEvaluator", fields: [evaluatorId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  
+  competenceEval  String? // "Pending", "Pass", "Fail", or comments
+  evaluationNotes String? @db.Text
+
+  evaluatorId Int?
+  evaluator   User? @relation("CompetencyEvaluator", fields: [evaluatorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([trainingId, attendeeId])
 }
 
 model Equipment {
-  id                        Int       @id @default(autoincrement())
-  equipmentNumber           String    @unique
-  name                      String
-  model                     String?
-  serialNumber              String?
-  location                  String?
-  
-  status                    String    @default("Active") // "Active", "In Calibration", "Out of Service", "Decommissioned"
-  
+  id              Int     @id @default(autoincrement())
+  equipmentNumber String  @unique
+  name            String
+  model           String?
+  serialNumber    String?
+  location        String?
+
+  status String @default("Active") // "Active", "In Calibration", "Out of Service", "Decommissioned"
+
   calibrationRequired       Boolean   @default(true)
   lastCalibrationDate       DateTime?
   nextCalibrationDate       DateTime?
   calibrationIntervalMonths Int?
-  
-  ownerId                   Int?
-  owner                     User?     @relation("EquipmentOwner", fields: [ownerId], references: [id])
-  
-  calibrationRecords        CalibrationRecord[]
-  projectAllocations        ProjectResource[] @relation("ResourceEquipment")
-  projectLogs               ProjectEquipmentLog[] @relation("ProjectEquipmentLogItem")
 
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
+  ownerId Int?
+  owner   User? @relation("EquipmentOwner", fields: [ownerId], references: [id])
+
+  calibrationRecords CalibrationRecord[]
+  projectAllocations ProjectResource[]     @relation("ResourceEquipment")
+  projectLogs        ProjectEquipmentLog[] @relation("ProjectEquipmentLogItem")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CalibrationRecord {
-  id                    Int       @id @default(autoincrement())
-  
-  equipmentId           Int
-  equipment             Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  
-  calibrationDate       DateTime
-  performedBy           String    // Internal user name or external vendor
-  certificateNumber     String?
-  result                String    // "Pass", "Fail", "Adjusted"
-  notes                 String?   @db.Text
-  
-  createdAt             DateTime  @default(now())
+  id Int @id @default(autoincrement())
+
+  equipmentId Int
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  calibrationDate   DateTime
+  performedBy       String // Internal user name or external vendor
+  certificateNumber String?
+  result            String // "Pass", "Fail", "Adjusted"
+  notes             String?  @db.Text
+
+  createdAt DateTime @default(now())
 }
 
 model CustomerFeedback {
-  id                    Int       @id @default(autoincrement())
-  feedbackNumber        String    @unique
-  customerName          String
-  projectName           String?
-  
-  type                  String    // "Complaint", "Suggestion", "Compliment", "Survey"
-  dateReceived          DateTime  @default(now())
-  description           String    @db.Text
-  rating                Int?      // 1-5 for surveys
-  
-  status                String    @default("Open") // "Open", "Under Investigation", "Resolved", "Closed"
-  resolutionNotes       String?   @db.Text
-  
-  assignedToId          Int?
-  assignedTo            User?     @relation("FeedbackAssignee", fields: [assignedToId], references: [id])
-  
-  linkedCapaId          Int?
-  linkedCapa            CapaReport? @relation(fields: [linkedCapaId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id             Int     @id @default(autoincrement())
+  feedbackNumber String  @unique
+  customerName   String
+  projectName    String?
+
+  type         String // "Complaint", "Suggestion", "Compliment", "Survey"
+  dateReceived DateTime @default(now())
+  description  String   @db.Text
+  rating       Int? // 1-5 for surveys
+
+  status          String  @default("Open") // "Open", "Under Investigation", "Resolved", "Closed"
+  resolutionNotes String? @db.Text
+
+  assignedToId Int?
+  assignedTo   User? @relation("FeedbackAssignee", fields: [assignedToId], references: [id])
+
+  linkedCapaId Int?
+  linkedCapa   CapaReport? @relation(fields: [linkedCapaId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Supplier {
-  id                    Int       @id @default(autoincrement())
-  supplierNumber        String    @unique
-  name                  String
-  contactName           String?
-  email                 String?
-  phone                 String?
-  category              String?   // "Materials", "IT Services", "Consulting", "Logistics"
-  
-  status                String    @default("Approved") // "Approved", "Conditional", "Under Review", "Rejected"
-  approvalDate          DateTime?
-  nextEvaluationDate    DateTime?
-  notes                 String?   @db.Text
-  
+  id             Int     @id @default(autoincrement())
+  supplierNumber String  @unique
+  name           String
+  contactName    String?
+  email          String?
+  phone          String?
+  category       String? // "Materials", "IT Services", "Consulting", "Logistics"
+
+  status             String    @default("Approved") // "Approved", "Conditional", "Under Review", "Rejected"
+  approvalDate       DateTime?
+  nextEvaluationDate DateTime?
+  notes              String?   @db.Text
+
   evaluations           SupplierEvaluation[]
   projectSubcontractors ProjectSubcontractor[] @relation("ProjectSubcontractorSupplier")
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SupplierEvaluation {
-  id                    Int       @id @default(autoincrement())
-  
-  supplierId            Int
-  supplier              Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
-  evaluationDate        DateTime
-  
-  evaluatorId           Int?
-  evaluator             User?     @relation("SupplierEvaluator", fields: [evaluatorId], references: [id])
-  
-  qualityScore          Int       // 1-5
-  deliveryScore         Int       // 1-5
-  responsivenessScore   Int       // 1-5
-  overallScore          Decimal   @db.Decimal(3, 2)
-  
-  comments              String?   @db.Text
-  resultStatus          String    // "Approved", "Conditional", "Rejected"
-  
-  createdAt             DateTime  @default(now())
+  id Int @id @default(autoincrement())
+
+  supplierId Int
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  evaluationDate DateTime
+
+  evaluatorId Int?
+  evaluator   User? @relation("SupplierEvaluator", fields: [evaluatorId], references: [id])
+
+  qualityScore        Int // 1-5
+  deliveryScore       Int // 1-5
+  responsivenessScore Int // 1-5
+  overallScore        Decimal @db.Decimal(3, 2)
+
+  comments     String? @db.Text
+  resultStatus String // "Approved", "Conditional", "Rejected"
+
+  createdAt DateTime @default(now())
 }
 
 model MasterDocument {
-  id                    Int       @id @default(autoincrement())
-  documentNumber        String    @unique
-  title                 String
-  type                  String    // "SOP", "Policy", "Manual", "Form", "Work Instruction"
-  revision              String    @default("1.0")
-  status                String    @default("Draft") // "Draft", "Under Review", "Approved", "Obsolete"
-  
-  issueDate             DateTime?
-  nextReviewDate        DateTime?
-  
-  ownerId               Int?
-  owner                 User?     @relation("DocumentOwner", fields: [ownerId], references: [id])
-  
-  approvedById          Int?
-  approvedBy            User?     @relation("DocumentApprover", fields: [approvedById], references: [id])
-  
-  projectId             Int?
-  project               Project?   @relation(fields: [projectId], references: [id])
+  id             Int    @id @default(autoincrement())
+  documentNumber String @unique
+  title          String
+  type           String // "SOP", "Policy", "Manual", "Form", "Work Instruction"
+  revision       String @default("1.0")
+  status         String @default("Draft") // "Draft", "Under Review", "Approved", "Obsolete"
 
-  category              String?   // e.g. "Quality System Manuals", "Quality System Procedures", "Work Instructions"
-  division              String?   // e.g. "AFD", "PMBDO", "CMD", "BEED", "CPSD", "ALL"
-  retentionPeriod       String?   // e.g. "3 years"
+  issueDate      DateTime?
+  nextReviewDate DateTime?
 
-  fileUrl               String?   @db.Text
-  changeHistory         String?   @db.Text
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  ownerId Int?
+  owner   User? @relation("DocumentOwner", fields: [ownerId], references: [id])
+
+  approvedById Int?
+  approvedBy   User? @relation("DocumentApprover", fields: [approvedById], references: [id])
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  category        String? // e.g. "Quality System Manuals", "Quality System Procedures", "Work Instructions"
+  division        String? // e.g. "AFD", "PMBDO", "CMD", "BEED", "CPSD", "ALL"
+  retentionPeriod String? // e.g. "3 years"
+
+  fileUrl       String? @db.Text
+  changeHistory String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ComplianceRequirement {
-  id                    Int       @id @default(autoincrement())
-  requirementNumber     String    @unique
-  title                 String
-  description           String    @db.Text
-  issuingAuthority      String
-  applicableClauses     String?
-  
-  status                String    @default("Under Review") // "Compliant", "Non-Compliant", "Partial", "Under Review"
-  evaluationFrequency   String    // "Monthly", "Quarterly", "Bi-Annual", "Annual"
-  
-  lastEvaluationDate    DateTime?
-  nextEvaluationDate    DateTime?
-  
-  ownerId               Int?
-  owner                 User?     @relation("ComplianceOwner", fields: [ownerId], references: [id])
-  
-  evaluations           ComplianceEvaluation[]
+  id                Int     @id @default(autoincrement())
+  requirementNumber String  @unique
+  title             String
+  description       String  @db.Text
+  issuingAuthority  String
+  applicableClauses String?
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  status              String @default("Under Review") // "Compliant", "Non-Compliant", "Partial", "Under Review"
+  evaluationFrequency String // "Monthly", "Quarterly", "Bi-Annual", "Annual"
+
+  lastEvaluationDate DateTime?
+  nextEvaluationDate DateTime?
+
+  ownerId Int?
+  owner   User? @relation("ComplianceOwner", fields: [ownerId], references: [id])
+
+  evaluations ComplianceEvaluation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ComplianceEvaluation {
-  id                    Int       @id @default(autoincrement())
-  
-  requirementId         Int
-  requirement           ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  
-  evaluationDate        DateTime  @default(now())
-  
-  evaluatorId           Int?
-  evaluator             User?     @relation("ComplianceEvaluator", fields: [evaluatorId], references: [id])
-  
-  statusResult          String    // "Compliant", "Non-Compliant", "Partial"
-  findings              String    @db.Text
-  
-  linkedCapaId          Int?
-  linkedCapa            CapaReport? @relation(fields: [linkedCapaId], references: [id])
+  id Int @id @default(autoincrement())
 
-  createdAt             DateTime  @default(now())
+  requirementId Int
+  requirement   ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  evaluationDate DateTime @default(now())
+
+  evaluatorId Int?
+  evaluator   User? @relation("ComplianceEvaluator", fields: [evaluatorId], references: [id])
+
+  statusResult String // "Compliant", "Non-Compliant", "Partial"
+  findings     String @db.Text
+
+  linkedCapaId Int?
+  linkedCapa   CapaReport? @relation(fields: [linkedCapaId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model OrganizationIssue {
-  id                    Int       @id @default(autoincrement())
-  issueNumber           String    @unique
-  title                 String    @default("Untitled")
-  type                  String    // "Internal" or "External"
-  factor                String    // "Political", "Economic", "Social", "Technological", "Legal", "Environmental", "Other"
-  description           String    @db.Text
-  impact                String    // "Risk", "Opportunity", "Both"
-  status                String    @default("Active") // "Active", "Monitored", "Closed"
-  
-  ownerId               Int?
-  owner                 User?     @relation("IssueOwner", fields: [ownerId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id          Int    @id @default(autoincrement())
+  issueNumber String @unique
+  title       String @default("Untitled")
+  type        String // "Internal" or "External"
+  factor      String // "Political", "Economic", "Social", "Technological", "Legal", "Environmental", "Other"
+  description String @db.Text
+  impact      String // "Risk", "Opportunity", "Both"
+  status      String @default("Active") // "Active", "Monitored", "Closed"
+
+  ownerId Int?
+  owner   User? @relation("IssueOwner", fields: [ownerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model InterestedParty {
-  id                    Int       @id @default(autoincrement())
-  partyNumber           String    @unique
-  name                  String
-  type                  String    // "Internal" or "External"
-  needsAndExpectations  String    @db.Text
-  complianceObligation  Boolean   @default(false)
-  
-  status                String    @default("Active") // "Active", "Archived"
-  
-  ownerId               Int?
-  owner                 User?     @relation("PartyOwner", fields: [ownerId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   Int     @id @default(autoincrement())
+  partyNumber          String  @unique
+  name                 String
+  type                 String // "Internal" or "External"
+  needsAndExpectations String  @db.Text
+  complianceObligation Boolean @default(false)
+
+  status String @default("Active") // "Active", "Archived"
+
+  ownerId Int?
+  owner   User? @relation("PartyOwner", fields: [ownerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model HseIncident {
-  id                    Int       @id @default(autoincrement())
-  incidentNumber        String    @unique
-  type                  String    // "Near-Miss", "Injury", "Spill", "Property Damage", "Hazard Observation"
-  title                 String
-  description           String    @db.Text
-  location              String
-  incidentDate          DateTime  @default(now())
-  
-  severity              String    @default("Low") // "Low", "Medium", "High", "Critical"
-  status                String    @default("Reported") // "Reported", "Under Investigation", "Resolved", "Closed"
-  
-  immediateActionTaken  String?   @db.Text
-  investigationFindings String?   @db.Text
-  
-  reportedById          Int?
-  reportedBy            User?     @relation("IncidentReporter", fields: [reportedById], references: [id])
-  
-  linkedCapaId          Int?
-  linkedCapa            CapaReport? @relation(fields: [linkedCapaId], references: [id])
-  
-  projectId             Int?
-  project               Project?   @relation(fields: [projectId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id             Int      @id @default(autoincrement())
+  incidentNumber String   @unique
+  type           String // "Near-Miss", "Injury", "Spill", "Property Damage", "Hazard Observation"
+  title          String
+  description    String   @db.Text
+  location       String
+  incidentDate   DateTime @default(now())
+
+  severity String @default("Low") // "Low", "Medium", "High", "Critical"
+  status   String @default("Reported") // "Reported", "Under Investigation", "Resolved", "Closed"
+
+  immediateActionTaken  String? @db.Text
+  investigationFindings String? @db.Text
+
+  reportedById Int?
+  reportedBy   User? @relation("IncidentReporter", fields: [reportedById], references: [id])
+
+  linkedCapaId Int?
+  linkedCapa   CapaReport? @relation(fields: [linkedCapaId], references: [id])
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ChangeRequest {
-  id                    Int       @id @default(autoincrement())
-  mocNumber             String    @unique
-  title                 String
-  type                  String    // "Process", "Equipment", "Personnel", "Document", "Other"
-  description           String    @db.Text
-  reasonForChange       String    @db.Text
-  
-  status                String    @default("Draft") // "Draft", "Pending Review", "Approved", "Implemented", "Rejected"
-  proposedDate          DateTime?
-  
-  riskAssessment        String?   @db.Text
-  reviewerNotes         String?   @db.Text
-  approverNotes         String?   @db.Text
+  id              Int    @id @default(autoincrement())
+  mocNumber       String @unique
+  title           String
+  type            String // "Process", "Equipment", "Personnel", "Document", "Other"
+  description     String @db.Text
+  reasonForChange String @db.Text
 
-  requestedById         Int?
-  requestedBy           User?     @relation("MocRequester", fields: [requestedById], references: [id])
-  
-  reviewedById          Int?
-  reviewedBy            User?     @relation("MocReviewer", fields: [reviewedById], references: [id])
-  
-  approvedById          Int?
-  approvedBy            User?     @relation("MocApprover", fields: [approvedById], references: [id])
-  
-  workflows             WorkflowInstance[]
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  status       String    @default("Draft") // "Draft", "Pending Review", "Approved", "Implemented", "Rejected"
+  proposedDate DateTime?
+
+  riskAssessment String? @db.Text
+  reviewerNotes  String? @db.Text
+  approverNotes  String? @db.Text
+
+  requestedById Int?
+  requestedBy   User? @relation("MocRequester", fields: [requestedById], references: [id])
+
+  reviewedById Int?
+  reviewedBy   User? @relation("MocReviewer", fields: [reviewedById], references: [id])
+
+  approvedById Int?
+  approvedBy   User? @relation("MocApprover", fields: [approvedById], references: [id])
+
+  workflows WorkflowInstance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Notice {
-  id                    Int       @id @default(autoincrement())
-  title                 String
-  content               String    @db.Text
-  priority              String    @default("Info") // "Info", "Warning", "Urgent"
-  
-  authorId              Int
-  author                User      @relation("NoticeAuthor", fields: [authorId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id       Int    @id @default(autoincrement())
+  title    String
+  content  String @db.Text
+  priority String @default("Info") // "Info", "Warning", "Urgent"
+
+  authorId Int
+  author   User @relation("NoticeAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model EmergencyDrill {
-  id                    Int       @id @default(autoincrement())
-  drillNumber           String    @unique
-  type                  String    // e.g. "Fire Evacuation", "Medical Emergency", "Chemical Spill"
-  scenario              String    @db.Text
-  drillDate             DateTime
-  durationMinutes       Int
-  participantsCount     Int
-  findings              String?   @db.Text
-  status                String    @default("Planned") // "Planned", "Completed"
-  
-  conductedById         Int?
-  conductedBy           User?     @relation("DrillConductor", fields: [conductedById], references: [id])
-  
-  linkedCapaId          Int?
-  linkedCapa            CapaReport? @relation(fields: [linkedCapaId], references: [id])
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                Int      @id @default(autoincrement())
+  drillNumber       String   @unique
+  type              String // e.g. "Fire Evacuation", "Medical Emergency", "Chemical Spill"
+  scenario          String   @db.Text
+  drillDate         DateTime
+  durationMinutes   Int
+  participantsCount Int
+  findings          String?  @db.Text
+  status            String   @default("Planned") // "Planned", "Completed"
+
+  conductedById Int?
+  conductedBy   User? @relation("DrillConductor", fields: [conductedById], references: [id])
+
+  linkedCapaId Int?
+  linkedCapa   CapaReport? @relation(fields: [linkedCapaId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model NonConformityReport {
-  id                    Int       @id @default(autoincrement())
-  ncrNumber             String    @unique
-  title                 String
-  productOrService      String
-  quantityScope         String?
-  description           String    @db.Text
-  source                String    // "Incoming Inspection", "In-Process", "Final Inspection", "Customer Return"
-  severity              String    // "Minor", "Major", "Critical"
-  disposition           String?   // "Rework", "Scrap", "Accept As-Is", "Return to Supplier", "Regrade"
-  status                String    @default("Open") // "Open", "Dispositioned", "Closed"
-  
-  estimatedCost         Float?    // Financial impact of the NCR
-  
-  reportedById          Int
-  assignedToId          Int?
-  
-  reportedBy            User      @relation("NcrReporter", fields: [reportedById], references: [id])
-  assignedTo            User?     @relation("NcrAssignee", fields: [assignedToId], references: [id])
-  
-  linkedCapaId          Int?
-  linkedCapa            CapaReport? @relation(fields: [linkedCapaId], references: [id])
+  id               Int     @id @default(autoincrement())
+  ncrNumber        String  @unique
+  title            String
+  productOrService String
+  quantityScope    String?
+  description      String  @db.Text
+  source           String // "Incoming Inspection", "In-Process", "Final Inspection", "Customer Return"
+  severity         String // "Minor", "Major", "Critical"
+  disposition      String? // "Rework", "Scrap", "Accept As-Is", "Return to Supplier", "Regrade"
+  status           String  @default("Open") // "Open", "Dispositioned", "Closed"
 
-  projectId             Int?
-  project               Project?   @relation(fields: [projectId], references: [id])
+  estimatedCost Float? // Financial impact of the NCR
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  reportedById Int
+  assignedToId Int?
+
+  reportedBy User  @relation("NcrReporter", fields: [reportedById], references: [id])
+  assignedTo User? @relation("NcrAssignee", fields: [assignedToId], references: [id])
+
+  linkedCapaId Int?
+  linkedCapa   CapaReport? @relation(fields: [linkedCapaId], references: [id])
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Project {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
   client      String
-  description String?  @db.Text
-  status      String   @default("Planning") // Planning, Active, Completed, Suspended
+  description String?   @db.Text
+  status      String    @default("Planning") // Planning, Active, Completed, Suspended
   startDate   DateTime
   endDate     DateTime?
   budget      Float?
-  
-  members     ProjectMember[]
-  
+
+  members ProjectMember[]
+
   // IMS linkages
-  risks       Risk[]
-  capas       CapaReport[]
-  ncrs        NonConformityReport[]
-  hseIncidents HseIncident[]
-  audits      Audit[]
+  risks           Risk[]
+  capas           CapaReport[]
+  ncrs            NonConformityReport[]
+  hseIncidents    HseIncident[]
+  audits          Audit[]
   masterDocuments MasterDocument[]
-  
+
   // Core Project Modules
-  tasks       ProjectTask[]
-  financials  ProjectFinancial[]
-  resources   ProjectResource[]
-  documents   ProjectDocument[]
-  
+  tasks      ProjectTask[]
+  financials ProjectFinancial[]
+  resources  ProjectResource[]
+  documents  ProjectDocument[]
+
   // Advanced Modules
   materialRequisitions ProjectMaterialRequisition[]
   inventory            ProjectInventory[]
@@ -832,124 +833,125 @@ model Project {
   snags                ProjectSnag[]
   correspondence       ProjectCorrespondence[]
   equipmentLogs        ProjectEquipmentLog[]
-  
-  rolePermissions      ProjectRolePermission[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userPermissions ProjectUserPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model ProjectRolePermission {
-  id          Int      @id @default(autoincrement())
+model ProjectUserPermission {
+  id          Int    @id @default(autoincrement())
   projectId   Int
-  role        String   // "Project Manager", "Site Engineer", "Employer", etc.
-  module      String   // "Tasks", "Financials", "HSE", "Quality", etc.
-  accessLevel String   // "None", "Read", "Edit"
-  
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      Int
+  module      String // "Tasks", "Financials", "HSE", "Quality", etc.
+  accessLevel String // "None", "Read", "Edit"
 
-  @@unique([projectId, role, module])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId, module])
 }
 
 model ProjectMember {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  userId      Int
-  role        String   // Project Manager, Site Engineer, Viewer
-  
-  project     Project  @relation(fields: [projectId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  id        Int    @id @default(autoincrement())
+  projectId Int
+  userId    Int
+  role      String // Project Manager, Site Engineer, Viewer
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 
   @@unique([projectId, userId])
 }
 
 model ProjectTask {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   title       String
-  description String?  @db.Text
-  status      String   @default("Not Started") // "Not Started", "In Progress", "In Review", "Completed"
-  priority    String   @default("Medium") // "Low", "Medium", "High", "Critical"
-  
+  description String? @db.Text
+  status      String  @default("Not Started") // "Not Started", "In Progress", "In Review", "Completed"
+  priority    String  @default("Medium") // "Low", "Medium", "High", "Critical"
+
   assignedToId Int?
-  assignedTo   User?    @relation("TaskAssignee", fields: [assignedToId], references: [id])
-  
-  startDate   DateTime?
-  dueDate     DateTime?
+  assignedTo   User? @relation("TaskAssignee", fields: [assignedToId], references: [id])
+
+  startDate     DateTime?
+  dueDate       DateTime?
   completedDate DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectFinancial {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  type        String   // "Budget Allocation", "Expense", "Invoice"
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type        String // "Budget Allocation", "Expense", "Invoice"
   amount      Float
   date        DateTime
   description String   @db.Text
-  reference   String?  // e.g. Invoice Number, PO Number
+  reference   String? // e.g. Invoice Number, PO Number
   status      String   @default("Pending") // "Pending", "Approved", "Paid", "Rejected"
-  
-  loggedById  Int
-  loggedBy    User     @relation("FinancialLogger", fields: [loggedById], references: [id])
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  loggedById Int
+  loggedBy   User @relation("FinancialLogger", fields: [loggedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectResource {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  resourceType String  // "Personnel", "Equipment"
-  
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  resourceType String // "Personnel", "Equipment"
+
   // If Personnel
-  userId      Int?
-  user        User?    @relation("ResourcePersonnel", fields: [userId], references: [id])
-  role        String?  // Specific role for this allocation if different from project member
-  
+  userId Int?
+  user   User?   @relation("ResourcePersonnel", fields: [userId], references: [id])
+  role   String? // Specific role for this allocation if different from project member
+
   // If Equipment
   equipmentId Int?
   equipment   Equipment? @relation("ResourceEquipment", fields: [equipmentId], references: [id])
-  
-  startDate   DateTime
-  endDate     DateTime?
-  allocationPercentage Int @default(100) // % of time allocated
-  
-  notes       String?  @db.Text
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  startDate            DateTime
+  endDate              DateTime?
+  allocationPercentage Int       @default(100) // % of time allocated
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectDocument {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   documentNumber String @unique
-  title       String
-  type        String   // "Transmittal", "Submittal", "RFI", "Drawing", "Specification", "Report"
-  revision    String   @default("0")
-  status      String   @default("Draft") // "Draft", "Issued for Review", "Issued for Construction", "Approved", "Rejected"
-  
-  fileUrl     String?  @db.Text
-  workflows   WorkflowInstance[]
-  
+  title          String
+  type           String // "Transmittal", "Submittal", "RFI", "Drawing", "Specification", "Report"
+  revision       String @default("0")
+  status         String @default("Draft") // "Draft", "Issued for Review", "Issued for Construction", "Approved", "Rejected"
+
+  fileUrl   String?            @db.Text
+  workflows WorkflowInstance[]
+
   uploadedById Int
-  uploadedBy   User    @relation("ProjectDocumentUploader", fields: [uploadedById], references: [id])
-  
-  issueDate   DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  uploadedBy   User @relation("ProjectDocumentUploader", fields: [uploadedById], references: [id])
+
+  issueDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -958,191 +960,189 @@ model ProjectDocument {
 
 // 1. Procurement & Material Tracking
 model ProjectMaterialRequisition {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   itemDescription String   @db.Text
   quantity        Float
   unit            String
   requestedDate   DateTime
   requiredDate    DateTime
-  
-  status          String   @default("Pending Approval") // "Pending Approval", "Approved", "Ordered", "Delivered", "Rejected"
-  
-  requestedById   Int
-  requestedBy     User     @relation("ProjectRequisitioner", fields: [requestedById], references: [id])
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  status String @default("Pending Approval") // "Pending Approval", "Approved", "Ordered", "Delivered", "Rejected"
+
+  requestedById Int
+  requestedBy   User @relation("ProjectRequisitioner", fields: [requestedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectInventory {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  itemName        String
-  category        String   // e.g. "Concrete", "Steel", "Fuel", "Consumables"
-  quantity        Float
-  unit            String
-  minimumStock    Float?   // Alert threshold
-  
-  lastRestocked   DateTime?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  itemName     String
+  category     String // e.g. "Concrete", "Steel", "Fuel", "Consumables"
+  quantity     Float
+  unit         String
+  minimumStock Float? // Alert threshold
+
+  lastRestocked DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 2. Daily Progress Reports (Site Diaries)
 model ProjectDailyReport {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  date            DateTime
-  weatherMorning  String?
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  date             DateTime
+  weatherMorning   String?
   weatherAfternoon String?
-  
-  activeManpower  Int      @default(0)
-  activeEquipment Int      @default(0)
-  
-  activities      String   @db.Text
-  issuesOrDelays  String?  @db.Text
-  
-  reportedById    Int
-  reportedBy      User     @relation("ProjectReportAuthor", fields: [reportedById], references: [id])
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime @updatedAt
+
+  activeManpower  Int @default(0)
+  activeEquipment Int @default(0)
+
+  activities     String  @db.Text
+  issuesOrDelays String? @db.Text
+
+  reportedById Int
+  reportedBy   User @relation("ProjectReportAuthor", fields: [reportedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([projectId, date])
 }
 
 // 3. Change & Variation Management (Claims)
 model ProjectVariationOrder {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  referenceNumber String   @unique
-  title           String
-  description     String   @db.Text
-  
-  costImpact      Float?
-  scheduleImpact  Int?     // Days
-  
-  status          String   @default("Proposed") // "Proposed", "Under Review", "Approved", "Rejected"
-  approvalDate    DateTime?
-  
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  referenceNumber String @unique
+  title           String
+  description     String @db.Text
+
+  costImpact     Float?
+  scheduleImpact Int? // Days
+
+  status       String    @default("Proposed") // "Proposed", "Under Review", "Approved", "Rejected"
+  approvalDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 4. Subcontractor Management
 model ProjectSubcontractor {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  supplierId      Int
-  supplier        Supplier @relation("ProjectSubcontractorSupplier", fields: [supplierId], references: [id])
-  
-  scopeOfWork     String   @db.Text
-  contractValue   Float
-  startDate       DateTime?
-  endDate         DateTime?
-  
-  status          String   @default("Active") // "Active", "Completed", "Terminated"
-  
-  paymentApps     ProjectSubcontractorPayment[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  supplierId Int
+  supplier   Supplier @relation("ProjectSubcontractorSupplier", fields: [supplierId], references: [id])
+
+  scopeOfWork   String    @db.Text
+  contractValue Float
+  startDate     DateTime?
+  endDate       DateTime?
+
+  status String @default("Active") // "Active", "Completed", "Terminated"
+
+  paymentApps ProjectSubcontractorPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectSubcontractorPayment {
-  id              Int      @id @default(autoincrement())
+  id              Int                  @id @default(autoincrement())
   subcontractorId Int
   subcontractor   ProjectSubcontractor @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
-  
+
   applicationNo   String
   amountRequested Float
   amountApproved  Float?
-  
-  status          String   @default("Submitted") // "Submitted", "Under Review", "Approved", "Paid"
-  submissionDate  DateTime
-  paymentDate     DateTime?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  status         String    @default("Submitted") // "Submitted", "Under Review", "Approved", "Paid"
+  submissionDate DateTime
+  paymentDate    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 5. Snagging / Punch Lists
 model ProjectSnag {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  location        String
-  description     String   @db.Text
-  severity        String   @default("Minor") // "Minor", "Major", "Critical"
-  status          String   @default("Open") // "Open", "Fixed", "Verified", "Closed"
-  
-  reportedById    Int
-  reportedBy      User     @relation("ProjectSnagReporter", fields: [reportedById], references: [id])
-  
-  assignedToId    Int?
-  assignedTo      User?    @relation("ProjectSnagAssignee", fields: [assignedToId], references: [id])
-  
-  dueDate         DateTime?
-  imageUrl        String?  @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  location    String
+  description String @db.Text
+  severity    String @default("Minor") // "Minor", "Major", "Critical"
+  status      String @default("Open") // "Open", "Fixed", "Verified", "Closed"
+
+  reportedById Int
+  reportedBy   User @relation("ProjectSnagReporter", fields: [reportedById], references: [id])
+
+  assignedToId Int?
+  assignedTo   User? @relation("ProjectSnagAssignee", fields: [assignedToId], references: [id])
+
+  dueDate  DateTime?
+  imageUrl String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 6. Formal Correspondence / Communications Log
 model ProjectCorrespondence {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  referenceNumber String   @unique
-  type            String   // "Incoming", "Outgoing"
-  category        String   // "Letter", "MoM", "Transmittal", "Notice"
-  
-  subject         String
-  sender          String
-  recipient       String
-  date            DateTime
-  
-  fileUrl         String?   // URL to Google Drive
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime @updatedAt
+  referenceNumber String @unique
+  type            String // "Incoming", "Outgoing"
+  category        String // "Letter", "MoM", "Transmittal", "Notice"
+
+  subject   String
+  sender    String
+  recipient String
+  date      DateTime
+
+  fileUrl String? // URL to Google Drive
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 7. Equipment/Plant Telemetry & Maintenance
 model ProjectEquipmentLog {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  equipmentId     Int
-  equipment       Equipment @relation("ProjectEquipmentLogItem", fields: [equipmentId], references: [id])
-  
-  date            DateTime
-  runningHours    Float
-  fuelConsumed    Float?
-  
-  breakdownStatus Boolean  @default(false)
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  equipmentId Int
+  equipment   Equipment @relation("ProjectEquipmentLogItem", fields: [equipmentId], references: [id])
+
+  date         DateTime
+  runningHours Float
+  fuelConsumed Float?
+
+  breakdownStatus  Boolean @default(false)
   breakdownDetails String? @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -1150,50 +1150,50 @@ model ProjectEquipmentLog {
 // ---------------------------------------------------------------------------
 
 model WorkflowInstance {
-  id                Int      @id @default(autoincrement())
-  title             String
-  status            String   @default("In Progress") // "In Progress", "Completed", "Rejected"
-  
+  id     Int    @id @default(autoincrement())
+  title  String
+  status String @default("In Progress") // "In Progress", "Completed", "Rejected"
+
   // Polymorphic-ish relations (only one is typically set)
-  isoDocumentId     Int?
-  isoDocument       IsoDocument? @relation(fields: [isoDocumentId], references: [id])
-  
+  isoDocumentId Int?
+  isoDocument   IsoDocument? @relation(fields: [isoDocumentId], references: [id])
+
   projectDocumentId Int?
   projectDocument   ProjectDocument? @relation(fields: [projectDocumentId], references: [id])
-  
-  changeRequestId   Int?
-  changeRequest     ChangeRequest? @relation(fields: [changeRequestId], references: [id])
-  
-  initiatorId       Int
-  initiator         User     @relation("WorkflowInitiator", fields: [initiatorId], references: [id])
-  
-  steps             WorkflowStep[]
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  changeRequestId Int?
+  changeRequest   ChangeRequest? @relation(fields: [changeRequestId], references: [id])
+
+  initiatorId Int
+  initiator   User @relation("WorkflowInitiator", fields: [initiatorId], references: [id])
+
+  steps WorkflowStep[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model WorkflowStep {
-  id                Int      @id @default(autoincrement())
-  workflowId        Int
-  workflow          WorkflowInstance @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  
-  stepOrder         Int
-  actionType        String   // "Review", "Approve", "Acknowledge"
-  status            String   @default("Pending") // "Pending", "Approved", "Rejected", "Overdue"
-  
-  assigneeId        Int
-  assignee          User     @relation("WorkflowAssignee", fields: [assigneeId], references: [id])
-  
-  comments          String?  @db.Text
-  
-  slaDeadline       DateTime
-  escalationSent    Boolean  @default(false)
-  
-  completedAt       DateTime?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id         Int              @id @default(autoincrement())
+  workflowId Int
+  workflow   WorkflowInstance @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  stepOrder  Int
+  actionType String // "Review", "Approve", "Acknowledge"
+  status     String @default("Pending") // "Pending", "Approved", "Rejected", "Overdue"
+
+  assigneeId Int
+  assignee   User @relation("WorkflowAssignee", fields: [assigneeId], references: [id])
+
+  comments String? @db.Text
+
+  slaDeadline    DateTime
+  escalationSent Boolean  @default(false)
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -1201,17 +1201,17 @@ model WorkflowStep {
 // ---------------------------------------------------------------------------
 
 model FormSubmission {
-  id              Int      @id @default(autoincrement())
-  uniqueId        String   @unique // e.g. "PROME-FRF-0001"
-  formType        String   // e.g. "FundsRequisition"
-  
-  submittedById   Int
-  submittedBy     User     @relation("UserFormSubmissions", fields: [submittedById], references: [id])
-  
-  data            Json     // Stores the specific form data dynamically
-  
-  status          String   @default("Submitted")
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id       Int    @id @default(autoincrement())
+  uniqueId String @unique // e.g. "PROME-FRF-0001"
+  formType String // e.g. "FundsRequisition"
+
+  submittedById Int
+  submittedBy   User @relation("UserFormSubmissions", fields: [submittedById], references: [id])
+
+  data Json // Stores the specific form data dynamically
+
+  status String @default("Submitted")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

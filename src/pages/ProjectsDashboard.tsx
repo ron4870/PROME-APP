@@ -36,10 +36,26 @@ export const ProjectsDashboard: React.FC = () => {
     description: ''
   });
   const [assignedUsers, setAssignedUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProjects();
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch users', err);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -241,8 +257,9 @@ export const ProjectsDashboard: React.FC = () => {
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                 <select className="form-input" style={{ flex: 2 }} id="assignUser">
                   <option value="">-- Select User --</option>
-                  <option value="1">Alice Engineer</option>
-                  <option value="2">Bob Technician</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  ))}
                 </select>
                 <select className="form-input" style={{ flex: 1 }} id="assignRole">
                   <option value="Project Manager">Project Manager</option>
@@ -261,7 +278,8 @@ export const ProjectsDashboard: React.FC = () => {
                     const userId = (document.getElementById('assignUser') as HTMLSelectElement).value;
                     const role = (document.getElementById('assignRole') as HTMLSelectElement).value;
                     if(userId && role) {
-                      setAssignedUsers([...assignedUsers, { userId, role, name: userId === '1' ? 'Alice Engineer' : 'Bob Technician' }]);
+                      const userObj = users.find(u => u.id.toString() === userId);
+                      setAssignedUsers([...assignedUsers, { userId, role, name: userObj?.name || 'Unknown' }]);
                     }
                   }}
                 >

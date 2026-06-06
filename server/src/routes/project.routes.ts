@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 router.get('/', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: (req as any).user!.id },
+      where: { id: (req as any).user!.userId },
       include: { role: true }
     });
 
@@ -30,7 +30,7 @@ router.get('/', authenticate, async (req, res) => {
       projects = await prisma.project.findMany({
         where: {
           members: {
-            some: { userId: (req as any).user!.id }
+            some: { userId: (req as any).user!.userId }
           }
         },
         include: {
@@ -59,7 +59,7 @@ router.get('/', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: (req as any).user!.id },
+      where: { id: (req as any).user!.userId },
       include: { role: true }
     });
     
@@ -110,16 +110,23 @@ router.post('/', authenticate, async (req, res) => {
         'Viewer': allModules.reduce((acc, mod) => ({ ...acc, [mod]: mod === 'Financials' ? 'None' : 'Read' }), {})
       };
 
-      for (const [roleName, modulePerms] of Object.entries(rolesDefaults)) {
-        for (const [mod, accessLevel] of Object.entries(modulePerms)) {
-          await tx.projectRolePermission.create({
-            data: {
-              projectId: newProject.id,
-              role: roleName,
-              module: mod,
-              accessLevel: accessLevel as string
-            }
-          });
+      // Assign user permissions based on their role
+      if (req.body.members) {
+        for (const member of req.body.members) {
+          const roleName = member.role;
+          const userId = parseInt(member.userId);
+          const modulePerms = rolesDefaults[roleName] || rolesDefaults['Viewer'];
+          
+          for (const [mod, accessLevel] of Object.entries(modulePerms)) {
+            await tx.projectUserPermission.create({
+              data: {
+                projectId: newProject.id,
+                userId: userId,
+                module: mod,
+                accessLevel: accessLevel as string
+              }
+            });
+          }
         }
       }
 
@@ -142,7 +149,7 @@ router.get('/:id', authenticate, checkProjectAccess(), async (req, res) => {
         members: {
           include: { user: { select: { id: true, name: true, email: true, division: true } } }
         },
-        rolePermissions: true
+        userPermissions: true
       }
     });
 
@@ -170,6 +177,34 @@ router.post('/:id/members', authenticate, checkProjectAccess(), async (req, res)
       create: { projectId, userId: parseInt(userId), role }
     });
     
+    // Also provision default user permissions based on this role
+    const allModules = [
+        'Dashboard', 'Tasks', 'Schedule', 'Documents', 'Procurement', 
+        'Daily Reports', 'Variations', 'Subcontractors', 'Punch List', 
+        'Correspondence', 'Equipment Logs', 'HSE', 'Quality', 'Risks', 
+        'Resources', 'Financials'
+    ];
+    const rolesDefaults: Record<string, Record<string, string>> = {
+      'Project Manager': allModules.reduce((acc, mod) => ({ ...acc, [mod]: 'Edit' }), {}),
+      'Lead Engineer': allModules.reduce((acc, mod) => ({ ...acc, [mod]: mod === 'Financials' ? 'Read' : 'Edit' }), {}),
+      'Site Engineer': allModules.reduce((acc, mod) => ({ ...acc, [mod]: ['Financials', 'Procurement', 'Variations'].includes(mod) ? 'None' : (['Tasks', 'Daily Reports', 'HSE', 'Quality', 'Punch List', 'Equipment Logs'].includes(mod) ? 'Edit' : 'Read') }), {}),
+      'Project Staff': allModules.reduce((acc, mod) => ({ ...acc, [mod]: ['Financials', 'Subcontractors'].includes(mod) ? 'None' : (['Tasks'].includes(mod) ? 'Edit' : 'Read') }), {}),
+      'Project Secretary': allModules.reduce((acc, mod) => ({ ...acc, [mod]: ['Documents', 'Correspondence', 'Team'].includes(mod) ? 'Edit' : (['Financials', 'Variations'].includes(mod) ? 'None' : 'Read') }), {}),
+      'Project Top Managment': allModules.reduce((acc, mod) => ({ ...acc, [mod]: 'Read' }), {}),
+      'Contractor': allModules.reduce((acc, mod) => ({ ...acc, [mod]: ['Tasks', 'Daily Reports'].includes(mod) ? 'Edit' : (['Financials', 'Procurement', 'Risk Register'].includes(mod) ? 'None' : 'Read') }), {}),
+      'Employer': allModules.reduce((acc, mod) => ({ ...acc, [mod]: 'Read' }), {}),
+      'Viewer': allModules.reduce((acc, mod) => ({ ...acc, [mod]: mod === 'Financials' ? 'None' : 'Read' }), {})
+    };
+    
+    const modulePerms = rolesDefaults[role] || rolesDefaults['Viewer'];
+    for (const [mod, accessLevel] of Object.entries(modulePerms)) {
+      await prisma.projectUserPermission.upsert({
+        where: { projectId_userId_module: { projectId, userId: parseInt(userId), module: mod } },
+        update: {}, // Don't override existing permissions if they exist
+        create: { projectId, userId: parseInt(userId), module: mod, accessLevel: accessLevel as string }
+      });
+    }
+
     res.json(member);
   } catch (error) {
     console.error('Error assigning member:', error);
@@ -177,7 +212,7 @@ router.post('/:id/members', authenticate, checkProjectAccess(), async (req, res)
   }
 });
 
-// Update Role Permissions Matrix
+// Update User Permissions Matrix
 router.put('/:id/permissions', authenticate, checkProjectAccess(), async (req, res) => {
   try {
     const { permissions } = req.body;
@@ -185,17 +220,17 @@ router.put('/:id/permissions', authenticate, checkProjectAccess(), async (req, r
 
     // Needs to be Administrator or Project Manager
     const membership = (req as any).projectMembership;
-    const user = await prisma.user.findUnique({ where: { id: (req as any).user!.id }, include: { role: true } });
+    const user = await prisma.user.findUnique({ where: { id: (req as any).user!.userId }, include: { role: true } });
     if (user?.role?.name !== 'Administrator' && membership?.role !== 'Project Manager') {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
     await prisma.$transaction(async (tx) => {
       for (const p of permissions) {
-        await tx.projectRolePermission.upsert({
-          where: { projectId_role_module: { projectId, role: p.role, module: p.module } },
+        await tx.projectUserPermission.upsert({
+          where: { projectId_userId_module: { projectId, userId: parseInt(p.userId), module: p.module } },
           update: { accessLevel: p.accessLevel },
-          create: { projectId, role: p.role, module: p.module, accessLevel: p.accessLevel }
+          create: { projectId, userId: parseInt(p.userId), module: p.module, accessLevel: p.accessLevel }
         });
       }
     });
@@ -256,7 +291,7 @@ router.get('/:id/resources', authenticate, checkProjectAccess(), async (req, res
 router.get('/:id/financials', authenticate, checkProjectAccess(), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: (req as any).user!.id },
+      where: { id: (req as any).user!.userId },
       include: { role: true }
     });
 

@@ -21,7 +21,7 @@ export const checkProjectAccess = (requiredRole?: string) => {
 
       // Allow Global Admins to bypass
       const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
+        where: { id: req.user.userId },
         include: { role: true }
       });
       
@@ -34,7 +34,7 @@ export const checkProjectAccess = (requiredRole?: string) => {
         where: {
           projectId_userId: {
             projectId: projectId,
-            userId: req.user.id
+            userId: req.user.userId
           }
         }
       });

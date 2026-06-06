@@ -72,7 +72,7 @@ router.post('/', authenticateToken, async (req, res) => {
         source,
         severity,
         estimatedCost: estimatedCost ? parseFloat(estimatedCost) : null,
-        reportedById: reportedById ? parseInt(reportedById) : (req as any).user.id,
+        reportedById: reportedById ? parseInt(reportedById) : (req as any).user.userId,
       }
     });
     
