@@ -220,10 +220,32 @@ router.post('/:id/capa', authenticateToken, async (req: Request, res: Response) 
 });
 
 // Delete risk
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: any, res: Response) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const risk = await prisma.risk.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!risk) {
+      return res.status(404).json({ message: 'Risk not found' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true }
+    });
+    
+    const isAdministrator = user?.role?.name === 'Administrator' || user?.role?.name === 'Admin' || user?.role?.name === 'Super Admin';
+
+    if (risk.ownerId !== userId && !isAdministrator) {
+      return res.status(403).json({ message: 'Forbidden. Only the owner or an administrator can delete this risk.' });
+    }
+
     await prisma.risk.delete({
-      where: { id: parseInt(req.params.id) }
+      where: { id: parseInt(id) }
     });
     res.json({ message: 'Risk deleted successfully' });
   } catch (error) {

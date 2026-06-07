@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, AlertTriangle, Target, Printer } from 'lucide-react';
+import { Search, AlertTriangle, Target, Printer, Trash2 } from 'lucide-react';
 
 interface Risk {
   id: number;
@@ -66,6 +66,28 @@ const RiskDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this risk/opportunity?")) return;
+    
+    try {
+      const response = await fetch(`/api/risks/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        setRisks(risks.filter(r => r.id !== id));
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to delete risk');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to delete risk');
     }
   };
 
@@ -180,6 +202,7 @@ const RiskDashboard: React.FC = () => {
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Initial Score</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Residual</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.875rem' }}>
@@ -252,6 +275,15 @@ const RiskDashboard: React.FC = () => {
                       }}>
                         {risk.status}
                       </span>
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                      <button 
+                        onClick={(e) => handleDelete(risk.id, e)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}
+                        title="Delete Risk/Opportunity"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </td>
                   </tr>
                 ))}
