@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Plus, Search, Building2, Users, Calendar, ArrowRight, X } from 'lucide-react';
+import { Briefcase, Plus, Search, Building2, Users, Calendar, ArrowRight, X, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Project {
@@ -98,6 +98,28 @@ export const ProjectsDashboard: React.FC = () => {
       setIsModalOpen(false);
     }
   };
+
+  const handleDeleteProject = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone and will delete all associated data.")) return;
+    
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        setProjects(projects.filter(p => p.id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.message || 'Failed to delete project');
+      }
+    } catch (err) {
+      console.error('Failed to delete project', err);
+      alert('Failed to delete project');
+    }
+  };
   
   const filteredProjects = projects.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -166,8 +188,9 @@ export const ProjectsDashboard: React.FC = () => {
             >
               <div style={{ padding: '1.5rem', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', lineHeight: 1.3 }}>{project.name}</h3>
-                  <span style={{ 
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', lineHeight: 1.3, flex: 1, paddingRight: '1rem' }}>{project.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ 
                     fontSize: '0.75rem', 
                     padding: '0.25rem 0.5rem', 
                     borderRadius: '999px', 
@@ -177,6 +200,20 @@ export const ProjectsDashboard: React.FC = () => {
                   }}>
                     {project.status}
                   </span>
+                    {hasPermission('admin_panel') && (
+                      <button 
+                        onClick={(e) => handleDeleteProject(project.id, e)}
+                        style={{ 
+                          background: 'none', border: 'none', cursor: 'pointer', 
+                          color: '#ef4444', padding: '4px', marginLeft: '0.5rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                        title="Delete Project"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                </div>
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.875rem', marginBottom: '0.5rem' }}>

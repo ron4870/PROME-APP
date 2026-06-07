@@ -164,6 +164,39 @@ router.get('/:id', authenticate, checkProjectAccess(), async (req, res) => {
   }
 });
 
+// Delete a project (Admin only)
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: (req as any).user!.userId },
+      include: { role: true }
+    });
+    
+    if (user?.role?.name !== 'Administrator') {
+      return res.status(403).json({ message: 'Forbidden: Only Administrators can delete projects' });
+    }
+
+    const projectId = parseInt(req.params.id);
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId }
+    });
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    await prisma.project.delete({
+      where: { id: projectId }
+    });
+
+    res.json({ success: true, message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Assign Member to Project
 router.post('/:id/members', authenticate, checkProjectAccess(), async (req, res) => {
   try {
