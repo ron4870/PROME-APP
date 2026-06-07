@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, CalendarRange, BarChartHorizontal } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
@@ -407,6 +407,30 @@ export const ProjectWorkspace: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Schedule & Meetings</h2>
                 <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Schedule Meeting', endpoint: `/api/projects/${id}/meetings`, fields: [{name: 'title', label: 'Meeting Title', type: 'text', required: true}, {name: 'date', label: 'Date', type: 'date', required: true}, {name: 'time', label: 'Time', type: 'text', required: true, placeholder: 'e.g. 10:00 AM'}, {name: 'locationOrLink', label: 'Location or Link', type: 'text', required: true}, {name: 'attendees', label: 'Attendees', type: 'text'}, {name: 'description', label: 'Agenda/Description', type: 'textarea'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Meeting</button>
+              </div>
+
+              {/* Gantt Chart & Milestones Tools */}
+              <div style={{ marginBottom: '2rem', backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BarChartHorizontal size={20} color="#0ea5e9" /> Gantt Chart & Milestones
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                  Configure milestones, manage task dependencies, and automatically generate your project's Gantt chart timeline.
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary" onClick={() => alert('Milestones feature coming soon!')}>
+                    <Flag size={16} style={{ marginRight: '8px' }}/> Add Milestone
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => alert('Dependencies feature coming soon!')}>
+                    <GitMerge size={16} style={{ marginRight: '8px' }}/> Manage Dependencies
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => alert('Timeline Configuration coming soon!')}>
+                    <CalendarRange size={16} style={{ marginRight: '8px' }}/> Configure Timeline
+                  </button>
+                  <button className="btn btn-primary" onClick={() => alert('Gantt Chart generation coming soon!')}>
+                    <BarChartHorizontal size={16} style={{ marginRight: '8px' }}/> Generate Gantt Chart
+                  </button>
+                </div>
               </div>
 
               {/* Upcoming Meetings List */}
