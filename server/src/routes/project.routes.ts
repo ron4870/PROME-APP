@@ -630,7 +630,7 @@ router.post('/:id/payment-invoices', authenticate, checkProjectAccess(), upload.
         projectId: parseInt(projectId),
         documentNumber: documentNumber || `INV-${Date.now()}`,
         title: title || file?.originalname || 'Untitled',
-        type: type || 'Invoice',
+        type: type || 'Consultant Invoice',
         revision: revision || '1.0',
         status: status || 'Submitted',
         issueDate: issueDate ? new Date(issueDate) : new Date(),
