@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Filter, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, Package, ClipboardList, FileDiff, HardHat, ListChecks, Mail, Truck, Shield } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Filter, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
+import { GenericModal, type ModalConfig } from '../components/GenericModal';
+import { useProjectModules } from '../hooks/useProjectModules';
 
 interface Project {
   id: number;
@@ -64,36 +66,6 @@ const MOCK_RISKS = [
 ];
 
 // ADVANCED ENGINEERING MODULES MOCK DATA
-const MOCK_PROCUREMENT = {
-  requisitions: [{ id: 1, item: 'Cement Type II', quantity: 500, unit: 'Bags', status: 'Approved', date: '2025-05-15' }],
-  inventory: [{ id: 1, item: 'Cement Type II', category: 'Materials', quantity: 1200, unit: 'Bags' }]
-};
-
-const MOCK_DAILY_REPORTS = [
-  { id: 1, date: '2025-05-30', weather: 'Sunny', manpower: 45, equipment: 12, summary: 'Poured concrete for foundation B.' }
-];
-
-const MOCK_VARIATIONS = [
-  { id: 1, ref: 'VO-001', title: 'Additional piling depth', status: 'Under Review', costImpact: 45000, scheduleImpact: 14 }
-];
-
-const MOCK_SUBCONTRACTORS = [
-  { id: 1, name: 'ElectroMech Ltd', scope: 'HVAC Installation', value: 250000, status: 'Active' }
-];
-
-const MOCK_SNAGS = [
-  { id: 1, location: 'Level 2, Room 4', desc: 'Touch up paint on window sill', severity: 'Minor', status: 'Open' }
-];
-
-const MOCK_CORRESPONDENCE = [
-  { id: 1, ref: 'LTR-042', type: 'Incoming', subject: 'Approval of VO-001', sender: 'Client Rep', date: '2025-05-28' },
-  { id: 2, ref: 'LTR-043', type: 'Outgoing', subject: 'Request for Information #12', sender: 'Project Manager', date: '2025-05-29' }
-];
-
-const MOCK_EQUIPMENT_LOGS = [
-  { id: 1, equipment: 'Excavator EX-02', runningHours: 8.5, fuelConsumed: 45, breakdown: false, date: '2025-05-30' },
-  { id: 2, equipment: 'Crane CR-01', runningHours: 4.0, fuelConsumed: 20, breakdown: true, date: '2025-05-30' }
-];
 
 // import { useProjectModules } from '../hooks/useProjectModules';
 
@@ -103,9 +75,11 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  // const { procurement, dailyReports, variations, subcontractors, snags, correspondence, equipmentLogs } = useProjectModules(id, token);
+  const { variations, snags, correspondence, fetchAll } = useProjectModules(id, token);
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
+  const [corrFilter, setCorrFilter] = useState('');
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -234,14 +208,11 @@ export const ProjectWorkspace: React.FC = () => {
               { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
               { id: 'tasks', label: 'Tasks', icon: <ListTodo size={18} /> },
               { id: 'schedule', label: 'Schedule', icon: <CalendarDays size={18} /> },
-              { id: 'documents', label: 'Documents', icon: <FileText size={18} /> },
-              { id: 'procurement', label: 'Procurement', icon: <Package size={18} /> },
-              { id: 'daily_reports', label: 'Daily Reports', icon: <ClipboardList size={18} /> },
-              { id: 'variations', label: 'Variations', icon: <FileDiff size={18} /> },
-              { id: 'subcontractors', label: 'Subcontractors', icon: <HardHat size={18} /> },
-              { id: 'punch_list', label: 'Punch List', icon: <ListChecks size={18} /> },
               { id: 'correspondence', label: 'Correspondence', icon: <Mail size={18} /> },
-              { id: 'equipment_logs', label: 'Equipment Logs', icon: <Truck size={18} /> },
+              { id: 'documents', label: 'Documents', icon: <FileText size={18} /> },
+              { id: 'daily_reports', label: 'Daily Reports', icon: <ClipboardList size={18} /> },
+              { id: 'variations', label: 'Variations & Claims', icon: <FileDiff size={18} /> },
+              { id: 'snag_list', label: 'Snag List', icon: <ListChecks size={18} /> },
               { id: 'hse', label: 'HSE', icon: <ShieldAlert size={18} /> },
               { id: 'quality', label: 'Quality', icon: <CheckCircle size={18} /> },
               { id: 'risks', label: 'Risk Register', icon: <AlertTriangle size={18} /> },
@@ -344,122 +315,44 @@ export const ProjectWorkspace: React.FC = () => {
             </div>
           )}
 
-          {/* PROCUREMENT TAB */}
-          {activeTab === 'procurement' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Procurement & Materials</h2>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn btn-outline"><Filter size={16} style={{ marginRight: '8px' }}/> Filter</button>
-                  <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Requisition</button>
-                </div>
-              </div>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#334155' }}>Material Requisitions (MR)</h3>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Item</th>
-                    <th style={{ padding: '1rem' }}>Qty</th>
-                    <th style={{ padding: '1rem' }}>Unit</th>
-                    <th style={{ padding: '1rem' }}>Status</th>
-                    <th style={{ padding: '1rem' }}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_PROCUREMENT.requisitions.map(req => (
-                    <tr key={req.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', fontWeight: 500 }}>{req.item}</td>
-                      <td style={{ padding: '1rem' }}>{req.quantity}</td>
-                      <td style={{ padding: '1rem' }}>{req.unit}</td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#dcfce7', color: '#166534' }}>{req.status}</span>
-                      </td>
-                      <td style={{ padding: '1rem' }}>{req.date}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#334155' }}>Site Inventory</h3>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Item</th>
-                    <th style={{ padding: '1rem' }}>Category</th>
-                    <th style={{ padding: '1rem' }}>Qty In Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_PROCUREMENT.inventory.map(inv => (
-                    <tr key={inv.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', fontWeight: 500 }}>{inv.item}</td>
-                      <td style={{ padding: '1rem' }}>{inv.category}</td>
-                      <td style={{ padding: '1rem', fontWeight: 600 }}>{inv.quantity} {inv.unit}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* DAILY REPORTS TAB */}
-          {activeTab === 'daily_reports' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Daily Progress Reports (Site Diary)</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> New Report</button>
-              </div>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Weather</th>
-                    <th style={{ padding: '1rem' }}>Manpower</th>
-                    <th style={{ padding: '1rem' }}>Equipment</th>
-                    <th style={{ padding: '1rem' }}>Summary</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_DAILY_REPORTS.map(rep => (
-                    <tr key={rep.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', fontWeight: 500 }}>{rep.date}</td>
-                      <td style={{ padding: '1rem' }}>{rep.weather}</td>
-                      <td style={{ padding: '1rem' }}>{rep.manpower}</td>
-                      <td style={{ padding: '1rem' }}>{rep.equipment}</td>
-                      <td style={{ padding: '1rem' }}>{rep.summary}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* VARIATIONS & CLAIMS TAB */}
+          {/* VARIATIONS TAB */}
           {activeTab === 'variations' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Variations & Claims</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Variation</button>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Variation/Claim', endpoint: `/api/projects/${id}/variations`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'title', label: 'Variation Title', type: 'text', required: true}, {name: 'costImpact', label: 'Cost Impact', type: 'number'}, {name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number'}, {name: 'file', label: 'Attach File', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Variation</button>
               </div>
               <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Date</th>
                     <th style={{ padding: '1rem' }}>Ref #</th>
                     <th style={{ padding: '1rem' }}>Title</th>
                     <th style={{ padding: '1rem' }}>Cost Impact</th>
                     <th style={{ padding: '1rem' }}>Schedule Impact</th>
                     <th style={{ padding: '1rem' }}>Status</th>
+                    <th style={{ padding: '1rem' }}>Attachment</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_VARIATIONS.map(vo => (
+                  {variations.map((vo: any) => (
                     <tr key={vo.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{vo.ref}</td>
+                      <td style={{ padding: '1rem' }}>{vo.date ? new Date(vo.date).toLocaleDateString() : ''}</td>
+                      <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{vo.referenceNumber || vo.voNumber || vo.ref}</td>
                       <td style={{ padding: '1rem', fontWeight: 500 }}>{vo.title}</td>
-                      <td style={{ padding: '1rem' }}>${vo.costImpact.toLocaleString()}</td>
-                      <td style={{ padding: '1rem' }}>+{vo.scheduleImpact} Days</td>
+                      <td style={{ padding: '1rem' }}>${vo.costImpact?.toLocaleString() || 0}</td>
+                      <td style={{ padding: '1rem' }}>+{vo.scheduleImpactDays || vo.scheduleImpact || 0} Days</td>
                       <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fef3c7', color: '#b45309' }}>{vo.status}</span>
+                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fef3c7', color: '#b45309' }}>{vo.status || 'Under Review'}</span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        {vo.fileUrl ? (
+                          <a href={vo.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
+                            <FileText size={16} /> View
+                          </a>
+                        ) : (
+                          <span style={{ color: '#94a3b8' }}>-</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -468,44 +361,12 @@ export const ProjectWorkspace: React.FC = () => {
             </div>
           )}
 
-          {/* SUBCONTRACTORS TAB */}
-          {activeTab === 'subcontractors' && (
+          {/* SNAG LIST TAB */}
+          {activeTab === 'snag_list' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Subcontractor Management</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Add Subcontractor</button>
-              </div>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Name</th>
-                    <th style={{ padding: '1rem' }}>Scope of Work</th>
-                    <th style={{ padding: '1rem' }}>Contract Value</th>
-                    <th style={{ padding: '1rem' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_SUBCONTRACTORS.map(sub => (
-                    <tr key={sub.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', fontWeight: 600 }}>{sub.name}</td>
-                      <td style={{ padding: '1rem' }}>{sub.scope}</td>
-                      <td style={{ padding: '1rem' }}>${sub.value.toLocaleString()}</td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#dcfce7', color: '#166534' }}>{sub.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* PUNCH LIST TAB */}
-          {activeTab === 'punch_list' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Punch List (Snags)</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Defect</button>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Snag List</h2>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Snag/Defect', endpoint: `/api/projects/${id}/snags`, fields: [{name: 'location', label: 'Location', type: 'text', required: true}, {name: 'description', label: 'Description', type: 'text', required: true}, {name: 'severity', label: 'Severity', type: 'select', options: ['Minor', 'Major', 'Critical'], required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Defect</button>
               </div>
               <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -517,13 +378,13 @@ export const ProjectWorkspace: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_SNAGS.map(snag => (
+                  {snags.map((snag: any) => (
                     <tr key={snag.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '1rem', fontWeight: 500 }}>{snag.location}</td>
-                      <td style={{ padding: '1rem' }}>{snag.desc}</td>
+                      <td style={{ padding: '1rem' }}>{snag.description || snag.desc}</td>
                       <td style={{ padding: '1rem' }}>{snag.severity}</td>
                       <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fee2e2', color: '#991b1b' }}>{snag.status}</span>
+                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fee2e2', color: '#991b1b' }}>{snag.status || 'Open'}</span>
                       </td>
                     </tr>
                   ))}
@@ -537,7 +398,10 @@ export const ProjectWorkspace: React.FC = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Formal Correspondence Log</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Add Log</button>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <input type="text" placeholder="Filter correspondence..." value={corrFilter} onChange={(e) => setCorrFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+                  <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Formal Correspondence', endpoint: `/api/projects/${id}/correspondence`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'type', label: 'Type (Incoming/Outgoing)', type: 'select', options: ['Incoming', 'Outgoing'], required: true}, {name: 'subject', label: 'Subject', type: 'text', required: true}, {name: 'sender', label: 'Sender', type: 'select', options: ['Client', 'Contractor', 'Consultant', 'Other'], required: true}, {name: 'recipient', label: 'Recipient', type: 'select', options: ['Client', 'Contractor', 'Consultant', 'Other'], required: true}, {name: 'file', label: 'Attach PDF', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Log</button>
+                </div>
               </div>
               <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -547,52 +411,37 @@ export const ProjectWorkspace: React.FC = () => {
                     <th style={{ padding: '1rem' }}>Type</th>
                     <th style={{ padding: '1rem' }}>Subject</th>
                     <th style={{ padding: '1rem' }}>Sender</th>
+                    <th style={{ padding: '1rem' }}>Recipient</th>
+                    <th style={{ padding: '1rem' }}>Attachment</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_CORRESPONDENCE.map(corr => (
+                  {correspondence.filter((corr: any) => {
+                    const q = corrFilter.toLowerCase();
+                    return (
+                      (corr.date && corr.date.toLowerCase().includes(q)) ||
+                      (corr.referenceNumber && corr.referenceNumber.toLowerCase().includes(q)) ||
+                      (corr.ref && corr.ref.toLowerCase().includes(q)) ||
+                      (corr.type && corr.type.toLowerCase().includes(q)) ||
+                      (corr.subject && corr.subject.toLowerCase().includes(q)) ||
+                      (corr.sender && corr.sender.toLowerCase().includes(q)) ||
+                      (corr.recipient && corr.recipient.toLowerCase().includes(q))
+                    );
+                  }).map((corr: any) => (
                     <tr key={corr.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem' }}>{corr.date}</td>
-                      <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{corr.ref}</td>
+                      <td style={{ padding: '1rem' }}>{corr.date ? new Date(corr.date).toLocaleDateString() : ''}</td>
+                      <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{corr.referenceNumber || corr.ref}</td>
                       <td style={{ padding: '1rem' }}>{corr.type}</td>
                       <td style={{ padding: '1rem' }}>{corr.subject}</td>
                       <td style={{ padding: '1rem' }}>{corr.sender}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* EQUIPMENT LOGS TAB */}
-          {activeTab === 'equipment_logs' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Plant & Equipment Telemetry</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Usage</button>
-              </div>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Equipment</th>
-                    <th style={{ padding: '1rem' }}>Running Hours</th>
-                    <th style={{ padding: '1rem' }}>Fuel (Liters)</th>
-                    <th style={{ padding: '1rem' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_EQUIPMENT_LOGS.map(log => (
-                    <tr key={log.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem' }}>{log.date}</td>
-                      <td style={{ padding: '1rem', fontWeight: 600 }}>{log.equipment}</td>
-                      <td style={{ padding: '1rem' }}>{log.runningHours} hrs</td>
-                      <td style={{ padding: '1rem' }}>{log.fuelConsumed} L</td>
+                      <td style={{ padding: '1rem' }}>{corr.recipient}</td>
                       <td style={{ padding: '1rem' }}>
-                        {log.breakdown ? (
-                          <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fee2e2', color: '#991b1b' }}>Breakdown</span>
+                        {corr.fileUrl ? (
+                          <a href={corr.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
+                            <FileText size={16} /> View
+                          </a>
                         ) : (
-                          <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#dcfce7', color: '#166534' }}>Operational</span>
+                          <span style={{ color: '#94a3b8' }}>-</span>
                         )}
                       </td>
                     </tr>
@@ -601,6 +450,8 @@ export const ProjectWorkspace: React.FC = () => {
               </table>
             </div>
           )}
+
+
 
         {/* DOCUMENTS TAB */}
         {activeTab === 'documents' && (
@@ -913,6 +764,13 @@ export const ProjectWorkspace: React.FC = () => {
 
         </div>
       </div>
+      <GenericModal 
+        isOpen={!!modalConfig}
+        onClose={() => setModalConfig(null)}
+        config={modalConfig}
+        token={token}
+        onSuccess={fetchAll}
+      />
     </div>
   );
 };

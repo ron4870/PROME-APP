@@ -75,23 +75,7 @@ app.use('/api/workflows', workflowRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/manuals', manualsRoutes);
 
-// Setup Google Drive Auth
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  'https://developers.google.com/oauthplayground'
-);
-oauth2Client.setCredentials({
-  refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-});
-const driveService = google.drive({ version: 'v3', auth: oauth2Client });
-const GOOGLE_DRIVE_FOLDER_ID = '1hxR57lA0wbI_LfVFdn-F1avgFeAgVwzz';
-
-// Setup file uploads using memory storage
-const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit
-});
+import { driveService, GOOGLE_DRIVE_FOLDER_ID, upload } from './services/drive.service';
 
 // Continue to serve existing local files for backward compatibility
 const uploadDir = path.join(__dirname, '../uploads');
@@ -753,62 +737,6 @@ app.post('/api/iso-documents/:id/acknowledge', async (req, res) => {
   }
 });
 
-// Upload Project Document to Google Drive
-app.post('/api/projects/:id/documents', upload.single('file'), async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    const { id: projectId } = req.params;
-    const { documentNumber, title, type, revision, status, issueDate } = req.body;
-    const file = req.file;
-    let fileUrl = null;
-
-    if (file) {
-      // Upload to Google Drive
-      const fileMetadata = { name: file.originalname, parents: [GOOGLE_DRIVE_FOLDER_ID] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
-        fileUrl = driveFile.data.webViewLink;
-      }
-    }
-
-    const newDoc = await prisma.projectDocument.create({
-      data: {
-        documentNumber: documentNumber || `DOC-${Date.now()}`,
-        title: title || file?.originalname || 'Untitled',
-        type: type || 'Drawing',
-        revision: revision || '0',
-        status: status || 'Draft',
-        issueDate: issueDate ? new Date(issueDate) : new Date(),
-        projectId: Number(projectId),
-        uploadedById: decoded.userId,
-        fileUrl,
-      }
-    });
-
-    res.status(201).json(newDoc);
-  } catch (error) {
-    console.error('Error creating Project Document:', error);
-    res.status(500).json({ error: 'Failed to create document' });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken as authenticate } from '../middleware/auth';
 import { checkProjectAccess } from '../middleware/projectAuth';
+import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateProjectFolder } from '../services/drive.service';
+import { Readable } from 'stream';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -132,6 +134,12 @@ router.post('/', authenticate, async (req, res) => {
 
       return newProject;
     });
+
+    try {
+        await getOrCreateProjectFolder(project.id, project.name, null);
+    } catch (e) {
+        console.error('Failed to create Google Drive folder for new project', e);
+    }
 
     res.status(201).json(project);
   } catch (error) {
@@ -492,4 +500,407 @@ router.get('/:id/equipment-logs', authenticate, checkProjectAccess(), async (req
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// NEW POST ROUTES FOR ALL MODULES
+// ---------------------------------------------------------------------------
+
+// POST Project Tasks
+router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, status, priority, assignedToId, dueDate, description } = req.body;
+    const newTask = await prisma.projectTask.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        title,
+        status: status || 'Pending',
+        priority: priority || 'Medium',
+        assignedToId: assignedToId ? parseInt(assignedToId) : undefined,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+        description
+      }
+    });
+    res.json(newTask);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Project Documents
+router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { documentNumber, title, type, revision, status, issueDate } = req.body;
+    const file = req.file;
+    let fileUrl = null;
+
+    if (file) {
+      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+
+      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+      const driveFile = await driveService.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink',
+        supportsAllDrives: true
+      });
+      const fileId = driveFile.data.id;
+      if (fileId) {
+        await driveService.permissions.create({
+          fileId: fileId,
+          requestBody: { role: 'reader', type: 'anyone' },
+          supportsAllDrives: true
+        });
+        fileUrl = driveFile.data.webViewLink;
+      }
+    }
+
+    const newDoc = await prisma.projectDocument.create({
+      data: {
+        projectId: parseInt(projectId),
+        documentNumber: documentNumber || `DOC-${Date.now()}`,
+        title: title || file?.originalname || 'Untitled',
+        type: type || 'General',
+        revision: revision || '1.0',
+        status: status || 'Draft',
+        issueDate: issueDate ? new Date(issueDate) : new Date(),
+        uploadedById: (req as any).user!.userId,
+        fileUrl,
+      }
+    });
+    res.json(newDoc);
+  } catch (error) {
+    console.error('Error in documents post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Project Resources
+router.post('/:id/resources', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { type, userId, equipmentId, role, allocation, startDate, endDate } = req.body;
+    const newRes = await prisma.projectResource.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        resourceType: type || 'Personnel',
+        userId: userId ? parseInt(userId) : undefined,
+        equipmentId: equipmentId ? parseInt(equipmentId) : undefined,
+        role,
+        allocationPercentage: allocation ? parseInt(allocation) : 100,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        endDate: endDate ? new Date(endDate) : undefined
+      }
+    });
+    res.json(newRes);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Project Financials
+router.post('/:id/financials', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { type, amount, date, description, status } = req.body;
+    const newFin = await prisma.projectFinancial.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        type,
+        amount: parseFloat(amount),
+        date: date ? new Date(date) : new Date(),
+        description,
+        status: status || 'Pending',
+        loggedById: (req as any).user!.userId
+      }
+    });
+    res.json(newFin);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST HSE Incidents
+router.post('/:id/hse', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, type, description, location, severity, incidentDate } = req.body;
+    const newInc = await prisma.hseIncident.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        incidentNumber: `INC-${Date.now()}`,
+        title,
+        type,
+        description,
+        location,
+        severity: severity || 'Low',
+        incidentDate: incidentDate ? new Date(incidentDate) : new Date(),
+        reportedById: (req as any).user!.userId
+      }
+    });
+    res.json(newInc);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Quality NCRs
+router.post('/:id/quality', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, productOrService, description, source, severity } = req.body;
+    const newNcr = await prisma.nonConformityReport.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        ncrNumber: `NCR-${Date.now()}`,
+        title,
+        productOrService: productOrService || 'General',
+        description,
+        source: source || 'In-Process',
+        severity: severity || 'Minor',
+        reportedById: (req as any).user!.userId
+      }
+    });
+    res.json(newNcr);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Risks
+router.post('/:id/risks', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, type, category, description, likelihood, impact } = req.body;
+    const newRisk = await prisma.risk.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        riskNumber: `RSK-${Date.now()}`,
+        title,
+        type: type || 'Risk',
+        category: category || 'Project',
+        description,
+        likelihood: parseInt(likelihood || '1'),
+        impact: parseInt(impact || '1'),
+        score: parseInt(likelihood || '1') * parseInt(impact || '1'),
+        ownerId: (req as any).user!.userId
+      }
+    });
+    res.json(newRisk);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Procurement Requisition
+router.post('/:id/procurement', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { itemName, quantity, unit, requestedDate, requiredDate } = req.body;
+    const newReq = await prisma.projectMaterialRequisition.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        itemDescription: itemName || 'N/A',
+        quantity: parseFloat(quantity),
+        unit,
+        requestedDate: requestedDate ? new Date(requestedDate) : new Date(),
+        requiredDate: requiredDate ? new Date(requiredDate) : new Date(),
+        status: 'Pending',
+        requestedById: (req as any).user!.userId
+      }
+    });
+    res.json(newReq);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Daily Report
+router.post('/:id/daily-reports', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { date, weatherCondition, manpowerCount, equipmentCount, summary } = req.body;
+    const newRep = await prisma.projectDailyReport.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        date: date ? new Date(date) : new Date(),
+        weatherMorning: weatherCondition,
+        activeManpower: parseInt(manpowerCount || '0'),
+        activeEquipment: parseInt(equipmentCount || '0'),
+        activities: summary || '',
+        reportedById: (req as any).user!.userId
+      }
+    });
+    res.json(newRep);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Variations
+router.post('/:id/variations', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { title, description, costImpact, scheduleImpactDays, date, referenceNumber } = req.body;
+    const file = req.file;
+    let fileUrl = null;
+
+    if (file) {
+      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+
+      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+      const driveFile = await driveService.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink',
+        supportsAllDrives: true
+      });
+      const fileId = driveFile.data.id;
+      if (fileId) {
+        await driveService.permissions.create({
+          fileId: fileId,
+          requestBody: { role: 'reader', type: 'anyone' },
+          supportsAllDrives: true
+        });
+        fileUrl = driveFile.data.webViewLink;
+      }
+    }
+
+    const newVar = await prisma.projectVariationOrder.create({
+      data: {
+        projectId: parseInt(projectId),
+        referenceNumber: referenceNumber || `VO-${Date.now()}`,
+        date: date ? new Date(date) : new Date(),
+        title,
+        description: description || '',
+        costImpact: costImpact ? parseFloat(costImpact) : 0,
+        scheduleImpact: scheduleImpactDays ? parseInt(scheduleImpactDays) : 0,
+        status: 'Proposed',
+        fileUrl
+      }
+    });
+    res.json(newVar);
+  } catch (error) {
+    console.error('Error in variations post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Subcontractors
+router.post('/:id/subcontractors', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { supplierId, scopeOfWork, contractValue, startDate, endDate } = req.body;
+    const newSub = await prisma.projectSubcontractor.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        supplierId: parseInt(supplierId), // Must exist in Supplier table
+        scopeOfWork,
+        contractValue: contractValue ? parseFloat(contractValue) : 0,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        endDate: endDate ? new Date(endDate) : undefined,
+        status: 'Active'
+      }
+    });
+    res.json(newSub);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Snags
+router.post('/:id/snags', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { location, description, severity, assignedToId } = req.body;
+    const newSnag = await prisma.projectSnag.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        location,
+        description,
+        severity: severity || 'Minor',
+        status: 'Open',
+        reportedById: (req as any).user!.userId,
+        assignedToId: assignedToId ? parseInt(assignedToId) : undefined
+      }
+    });
+    res.json(newSnag);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Correspondence
+router.post('/:id/correspondence', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { type, subject, sender, recipient, date, referenceNumber } = req.body;
+    const file = req.file;
+    let fileUrl = null;
+
+    if (file) {
+      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+
+      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+      const driveFile = await driveService.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink',
+        supportsAllDrives: true
+      });
+      const fileId = driveFile.data.id;
+      if (fileId) {
+        await driveService.permissions.create({
+          fileId: fileId,
+          requestBody: { role: 'reader', type: 'anyone' },
+          supportsAllDrives: true
+        });
+        fileUrl = driveFile.data.webViewLink;
+      }
+    }
+
+    const newCorr = await prisma.projectCorrespondence.create({
+      data: {
+        projectId: parseInt(projectId),
+        referenceNumber: referenceNumber || `CORR-${Date.now()}`,
+        type,
+        subject,
+        sender,
+        recipient,
+        date: date ? new Date(date) : new Date(),
+        category: 'Letter',
+        fileUrl
+      }
+    });
+    res.json(newCorr);
+  } catch (error) {
+    console.error('Error in correspondence post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Equipment Logs
+router.post('/:id/equipment-logs', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { equipmentId, date, runningHours, fuelConsumedLiters, breakdownStatus, notes } = req.body;
+    const newLog = await prisma.projectEquipmentLog.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        equipmentId: parseInt(equipmentId), // Must exist
+        date: date ? new Date(date) : new Date(),
+        runningHours: runningHours ? parseFloat(runningHours) : 0,
+        fuelConsumed: fuelConsumedLiters ? parseFloat(fuelConsumedLiters) : null,
+        breakdownStatus: breakdownStatus === 'true' || breakdownStatus === true
+      }
+    });
+    res.json(newLog);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 export default router;
+

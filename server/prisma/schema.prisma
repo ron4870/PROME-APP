@@ -807,6 +807,7 @@ model Project {
   startDate   DateTime
   endDate     DateTime?
   budget      Float?
+  driveFolderId String?
 
   members ProjectMember[]
 
@@ -1027,15 +1028,17 @@ model ProjectVariationOrder {
   projectId Int
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  referenceNumber String @unique
+  referenceNumber String
   title           String
   description     String @db.Text
+  date            DateTime @default(now())
 
   costImpact     Float?
   scheduleImpact Int? // Days
 
   status       String    @default("Proposed") // "Proposed", "Under Review", "Approved", "Rejected"
   approvalDate DateTime?
+  fileUrl      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
