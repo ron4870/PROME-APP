@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Filter, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
@@ -74,6 +74,7 @@ export const ProjectWorkspace: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
   const [corrFilter, setCorrFilter] = useState('');
+  const [docFilter, setDocFilter] = useState('');
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -452,8 +453,8 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Documents</h2>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn btn-secondary"><Filter size={16} style={{ marginRight: '8px' }}/> Filter</button>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <input type="text" placeholder="Filter documents..." value={docFilter} onChange={(e) => setDocFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
                 <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Document', endpoint: `/api/projects/${id}/documents`, fields: [{name: 'documentNumber', label: 'Document Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
               </div>
             </div>
@@ -470,7 +471,15 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {documents.map((doc: any) => (
+                {documents.filter((doc: any) => {
+                  const q = docFilter.toLowerCase();
+                  return (
+                    (doc.documentNumber && doc.documentNumber.toLowerCase().includes(q)) ||
+                    (doc.title && doc.title.toLowerCase().includes(q)) ||
+                    (doc.type && doc.type.toLowerCase().includes(q)) ||
+                    (doc.status && doc.status.toLowerCase().includes(q))
+                  );
+                }).map((doc: any) => (
                   <tr key={doc.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{doc.documentNumber}</td>
                     <td style={{ padding: '1rem', fontWeight: 500 }}>{doc.title}</td>
