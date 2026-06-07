@@ -12,6 +12,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
   const [procurement, setProcurement] = useState<{ requisitions: any[], inventory: any[] }>({ requisitions: [], inventory: [] });
   const [dailyReports, setDailyReports] = useState<any[]>([]);
   const [variations, setVariations] = useState<any[]>([]);
+  const [paymentInvoices, setPaymentInvoices] = useState<any[]>([]);
   const [subcontractors, setSubcontractors] = useState<any[]>([]);
   const [snags, setSnags] = useState<any[]>([]);
   const [correspondence, setCorrespondence] = useState<any[]>([]);
@@ -23,7 +24,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
       
       const [
         taskRes, docRes, resRes, finRes, hseRes, qualRes, riskRes,
-        procRes, dailyRes, varRes, subRes, snagRes, corrRes
+        procRes, dailyRes, varRes, invoiceRes, subRes, snagRes, corrRes
       ] = await Promise.all([
         fetch(`/api/projects/${projectId}/tasks`, { headers }),
         fetch(`/api/projects/${projectId}/documents`, { headers }),
@@ -35,6 +36,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
         fetch(`/api/projects/${projectId}/procurement`, { headers }),
         fetch(`/api/projects/${projectId}/daily-reports`, { headers }),
         fetch(`/api/projects/${projectId}/variations`, { headers }),
+        fetch(`/api/projects/${projectId}/payment-invoices`, { headers }),
         fetch(`/api/projects/${projectId}/subcontractors`, { headers }),
         fetch(`/api/projects/${projectId}/snags`, { headers }),
         fetch(`/api/projects/${projectId}/correspondence`, { headers }),
@@ -51,6 +53,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
       if (procRes.ok) setProcurement(await procRes.json());
       if (dailyRes.ok) setDailyReports(await dailyRes.json());
       if (varRes.ok) setVariations(await varRes.json());
+      if (invoiceRes.ok) setPaymentInvoices(await invoiceRes.json());
       if (subRes.ok) setSubcontractors(await subRes.json());
       if (snagRes.ok) setSnags(await snagRes.json());
       if (corrRes.ok) setCorrespondence(await corrRes.json());
@@ -65,6 +68,6 @@ export const useProjectModules = (projectId: string | undefined, token: string |
 
   return {
     tasks, documents, resources, financials, hse, quality, risks,
-    procurement, dailyReports, variations, subcontractors, snags, correspondence, fetchAll // expose this to allow refetching
+    procurement, dailyReports, variations, paymentInvoices, subcontractors, snags, correspondence, fetchAll // expose this to allow refetching
   };
 };

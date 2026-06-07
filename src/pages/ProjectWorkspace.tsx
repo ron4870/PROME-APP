@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
@@ -69,13 +69,14 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { variations, snags, correspondence, documents, dailyReports, fetchAll } = useProjectModules(id, token);
+  const { variations, snags, correspondence, documents, dailyReports, paymentInvoices, fetchAll } = useProjectModules(id, token);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
   const [corrFilter, setCorrFilter] = useState('');
   const [docFilter, setDocFilter] = useState('');
   const [dailyReportFilter, setDailyReportFilter] = useState('');
+  const [paymentInvoiceFilter, setPaymentInvoiceFilter] = useState('');
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +210,7 @@ export const ProjectWorkspace: React.FC = () => {
               { id: 'daily_reports', label: 'Daily Reports', icon: <ClipboardList size={18} /> },
               { id: 'variations', label: 'Variations & Claims', icon: <FileDiff size={18} /> },
               { id: 'snag_list', label: 'Snag List', icon: <ListChecks size={18} /> },
+              { id: 'payment_invoices', label: 'Payments / Invoices', icon: <CreditCard size={18} /> },
               { id: 'hse', label: 'HSE', icon: <ShieldAlert size={18} /> },
               { id: 'quality', label: 'Quality', icon: <CheckCircle size={18} /> },
               { id: 'risks', label: 'Risk Register', icon: <AlertTriangle size={18} /> },
@@ -751,6 +753,114 @@ export const ProjectWorkspace: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* PAYMENTS / INVOICES TAB */}
+        {activeTab === 'payment_invoices' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Payments / Invoices</h2>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <input type="text" placeholder="Filter invoices..." value={paymentInvoiceFilter} onChange={(e) => setPaymentInvoiceFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Invoice', endpoint: `/api/projects/${id}/payment-invoices`, fields: [{name: 'documentNumber', label: 'Invoice Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Payment', 'Invoice', 'Receipt', 'Valuation']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Submitted', 'Approved', 'Paid', 'Rejected']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
+              </div>
+            </div>
+            {(() => {
+              const filteredInvoices = (paymentInvoices || []).filter((inv: any) => {
+                const q = paymentInvoiceFilter.toLowerCase();
+                return (
+                  (inv.documentNumber && inv.documentNumber.toLowerCase().includes(q)) ||
+                  (inv.title && inv.title.toLowerCase().includes(q)) ||
+                  (inv.type && inv.type.toLowerCase().includes(q)) ||
+                  (inv.status && inv.status.toLowerCase().includes(q))
+                );
+              });
+              
+              const groupedInvoices = filteredInvoices.reduce((acc: any, inv: any) => {
+                const t = inv.type || 'Other';
+                if (!acc[t]) acc[t] = [];
+                acc[t].push(inv);
+                return acc;
+              }, {});
+
+              if (Object.keys(groupedInvoices).length === 0) {
+                return (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    No payments or invoices found matching your filter.
+                  </div>
+                );
+              }
+
+              return Object.entries(groupedInvoices).map(([type, invoices]: [string, any]) => (
+                <div key={type} style={{ marginBottom: '2.5rem' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b', fontSize: '1.2rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {type}
+                    <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 'normal', backgroundColor: '#f1f5f9', padding: '0.1rem 0.6rem', borderRadius: '999px' }}>
+                      {invoices.length}
+                    </span>
+                  </h3>
+                  <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Invoice No.</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Title</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Rev</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Status</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.map((inv: any) => (
+                          <tr key={inv.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{inv.documentNumber}</td>
+                            <td style={{ padding: '1rem', fontWeight: 500 }}>{inv.title}</td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>{inv.revision}</td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: inv.status === 'Approved' || inv.status === 'Paid' ? '#dcfce7' : '#fef3c7', color: inv.status === 'Approved' || inv.status === 'Paid' ? '#166534' : '#b45309' }}>{inv.status}</span>
+                            </td>
+                            <td style={{ padding: '1rem', color: '#64748b' }}>{inv.issueDate ? new Date(inv.issueDate).toLocaleDateString() : ''}</td>
+                            <td style={{ padding: '1rem' }}>
+                              {(() => {
+                                if (!inv.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                
+                                let downloadLink = inv.fileUrl;
+                                
+                                const extractDriveId = (url: string) => {
+                                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                  return match ? match[1] : null;
+                                };
+                                
+                                try {
+                                  const parsed = JSON.parse(inv.fileUrl);
+                                  if (parsed && parsed.download) {
+                                    downloadLink = parsed.download;
+                                  }
+                                } catch (e) {
+                                  // Legacy link handling
+                                  const driveId = extractDriveId(inv.fileUrl);
+                                  if (driveId) {
+                                    downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                                  }
+                                }
+                                
+                                return (
+                                  <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                    <Download size={16} /> Download
+                                  </a>
+                                );
+                              })()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
         )}
 

@@ -97,6 +97,7 @@ model User {
   loggedFinancials            ProjectFinancial[]           @relation("FinancialLogger")
   resourceAllocations         ProjectResource[]            @relation("ResourcePersonnel")
   uploadedProjectDocs         ProjectDocument[]            @relation("ProjectDocumentUploader")
+  uploadedPaymentInvoices     ProjectPaymentInvoice[]      @relation("ProjectPaymentInvoiceUploader")
   // Advanced Project Module Relations
   projectMaterialRequisitions ProjectMaterialRequisition[] @relation("ProjectRequisitioner")
   projectDailyReports         ProjectDailyReport[]         @relation("ProjectReportAuthor")
@@ -834,6 +835,7 @@ model Project {
   snags                ProjectSnag[]
   correspondence       ProjectCorrespondence[]
   equipmentLogs        ProjectEquipmentLog[]
+  paymentInvoices      ProjectPaymentInvoice[]
 
   userPermissions ProjectUserPermission[]
 
@@ -948,6 +950,28 @@ model ProjectDocument {
 
   uploadedById Int
   uploadedBy   User @relation("ProjectDocumentUploader", fields: [uploadedById], references: [id])
+
+  issueDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectPaymentInvoice {
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  documentNumber String @unique
+  title          String
+  type           String // "Payment", "Invoice", "Receipt", "Valuation"
+  revision       String @default("0")
+  status         String @default("Draft") // "Draft", "Submitted", "Approved", "Paid", "Rejected"
+
+  fileUrl   String?            @db.Text
+
+  uploadedById Int
+  uploadedBy   User @relation("ProjectPaymentInvoiceUploader", fields: [uploadedById], references: [id])
 
   issueDate DateTime?
 

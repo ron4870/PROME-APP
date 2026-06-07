@@ -311,6 +311,20 @@ router.get('/:id/documents', authenticate, checkProjectAccess(), async (req, res
   }
 });
 
+// GET Project Payment Invoices
+router.get('/:id/payment-invoices', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const invoices = await prisma.projectPaymentInvoice.findMany({
+      where: { projectId: parseInt(req.params.id) },
+      include: { uploadedBy: { select: { id: true, name: true } } },
+      orderBy: { issueDate: 'desc' }
+    });
+    res.json(invoices);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET Project Resources
 router.get('/:id/resources', authenticate, checkProjectAccess(), async (req, res) => {
   try {
@@ -575,6 +589,58 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
     res.json(newDoc);
   } catch (error) {
     console.error('Error in documents post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Project Payment Invoices
+router.post('/:id/payment-invoices', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { documentNumber, title, type, revision, status, issueDate } = req.body;
+    const file = req.file;
+    let fileUrl = null;
+
+    if (file) {
+      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+
+      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+      const driveFile = await driveService.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink, webContentLink',
+        supportsAllDrives: true
+      });
+      const fileId = driveFile.data.id;
+      if (fileId) {
+        await driveService.permissions.create({
+          fileId: fileId,
+          requestBody: { role: 'reader', type: 'anyone' },
+          supportsAllDrives: true
+        });
+        fileUrl = JSON.stringify({ view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
+      }
+    }
+
+    const newInvoice = await prisma.projectPaymentInvoice.create({
+      data: {
+        projectId: parseInt(projectId),
+        documentNumber: documentNumber || `INV-${Date.now()}`,
+        title: title || file?.originalname || 'Untitled',
+        type: type || 'Invoice',
+        revision: revision || '1.0',
+        status: status || 'Submitted',
+        issueDate: issueDate ? new Date(issueDate) : new Date(),
+        uploadedById: (req as any).user!.userId,
+        fileUrl,
+      }
+    });
+    res.json(newInvoice);
+  } catch (error) {
+    console.error('Error in payment-invoices post:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
