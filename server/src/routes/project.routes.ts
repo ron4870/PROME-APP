@@ -303,7 +303,12 @@ router.get('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =>
   try {
     const tasks = await prisma.projectTask.findMany({
       where: { projectId: parseInt(req.params.id) },
-      include: { assignedTo: { select: { id: true, name: true } } },
+      include: { 
+        assignedTo: { select: { id: true, name: true } },
+        milestone: true,
+        dependencies: true,
+        dependentOn: true
+      },
       orderBy: { dueDate: 'asc' }
     });
     res.json(tasks);
@@ -440,6 +445,71 @@ router.get('/:id/risks', authenticate, checkProjectAccess(), async (req, res) =>
   }
 });
 
+// GET Project Milestones
+router.get('/:id/milestones', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const milestones = await prisma.projectMilestone.findMany({
+      where: { projectId: parseInt(req.params.id) },
+      include: { tasks: true },
+      orderBy: { targetDate: 'asc' }
+    });
+    res.json(milestones);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Project Milestones
+router.post('/:id/milestones', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, description, targetDate, status } = req.body;
+    const milestone = await prisma.projectMilestone.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        title,
+        description,
+        targetDate: new Date(targetDate),
+        status: status || 'Pending'
+      }
+    });
+    res.json(milestone);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// PUT Project Milestones
+router.put('/:id/milestones/:milestoneId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, description, targetDate, status } = req.body;
+    const milestone = await prisma.projectMilestone.update({
+      where: { id: parseInt(req.params.milestoneId) },
+      data: {
+        title,
+        description,
+        targetDate: targetDate ? new Date(targetDate) : undefined,
+        status
+      }
+    });
+    res.json(milestone);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE Project Milestones
+router.delete('/:id/milestones/:milestoneId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    await prisma.projectMilestone.delete({
+      where: { id: parseInt(req.params.milestoneId) }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // PHASE 5: ADVANCED ENGINEERING MODULES
 // ---------------------------------------------------------------------------
@@ -561,7 +631,8 @@ router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =
         dueDate: dueDate ? new Date(dueDate) : undefined,
         description,
         progress: progress ? parseInt(progress) : 0,
-        isOverallProgressTracker: isOverallProgressTracker === true || isOverallProgressTracker === 'true'
+        isOverallProgressTracker: isOverallProgressTracker === true || isOverallProgressTracker === 'true',
+        milestoneId: req.body.milestoneId ? parseInt(req.body.milestoneId) : undefined
       }
     });
     res.json(newTask);
@@ -582,12 +653,43 @@ router.put('/:id/tasks/:taskId', authenticate, checkProjectAccess(), async (req,
       data: {
         progress: progress !== undefined ? parseInt(progress) : undefined,
         status: status || undefined,
-        completedDate: status === 'Completed' || progress === 100 ? new Date() : undefined
+        completedDate: status === 'Completed' || progress === 100 ? new Date() : undefined,
+        milestoneId: req.body.milestoneId ? parseInt(req.body.milestoneId) : undefined
       }
     });
     res.json(updatedTask);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Task Dependency
+router.post('/:id/tasks/:taskId/dependencies', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { predecessorId, type } = req.body;
+    const dependency = await prisma.taskDependency.create({
+      data: {
+        predecessorId: parseInt(predecessorId),
+        successorId: parseInt(req.params.taskId),
+        type: type || 'Finish-To-Start'
+      }
+    });
+    res.json(dependency);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE Task Dependency
+router.delete('/:id/tasks/:taskId/dependencies/:dependencyId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    await prisma.taskDependency.delete({
+      where: { id: parseInt(req.params.dependencyId) }
+    });
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });

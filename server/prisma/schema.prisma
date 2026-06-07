@@ -825,6 +825,7 @@ model Project {
   financials ProjectFinancial[]
   resources  ProjectResource[]
   documents  ProjectDocument[]
+  milestones ProjectMilestone[]
 
   // Advanced Modules
   materialRequisitions ProjectMaterialRequisition[]
@@ -884,12 +885,49 @@ model ProjectTask {
   assignedToId Int?
   assignedTo   User? @relation("TaskAssignee", fields: [assignedToId], references: [id])
 
+  milestoneId Int?
+  milestone   ProjectMilestone? @relation(fields: [milestoneId], references: [id])
+
+  dependentOn  TaskDependency[] @relation("SuccessorTask")
+  dependencies TaskDependency[] @relation("PredecessorTask")
+
   startDate     DateTime?
   dueDate       DateTime?
   completedDate DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProjectMilestone {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?  @db.Text
+  targetDate  DateTime
+  status      String   @default("Pending") // "Pending", "Reached", "Delayed"
+  
+  tasks       ProjectTask[] // Tasks linked to this milestone
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaskDependency {
+  id            Int         @id @default(autoincrement())
+  predecessorId Int
+  predecessor   ProjectTask @relation("PredecessorTask", fields: [predecessorId], references: [id], onDelete: Cascade)
+  
+  successorId   Int
+  successor     ProjectTask @relation("SuccessorTask", fields: [successorId], references: [id], onDelete: Cascade)
+  
+  type          String      @default("Finish-To-Start") // "Finish-To-Start", "Start-To-Start", etc.
+  
+  createdAt     DateTime    @default(now())
+
+  @@unique([predecessorId, successorId])
 }
 
 model ProjectMeeting {
