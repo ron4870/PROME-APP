@@ -68,6 +68,9 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                 <input 
                   type="file" 
                   required={f.required}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  onChange={e => setFile(e.target.files?.[0] || null)}
+                />
               ) : f.type === 'select' ? (
                 <select
                   required={f.required}
