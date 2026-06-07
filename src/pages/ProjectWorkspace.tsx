@@ -330,7 +330,33 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Task Management</h2>
-              <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Task', endpoint: `/api/projects/${id}/tasks`, fields: [{name: 'title', label: 'Title', type: 'text', required: true}, {name: 'description', label: 'Description', type: 'textarea'}, {name: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'In Review', 'Completed']}, {name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Critical']}, {name: 'progress', label: 'Progress (%)', type: 'number'}, {name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox'}, {name: 'dueDate', label: 'Due Date', type: 'date'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Task</button>
+              <button className="btn btn-primary" onClick={() => {
+                const baseFields: any[] = [
+                  {name: 'title', label: 'Title', type: 'text', required: true},
+                  {name: 'description', label: 'Description', type: 'textarea'},
+                  {name: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'In Review', 'Completed']},
+                  {name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Critical']},
+                  {name: 'progress', label: 'Progress (%)', type: 'number'},
+                  {name: 'dueDate', label: 'Due Date', type: 'date'}
+                ];
+
+                const canAssignTasks = isAdministrator || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes(currentUserMembership?.role || '');
+                if (canAssignTasks) {
+                  baseFields.splice(4, 0, {
+                    name: 'assignedToId', 
+                    label: 'Assign To', 
+                    type: 'select', 
+                    options: project?.members?.map((m: any) => ({ label: `${m.user.name} (${m.role})`, value: m.user.id.toString() })) || [] 
+                  });
+                  baseFields.push({name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox'});
+                }
+
+                setModalConfig({ 
+                  title: 'Add Task', 
+                  endpoint: `/api/projects/${id}/tasks`, 
+                  fields: baseFields 
+                });
+              }}><Plus size={16} style={{ marginRight: '8px' }}/> Add Task</button>
             </div>
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>

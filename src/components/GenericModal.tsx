@@ -4,7 +4,7 @@ export interface ModalConfig {
   title: string;
   endpoint: string;
   method?: string;
-  fields: { name: string; label: string; type: string; required?: boolean; options?: string[]; placeholder?: string; defaultValue?: any; }[];
+  fields: { name: string; label: string; type: string; required?: boolean; options?: any[]; placeholder?: string; defaultValue?: any; }[];
 }
 
 interface Props {
@@ -68,9 +68,6 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                 <input 
                   type="file" 
                   required={f.required}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  onChange={e => setFile(e.target.files?.[0] || null)}
-                />
               ) : f.type === 'select' ? (
                 <select
                   required={f.required}
@@ -78,8 +75,10 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                   onChange={e => setFormData({ ...formData, [f.name]: e.target.value })}
                 >
                   <option value="">Select...</option>
-                  {f.options?.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
+                  {f.options?.map((opt: any) => (
+                    <option key={opt.value || opt} value={opt.value || opt}>
+                      {opt.label || opt}
+                    </option>
                   ))}
                 </select>
               ) : f.type === 'checkbox' ? (
