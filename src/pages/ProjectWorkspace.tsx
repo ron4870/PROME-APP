@@ -497,6 +497,11 @@ export const ProjectWorkspace: React.FC = () => {
                         let downloadLink = doc.fileUrl;
                         let isPdf = true; // Default legacy to View
                         
+                        const extractDriveId = (url: string) => {
+                          const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                          return match ? match[1] : null;
+                        };
+                        
                         try {
                           const parsed = JSON.parse(doc.fileUrl);
                           if (parsed && parsed.view) {
@@ -505,9 +510,16 @@ export const ProjectWorkspace: React.FC = () => {
                             isPdf = parsed.isPdf;
                           }
                         } catch (e) {
-                          // Legacy link
-                          if (doc.title && !doc.title.toLowerCase().endsWith('.pdf')) {
-                             // Can't force download on legacy link without webContentLink, but we can change the label
+                          // Legacy link handling
+                          const driveId = extractDriveId(doc.fileUrl);
+                          if (driveId) {
+                            downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                          }
+                          
+                          if (doc.title && !doc.title.toLowerCase().includes('.pdf')) {
+                             isPdf = false;
+                          } else if (doc.type !== 'Project Drawing' && doc.type !== 'Contractual Document' && doc.type !== 'Report') {
+                             // Just a fallback heuristic for legacy docs if title lacks extension
                              isPdf = false;
                           }
                         }
