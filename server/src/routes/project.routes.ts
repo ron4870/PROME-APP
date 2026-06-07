@@ -642,20 +642,34 @@ router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =
   }
 });
 
-// PUT Project Tasks (Update progress)
+// PUT Project Tasks (Update progress & details)
 router.put('/:id/tasks/:taskId', authenticate, checkProjectAccess(), async (req, res) => {
   try {
-    const { progress, status } = req.body;
+    const { progress, status, title, description, priority, assignedToId, dueDate, isOverallProgressTracker } = req.body;
     const taskId = parseInt(req.params.taskId);
+
+    const userObj = await prisma.user.findUnique({ where: { id: (req as any).user.userId }, include: { role: true } });
+    const isManagerOrAdmin = userObj?.role?.name === 'Administrator' || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes((req as any).projectMembership?.role || '');
     
+    const updateData: any = {
+      progress: progress !== undefined ? parseInt(progress) : undefined,
+      status: status || undefined,
+      completedDate: status === 'Completed' || progress === 100 ? new Date() : undefined,
+      milestoneId: req.body.milestoneId ? parseInt(req.body.milestoneId) : undefined
+    };
+
+    if (isManagerOrAdmin) {
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (priority !== undefined) updateData.priority = priority;
+      if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId) : null;
+      if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+      if (isOverallProgressTracker !== undefined) updateData.isOverallProgressTracker = isOverallProgressTracker === true || isOverallProgressTracker === 'true';
+    }
+
     const updatedTask = await prisma.projectTask.update({
       where: { id: taskId },
-      data: {
-        progress: progress !== undefined ? parseInt(progress) : undefined,
-        status: status || undefined,
-        completedDate: status === 'Completed' || progress === 100 ? new Date() : undefined,
-        milestoneId: req.body.milestoneId ? parseInt(req.body.milestoneId) : undefined
-      }
+      data: updateData
     });
     res.json(updatedTask);
   } catch (error) {

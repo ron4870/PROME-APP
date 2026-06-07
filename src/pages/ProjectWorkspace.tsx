@@ -396,6 +396,7 @@ export const ProjectWorkspace: React.FC = () => {
                   <th style={{ padding: '1rem' }}>Priority</th>
                   <th style={{ padding: '1rem' }}>Assignee</th>
                   <th style={{ padding: '1rem' }}>Due Date</th>
+                  <th style={{ padding: '1rem' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -423,6 +424,33 @@ export const ProjectWorkspace: React.FC = () => {
                     <td style={{ padding: '1rem' }}>{task.priority}</td>
                     <td style={{ padding: '1rem' }}>{task.assignedTo?.name || '-'}</td>
                     <td style={{ padding: '1rem' }}>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
+                        const canAssignTasks = isAdministrator || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes(currentUserMembership?.role || '');
+                        const fields: any[] = [
+                          {name: 'progress', label: 'Progress (%)', type: 'number', required: true, defaultValue: task.progress || 0},
+                          {name: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'In Review', 'Completed'], defaultValue: task.status}
+                        ];
+                        if (canAssignTasks) {
+                          fields.unshift(
+                            {name: 'title', label: 'Title', type: 'text', required: true, defaultValue: task.title},
+                            {name: 'description', label: 'Description', type: 'textarea', defaultValue: task.description},
+                            {name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Critical'], defaultValue: task.priority},
+                            {name: 'assignedToId', label: 'Assign To', type: 'select', options: project?.members?.map((m: any) => ({ label: `${m.user.name} (${m.role})`, value: m.user.id.toString() })) || [], defaultValue: task.assignedToId?.toString()},
+                            {name: 'dueDate', label: 'Due Date', type: 'date', defaultValue: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''},
+                            {name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox', defaultValue: task.isOverallProgressTracker}
+                          );
+                        }
+                        setModalConfig({
+                          title: canAssignTasks ? 'Edit Task' : 'Update Progress',
+                          endpoint: `/api/projects/${id}/tasks/${task.id}`,
+                          method: 'PUT',
+                          fields
+                        });
+                      }}>
+                        {isAdministrator || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes(currentUserMembership?.role || '') ? 'Edit' : 'Update'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
