@@ -398,51 +398,102 @@ export const ProjectWorkspace: React.FC = () => {
                   <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Formal Correspondence', endpoint: `/api/projects/${id}/correspondence`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'type', label: 'Type (Incoming/Outgoing)', type: 'select', options: ['Incoming', 'Outgoing'], required: true}, {name: 'subject', label: 'Subject', type: 'text', required: true}, {name: 'sender', label: 'Sender', type: 'select', options: ['Client', 'Contractor', 'Consultant', 'Other'], required: true}, {name: 'recipient', label: 'Recipient', type: 'select', options: ['Client', 'Contractor', 'Consultant', 'Other'], required: true}, {name: 'file', label: 'Attach PDF', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Log</button>
                 </div>
               </div>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Ref #</th>
-                    <th style={{ padding: '1rem' }}>Type</th>
-                    <th style={{ padding: '1rem' }}>Subject</th>
-                    <th style={{ padding: '1rem' }}>Sender</th>
-                    <th style={{ padding: '1rem' }}>Recipient</th>
-                    <th style={{ padding: '1rem' }}>Attachment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {correspondence.filter((corr: any) => {
-                    const q = corrFilter.toLowerCase();
-                    return (
-                      (corr.date && corr.date.toLowerCase().includes(q)) ||
-                      (corr.referenceNumber && corr.referenceNumber.toLowerCase().includes(q)) ||
-                      (corr.ref && corr.ref.toLowerCase().includes(q)) ||
-                      (corr.type && corr.type.toLowerCase().includes(q)) ||
-                      (corr.subject && corr.subject.toLowerCase().includes(q)) ||
-                      (corr.sender && corr.sender.toLowerCase().includes(q)) ||
-                      (corr.recipient && corr.recipient.toLowerCase().includes(q))
-                    );
-                  }).map((corr: any) => (
-                    <tr key={corr.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem' }}>{corr.date ? new Date(corr.date).toLocaleDateString() : ''}</td>
-                      <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{corr.referenceNumber || corr.ref}</td>
-                      <td style={{ padding: '1rem' }}>{corr.type}</td>
-                      <td style={{ padding: '1rem' }}>{corr.subject}</td>
-                      <td style={{ padding: '1rem' }}>{corr.sender}</td>
-                      <td style={{ padding: '1rem' }}>{corr.recipient}</td>
-                      <td style={{ padding: '1rem' }}>
-                        {corr.fileUrl ? (
-                          <a href={corr.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
-                            <FileText size={16} /> View
-                          </a>
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {(() => {
+              const filteredCorr = correspondence.filter((corr: any) => {
+                const q = corrFilter.toLowerCase();
+                return (
+                  (corr.date && corr.date.toLowerCase().includes(q)) ||
+                  (corr.referenceNumber && corr.referenceNumber.toLowerCase().includes(q)) ||
+                  (corr.ref && corr.ref.toLowerCase().includes(q)) ||
+                  (corr.type && corr.type.toLowerCase().includes(q)) ||
+                  (corr.subject && corr.subject.toLowerCase().includes(q)) ||
+                  (corr.sender && corr.sender.toLowerCase().includes(q)) ||
+                  (corr.recipient && corr.recipient.toLowerCase().includes(q))
+                );
+              });
+              
+              const groupedCorr = filteredCorr.reduce((acc: any, corr: any) => {
+                const t = corr.type || 'Other';
+                if (!acc[t]) acc[t] = [];
+                acc[t].push(corr);
+                return acc;
+              }, {});
+
+              if (Object.keys(groupedCorr).length === 0) {
+                return (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    No correspondence found matching your filter.
+                  </div>
+                );
+              }
+
+              return Object.entries(groupedCorr).map(([type, corrs]: [string, any]) => (
+                <div key={type} style={{ marginBottom: '2.5rem' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b', fontSize: '1.2rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {type}
+                    <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 'normal', backgroundColor: '#f1f5f9', padding: '0.1rem 0.6rem', borderRadius: '999px' }}>
+                      {corrs.length}
+                    </span>
+                  </h3>
+                  <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Ref #</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Subject</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Sender</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Recipient</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {corrs.map((corr: any) => (
+                          <tr key={corr.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '1rem' }}>{corr.date ? new Date(corr.date).toLocaleDateString() : ''}</td>
+                            <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{corr.referenceNumber || corr.ref}</td>
+                            <td style={{ padding: '1rem' }}>{corr.subject}</td>
+                            <td style={{ padding: '1rem' }}>{corr.sender}</td>
+                            <td style={{ padding: '1rem' }}>{corr.recipient}</td>
+                            <td style={{ padding: '1rem' }}>
+                              {(() => {
+                                if (!corr.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                
+                                let downloadLink = corr.fileUrl;
+                                
+                                const extractDriveId = (url: string) => {
+                                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                  return match ? match[1] : null;
+                                };
+                                
+                                try {
+                                  const parsed = JSON.parse(corr.fileUrl);
+                                  if (parsed && parsed.download) {
+                                    downloadLink = parsed.download;
+                                  }
+                                } catch (e) {
+                                  // Legacy link handling
+                                  const driveId = extractDriveId(corr.fileUrl);
+                                  if (driveId) {
+                                    downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                                  }
+                                }
+                                
+                                return (
+                                  <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                    <Download size={16} /> Download
+                                  </a>
+                                );
+                              })()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ));
+            })()}
             </div>
           )}
 
