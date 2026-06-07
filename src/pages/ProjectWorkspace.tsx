@@ -69,7 +69,7 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { variations, snags, correspondence, documents, fetchAll } = useProjectModules(id, token);
+  const { variations, snags, correspondence, documents, dailyReports, fetchAll } = useProjectModules(id, token);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
@@ -311,6 +311,44 @@ export const ProjectWorkspace: React.FC = () => {
           )}
 
           {/* VARIATIONS TAB */}
+          {activeTab === 'daily_reports' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Daily Reports</h2>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Daily Report', endpoint: `/api/projects/${id}/daily-reports`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'weatherCondition', label: 'Weather', type: 'text'}, {name: 'manpowerCount', label: 'Active Manpower', type: 'number'}, {name: 'equipmentCount', label: 'Active Equipment', type: 'number'}, {name: 'summary', label: 'Activities Summary', type: 'textarea', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Report</button>
+              </div>
+              <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                      <th style={{ padding: '1rem' }}>Date</th>
+                      <th style={{ padding: '1rem' }}>Weather</th>
+                      <th style={{ padding: '1rem' }}>Manpower</th>
+                      <th style={{ padding: '1rem' }}>Equipment</th>
+                      <th style={{ padding: '1rem' }}>Activities</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyReports?.map((report: any) => (
+                      <tr key={report.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '1rem', fontWeight: 500 }}>{report.date ? new Date(report.date).toLocaleDateString() : ''}</td>
+                        <td style={{ padding: '1rem' }}>{report.weatherMorning || '-'}</td>
+                        <td style={{ padding: '1rem' }}>{report.activeManpower || 0}</td>
+                        <td style={{ padding: '1rem' }}>{report.activeEquipment || 0}</td>
+                        <td style={{ padding: '1rem', color: '#475569' }}>{report.activities}</td>
+                      </tr>
+                    ))}
+                    {(!dailyReports || dailyReports.length === 0) && (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No daily reports logged yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'variations' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
