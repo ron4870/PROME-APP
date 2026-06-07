@@ -458,72 +458,101 @@ export const ProjectWorkspace: React.FC = () => {
                 <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Document', endpoint: `/api/projects/${id}/documents`, fields: [{name: 'documentNumber', label: 'Document Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
               </div>
             </div>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                  <th style={{ padding: '1rem' }}>Doc No.</th>
-                  <th style={{ padding: '1rem' }}>Title</th>
-                  <th style={{ padding: '1rem' }}>Type</th>
-                  <th style={{ padding: '1rem' }}>Rev</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
-                  <th style={{ padding: '1rem' }}>Date</th>
-                  <th style={{ padding: '1rem' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.filter((doc: any) => {
-                  const q = docFilter.toLowerCase();
-                  return (
-                    (doc.documentNumber && doc.documentNumber.toLowerCase().includes(q)) ||
-                    (doc.title && doc.title.toLowerCase().includes(q)) ||
-                    (doc.type && doc.type.toLowerCase().includes(q)) ||
-                    (doc.status && doc.status.toLowerCase().includes(q))
-                  );
-                }).map((doc: any) => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{doc.documentNumber}</td>
-                    <td style={{ padding: '1rem', fontWeight: 500 }}>{doc.title}</td>
-                    <td style={{ padding: '1rem' }}>{doc.type}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>{doc.revision}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: doc.status === 'Approved' ? '#dcfce7' : '#fef3c7', color: doc.status === 'Approved' ? '#166534' : '#b45309' }}>{doc.status}</span>
-                    </td>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
-                    <td style={{ padding: '1rem' }}>
-                      {(() => {
-                        if (!doc.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
-                        
-                        let downloadLink = doc.fileUrl;
-                        
-                        const extractDriveId = (url: string) => {
-                          const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                          return match ? match[1] : null;
-                        };
-                        
-                        try {
-                          const parsed = JSON.parse(doc.fileUrl);
-                          if (parsed && parsed.download) {
-                            downloadLink = parsed.download;
-                          }
-                        } catch (e) {
-                          // Legacy link handling
-                          const driveId = extractDriveId(doc.fileUrl);
-                          if (driveId) {
-                            downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
-                          }
-                        }
-                        
-                        return (
-                          <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
-                            <Download size={16} /> Download
-                          </a>
-                        );
-                      })()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {(() => {
+              const filteredDocs = documents.filter((doc: any) => {
+                const q = docFilter.toLowerCase();
+                return (
+                  (doc.documentNumber && doc.documentNumber.toLowerCase().includes(q)) ||
+                  (doc.title && doc.title.toLowerCase().includes(q)) ||
+                  (doc.type && doc.type.toLowerCase().includes(q)) ||
+                  (doc.status && doc.status.toLowerCase().includes(q))
+                );
+              });
+              
+              const groupedDocs = filteredDocs.reduce((acc: any, doc: any) => {
+                const t = doc.type || 'Other';
+                if (!acc[t]) acc[t] = [];
+                acc[t].push(doc);
+                return acc;
+              }, {});
+
+              if (Object.keys(groupedDocs).length === 0) {
+                return (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    No documents found matching your filter.
+                  </div>
+                );
+              }
+
+              return Object.entries(groupedDocs).map(([type, docs]: [string, any]) => (
+                <div key={type} style={{ marginBottom: '2.5rem' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b', fontSize: '1.2rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {type}
+                    <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 'normal', backgroundColor: '#f1f5f9', padding: '0.1rem 0.6rem', borderRadius: '999px' }}>
+                      {docs.length}
+                    </span>
+                  </h3>
+                  <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Doc No.</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Title</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Rev</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Status</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {docs.map((doc: any) => (
+                          <tr key={doc.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{doc.documentNumber}</td>
+                            <td style={{ padding: '1rem', fontWeight: 500 }}>{doc.title}</td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>{doc.revision}</td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: doc.status === 'Approved' ? '#dcfce7' : '#fef3c7', color: doc.status === 'Approved' ? '#166534' : '#b45309' }}>{doc.status}</span>
+                            </td>
+                            <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
+                            <td style={{ padding: '1rem' }}>
+                              {(() => {
+                                if (!doc.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                
+                                let downloadLink = doc.fileUrl;
+                                
+                                const extractDriveId = (url: string) => {
+                                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                  return match ? match[1] : null;
+                                };
+                                
+                                try {
+                                  const parsed = JSON.parse(doc.fileUrl);
+                                  if (parsed && parsed.download) {
+                                    downloadLink = parsed.download;
+                                  }
+                                } catch (e) {
+                                  // Legacy link handling
+                                  const driveId = extractDriveId(doc.fileUrl);
+                                  if (driveId) {
+                                    downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                                  }
+                                }
+                                
+                                return (
+                                  <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                    <Download size={16} /> Download
+                                  </a>
+                                );
+                              })()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
         )}
 
