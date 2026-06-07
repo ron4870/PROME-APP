@@ -252,6 +252,37 @@ export const ProjectWorkspace: React.FC = () => {
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                {/* My Pending Tasks Widget */}
+                <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', gridColumn: '1 / -1' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>My Pending Tasks</h3>
+                    <ListTodo size={24} color="#64748b" />
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {tasks && tasks.filter((t: any) => t.assignedToId === user?.id && t.status !== 'Completed').length > 0 ? (
+                      tasks.filter((t: any) => t.assignedToId === user?.id && t.status !== 'Completed').map((task: any) => (
+                        <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>{task.title}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                              Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date set'} • Progress: {task.progress || 0}%
+                            </div>
+                          </div>
+                          <span style={{ 
+                            padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                            backgroundColor: task.status === 'In Progress' ? '#e0f2fe' : '#f1f5f9',
+                            color: task.status === 'In Progress' ? '#075985' : '#475569'
+                          }}>{task.status}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ color: '#94a3b8', padding: '1rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                        You have no pending tasks assigned.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Overall Progress Widget */}
                 <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
