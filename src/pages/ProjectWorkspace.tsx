@@ -65,7 +65,7 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, milestones, fetchAll } = useProjectModules(id, token);
+  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, milestones, hse, fetchAll } = useProjectModules(id, token);
 
   const overallTrackerTask = tasks?.find((t: any) => t.isOverallProgressTracker);
   const overallProgress = overallTrackerTask ? overallTrackerTask.progress : 0;
@@ -83,6 +83,10 @@ export const ProjectWorkspace: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Calculate Days Without LTI
+  const lastLti = (hse?.incidents || []).filter((i: any) => i.type === 'Injury' || i.type === 'LTI').sort((a: any, b: any) => new Date(b.incidentDate).getTime() - new Date(a.incidentDate).getTime())[0];
+  const daysWithoutLTI = lastLti ? Math.floor((new Date().getTime() - new Date(lastLti.incidentDate).getTime()) / (1000 * 3600 * 24)) : (project ? Math.floor((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 3600 * 24)) : 0);
 
   useEffect(() => {
     fetchProjectData();
@@ -1064,13 +1068,15 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Health, Safety & Environment</h2>
-              <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Incident</button>
+              <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log HSE Incident', endpoint: `/api/projects/${id}/hse`, fields: [{name: 'title', label: 'Incident Title', type: 'text', required: true}, {name: 'type', label: 'Incident Type', type: 'select', options: ['Near-Miss', 'Injury', 'Spill', 'Property Damage', 'Hazard Observation', 'LTI'], required: true}, {name: 'description', label: 'Description', type: 'textarea', required: true}, {name: 'location', label: 'Location', type: 'text', required: true}, {name: 'severity', label: 'Severity', type: 'select', options: ['Low', 'Medium', 'High', 'Critical']}, {name: 'incidentDate', label: 'Incident Date', type: 'date', required: true}] })}>
+                <Plus size={16} style={{ marginRight: '8px' }}/> Log Incident
+              </button>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
               <div style={{ padding: '1.5rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                 <div style={{ color: '#15803d', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Days Without LTI</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#166534' }}>{MOCK_HSE.metrics.lti}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#166534' }}>{daysWithoutLTI}</div>
               </div>
               <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.5rem' }}>TRIR</div>
@@ -1097,20 +1103,30 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_HSE.incidents.map(inc => (
-                  <tr key={inc.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>{inc.date}</td>
-                    <td style={{ padding: '1rem', fontWeight: 500 }}>{inc.type}</td>
-                    <td style={{ padding: '1rem' }}>{inc.description}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ 
-                        padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
-                        backgroundColor: inc.status === 'Closed' ? '#dcfce7' : '#fee2e2',
-                        color: inc.status === 'Closed' ? '#166534' : '#991b1b'
-                      }}>{inc.status}</span>
-                    </td>
+                {(hse?.incidents || []).length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No incidents recorded yet.</td>
                   </tr>
-                ))}
+                ) : (
+                  (hse?.incidents || []).map((inc: any) => (
+                    <tr key={inc.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem', color: '#64748b' }}>{new Date(inc.incidentDate).toLocaleDateString()}</td>
+                      <td style={{ padding: '1rem', fontWeight: 500 }}>
+                        <span style={{ display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.875rem', backgroundColor: inc.severity === 'Critical' || inc.severity === 'High' ? '#fee2e2' : '#f1f5f9', color: inc.severity === 'Critical' || inc.severity === 'High' ? '#991b1b' : '#334155' }}>
+                          {inc.type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>{inc.title} - {inc.description}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ 
+                          padding: '0.3rem 0.6rem', borderRadius: '50px', fontSize: '0.875rem', fontWeight: 500,
+                          backgroundColor: inc.status === 'Closed' ? '#dcfce7' : '#fef3c7',
+                          color: inc.status === 'Closed' ? '#166534' : '#b45309'
+                        }}>{inc.status}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
