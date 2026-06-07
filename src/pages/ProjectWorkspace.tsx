@@ -493,9 +493,7 @@ export const ProjectWorkspace: React.FC = () => {
                       {(() => {
                         if (!doc.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
                         
-                        let viewLink = doc.fileUrl;
                         let downloadLink = doc.fileUrl;
-                        let isPdf = true; // Default legacy to View
                         
                         const extractDriveId = (url: string) => {
                           const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
@@ -504,10 +502,8 @@ export const ProjectWorkspace: React.FC = () => {
                         
                         try {
                           const parsed = JSON.parse(doc.fileUrl);
-                          if (parsed && parsed.view) {
-                            viewLink = parsed.view;
+                          if (parsed && parsed.download) {
                             downloadLink = parsed.download;
-                            isPdf = parsed.isPdf;
                           }
                         } catch (e) {
                           // Legacy link handling
@@ -515,28 +511,13 @@ export const ProjectWorkspace: React.FC = () => {
                           if (driveId) {
                             downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
                           }
-                          
-                          if (doc.title && !doc.title.toLowerCase().includes('.pdf')) {
-                             isPdf = false;
-                          } else if (doc.type !== 'Project Drawing' && doc.type !== 'Contractual Document' && doc.type !== 'Report') {
-                             // Just a fallback heuristic for legacy docs if title lacks extension
-                             isPdf = false;
-                          }
                         }
                         
-                        if (isPdf) {
-                          return (
-                            <a href={viewLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
-                              <FileText size={16} /> View
-                            </a>
-                          );
-                        } else {
-                          return (
-                            <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
-                              <Download size={16} /> Download
-                            </a>
-                          );
-                        }
+                        return (
+                          <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                            <Download size={16} /> Download
+                          </a>
+                        );
                       })()}
                     </td>
                   </tr>
