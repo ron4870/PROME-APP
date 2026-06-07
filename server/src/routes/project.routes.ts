@@ -545,7 +545,7 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
       const driveFile = await driveService.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id, webViewLink',
+        fields: 'id, webViewLink, webContentLink',
         supportsAllDrives: true
       });
       const fileId = driveFile.data.id;
@@ -555,7 +555,7 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
           requestBody: { role: 'reader', type: 'anyone' },
           supportsAllDrives: true
         });
-        fileUrl = driveFile.data.webViewLink;
+        fileUrl = JSON.stringify({ view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
       }
     }
 
@@ -752,7 +752,7 @@ router.post('/:id/variations', authenticate, checkProjectAccess(), upload.single
       const driveFile = await driveService.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id, webViewLink',
+        fields: 'id, webViewLink, webContentLink',
         supportsAllDrives: true
       });
       const fileId = driveFile.data.id;
@@ -847,7 +847,7 @@ router.post('/:id/correspondence', authenticate, checkProjectAccess(), upload.si
       const driveFile = await driveService.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id, webViewLink',
+        fields: 'id, webViewLink, webContentLink',
         supportsAllDrives: true
       });
       const fileId = driveFile.data.id;

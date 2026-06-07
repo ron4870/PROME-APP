@@ -490,13 +490,42 @@ export const ProjectWorkspace: React.FC = () => {
                     </td>
                     <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
                     <td style={{ padding: '1rem' }}>
-                      {doc.fileUrl ? (
-                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
-                          <Download size={16} /> View
-                        </a>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>-</span>
-                      )}
+                      {(() => {
+                        if (!doc.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                        
+                        let viewLink = doc.fileUrl;
+                        let downloadLink = doc.fileUrl;
+                        let isPdf = true; // Default legacy to View
+                        
+                        try {
+                          const parsed = JSON.parse(doc.fileUrl);
+                          if (parsed && parsed.view) {
+                            viewLink = parsed.view;
+                            downloadLink = parsed.download;
+                            isPdf = parsed.isPdf;
+                          }
+                        } catch (e) {
+                          // Legacy link
+                          if (doc.title && !doc.title.toLowerCase().endsWith('.pdf')) {
+                             // Can't force download on legacy link without webContentLink, but we can change the label
+                             isPdf = false;
+                          }
+                        }
+                        
+                        if (isPdf) {
+                          return (
+                            <a href={viewLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
+                              <FileText size={16} /> View
+                            </a>
+                          );
+                        } else {
+                          return (
+                            <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                              <Download size={16} /> Download
+                            </a>
+                          );
+                        }
+                      })()}
                     </td>
                   </tr>
                 ))}
