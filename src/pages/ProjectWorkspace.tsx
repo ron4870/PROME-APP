@@ -209,12 +209,12 @@ export const ProjectWorkspace: React.FC = () => {
               { id: 'documents', label: 'Documents', icon: <FileText size={18} /> },
               { id: 'daily_reports', label: 'Daily Reports', icon: <ClipboardList size={18} /> },
               { id: 'variations', label: 'Variations & Claims', icon: <FileDiff size={18} /> },
-              { id: 'snag_list', label: 'Snag List', icon: <ListChecks size={18} /> },
               { id: 'payment_invoices', label: 'Payments / Invoices', icon: <CreditCard size={18} /> },
               { id: 'hse', label: 'HSE', icon: <ShieldAlert size={18} /> },
               { id: 'quality', label: 'Quality', icon: <CheckCircle size={18} /> },
               { id: 'risks', label: 'Risk Register', icon: <AlertTriangle size={18} /> },
               { id: 'resources', label: 'Team', icon: <Users size={18} /> },
+              { id: 'snag_list', label: 'Snag List', icon: <ListChecks size={18} /> },
               { id: 'financials', label: 'Financials', icon: <DollarSign size={18} /> }
             ]
             .filter(tab => getModuleAccess(tab.label) !== 'None')
