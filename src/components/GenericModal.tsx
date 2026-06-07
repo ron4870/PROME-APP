@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 export interface ModalConfig {
   title: string;
   endpoint: string;
-  fields: { name: string; label: string; type: string; required?: boolean; options?: string[] }[];
+  method?: string;
+  fields: { name: string; label: string; type: string; required?: boolean; options?: string[]; placeholder?: string; defaultValue?: any; }[];
 }
 
 interface Props {
@@ -86,7 +87,7 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                   <input 
                     type="checkbox" 
                     required={f.required}
-                    checked={!!formData[f.name]}
+                    checked={formData[f.name] !== undefined ? formData[f.name] : !!f.defaultValue}
                     onChange={e => setFormData({ ...formData, [f.name]: e.target.checked })}
                   />
                   <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Check if yes</span>
@@ -95,6 +96,8 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                 <input 
                   type={f.type} 
                   required={f.required}
+                  placeholder={f.placeholder}
+                  defaultValue={f.defaultValue}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
                   onChange={e => setFormData({ ...formData, [f.name]: e.target.value })}
                 />

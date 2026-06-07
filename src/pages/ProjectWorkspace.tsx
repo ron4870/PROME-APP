@@ -17,11 +17,6 @@ interface Project {
 }
 
 // Fallback Mock Data
-const MOCK_TASKS = [
-  { id: 1, title: 'Geotechnical Survey', status: 'Completed', priority: 'High', assignedTo: 'Alice Engineer', dueDate: '2025-01-20' },
-  { id: 2, title: 'Preliminary Design Review', status: 'In Progress', priority: 'High', assignedTo: 'Bob Technician', dueDate: '2025-02-15' },
-  { id: 3, title: 'Environmental Impact Assessment', status: 'Not Started', priority: 'Medium', assignedTo: 'Alice Engineer', dueDate: '2025-03-01' }
-];
 
 const MOCK_RESOURCES = [
   { id: 1, type: 'Personnel', name: 'Alice Engineer', role: 'Lead Design', allocation: '100%', dates: 'Jan 15 - Dec 31' },
