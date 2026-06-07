@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 export const useProjectModules = (projectId: string | undefined, token: string | null) => {
   const [tasks, setTasks] = useState<any[]>([]);
+  const [meetings, setMeetings] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [financials, setFinancials] = useState<any[]>([]);
@@ -23,10 +24,11 @@ export const useProjectModules = (projectId: string | undefined, token: string |
       const headers = { Authorization: `Bearer ${token}` };
       
       const [
-        taskRes, docRes, resRes, finRes, hseRes, qualRes, riskRes,
+        taskRes, meetingRes, docRes, resRes, finRes, hseRes, qualRes, riskRes,
         procRes, dailyRes, varRes, invoiceRes, subRes, snagRes, corrRes
       ] = await Promise.all([
         fetch(`/api/projects/${projectId}/tasks`, { headers }),
+        fetch(`/api/projects/${projectId}/meetings`, { headers }),
         fetch(`/api/projects/${projectId}/documents`, { headers }),
         fetch(`/api/projects/${projectId}/resources`, { headers }),
         fetch(`/api/projects/${projectId}/financials`, { headers }),
@@ -43,6 +45,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
       ]);
 
       if (taskRes.ok) setTasks(await taskRes.json());
+      if (meetingRes.ok) setMeetings(await meetingRes.json());
       if (docRes.ok) setDocuments(await docRes.json());
       if (resRes.ok) setResources(await resRes.json());
       if (finRes.ok) setFinancials(await finRes.json());
@@ -67,7 +70,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
   }, [projectId, token]);
 
   return {
-    tasks, documents, resources, financials, hse, quality, risks,
+    tasks, meetings, documents, resources, financials, hse, quality, risks,
     procurement, dailyReports, variations, paymentInvoices, subcontractors, snags, correspondence, fetchAll // expose this to allow refetching
   };
 };

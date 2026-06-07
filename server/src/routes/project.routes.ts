@@ -132,6 +132,21 @@ router.post('/', authenticate, async (req, res) => {
         }
       }
 
+      // Auto-create Overall Project Progress Tracker Task
+      const creatorId = parseInt((req as any).user!.userId);
+      await tx.projectTask.create({
+        data: {
+          projectId: newProject.id,
+          title: 'Overall Project Progress',
+          description: 'System generated task to track the overall completion progress of the project.',
+          status: 'In Progress',
+          priority: 'High',
+          progress: 0,
+          isOverallProgressTracker: true,
+          assignedToId: creatorId
+        }
+      });
+
       return newProject;
     });
 
@@ -292,6 +307,19 @@ router.get('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =>
       orderBy: { dueDate: 'asc' }
     });
     res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET Project Meetings
+router.get('/:id/meetings', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const meetings = await prisma.projectMeeting.findMany({
+      where: { projectId: parseInt(req.params.id) },
+      orderBy: { date: 'asc' }
+    });
+    res.json(meetings);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -522,7 +550,7 @@ router.get('/:id/equipment-logs', authenticate, checkProjectAccess(), async (req
 // POST Project Tasks
 router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) => {
   try {
-    const { title, status, priority, assignedToId, dueDate, description } = req.body;
+    const { title, status, priority, assignedToId, dueDate, description, progress, isOverallProgressTracker } = req.body;
     const newTask = await prisma.projectTask.create({
       data: {
         projectId: parseInt(req.params.id),
@@ -531,10 +559,56 @@ router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =
         priority: priority || 'Medium',
         assignedToId: assignedToId ? parseInt(assignedToId) : undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
-        description
+        description,
+        progress: progress ? parseInt(progress) : 0,
+        isOverallProgressTracker: isOverallProgressTracker === true || isOverallProgressTracker === 'true'
       }
     });
     res.json(newTask);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// PUT Project Tasks (Update progress)
+router.put('/:id/tasks/:taskId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { progress, status } = req.body;
+    const taskId = parseInt(req.params.taskId);
+    
+    const updatedTask = await prisma.projectTask.update({
+      where: { id: taskId },
+      data: {
+        progress: progress !== undefined ? parseInt(progress) : undefined,
+        status: status || undefined,
+        completedDate: status === 'Completed' || progress === 100 ? new Date() : undefined
+      }
+    });
+    res.json(updatedTask);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Project Meetings
+router.post('/:id/meetings', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { title, date, time, locationOrLink, attendees, description } = req.body;
+    const newMeeting = await prisma.projectMeeting.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        title,
+        date: date ? new Date(date) : new Date(),
+        time: time || '10:00 AM',
+        locationOrLink: locationOrLink || 'TBD',
+        attendees: attendees || '',
+        description,
+        status: 'Scheduled'
+      }
+    });
+    res.json(newMeeting);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

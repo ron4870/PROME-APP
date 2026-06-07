@@ -31,6 +31,7 @@ import projectRoutes from './routes/project.routes';
 import workflowRoutes from './routes/workflow.routes';
 import formsRoutes from './routes/forms.routes';
 import manualsRoutes from './routes/manuals';
+import { setupCronJobs } from './services/cron.service';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-prome-key';
@@ -49,6 +50,8 @@ const transporter = nodemailer.createTransport({
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 4000;
+
+setupCronJobs();
 
 app.use(cors());
 app.use(express.json());

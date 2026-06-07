@@ -836,6 +836,7 @@ model Project {
   correspondence       ProjectCorrespondence[]
   equipmentLogs        ProjectEquipmentLog[]
   paymentInvoices      ProjectPaymentInvoice[]
+  meetings             ProjectMeeting[]
 
   userPermissions ProjectUserPermission[]
 
@@ -877,6 +878,8 @@ model ProjectTask {
   description String? @db.Text
   status      String  @default("Not Started") // "Not Started", "In Progress", "In Review", "Completed"
   priority    String  @default("Medium") // "Low", "Medium", "High", "Critical"
+  progress    Int     @default(0) // 0 to 100 percentage
+  isOverallProgressTracker Boolean @default(false)
 
   assignedToId Int?
   assignedTo   User? @relation("TaskAssignee", fields: [assignedToId], references: [id])
@@ -887,6 +890,23 @@ model ProjectTask {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProjectMeeting {
+  id              Int      @id @default(autoincrement())
+  projectId       Int
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String?  @db.Text
+  date            DateTime
+  time            String
+  locationOrLink  String
+  attendees       String   @db.Text
+  status          String   @default("Scheduled") // "Scheduled", "Completed", "Cancelled"
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model ProjectFinancial {

@@ -69,7 +69,10 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { variations, snags, correspondence, documents, dailyReports, paymentInvoices, fetchAll } = useProjectModules(id, token);
+  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, fetchAll } = useProjectModules(id, token);
+
+  const overallTrackerTask = tasks?.find((t: any) => t.isOverallProgressTracker);
+  const overallProgress = overallTrackerTask ? overallTrackerTask.progress : 0;
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
@@ -250,12 +253,48 @@ export const ProjectWorkspace: React.FC = () => {
           {activeTab === 'dashboard' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Overview</h2>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a', fontWeight: 'bold' }}>Project Dashboard</h2>
               </div>
-              <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '8px', border: '2px dashed #cbd5e1', color: '#64748b' }}>
-                <LayoutDashboard size={48} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
-                <h3>Project Dashboard</h3>
-                <p>High-level project metrics and recent activities will be displayed here.</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                {/* Overall Progress Widget */}
+                <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>Overall Progress</h3>
+                    <LayoutDashboard size={24} color="#64748b" />
+                  </div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#0ea5e9', marginBottom: '0.5rem' }}>{overallProgress}%</div>
+                  <div style={{ width: '100%', backgroundColor: '#e2e8f0', borderRadius: '9999px', height: '8px' }}>
+                    <div style={{ backgroundColor: '#0ea5e9', height: '8px', borderRadius: '9999px', width: `${overallProgress}%` }}></div>
+                  </div>
+                </div>
+
+                {/* Upcoming Meetings Widget */}
+                <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>Next Meeting</h3>
+                    <CalendarDays size={24} color="#64748b" />
+                  </div>
+                  {meetings && meetings.length > 0 ? (
+                    <div>
+                      <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '1.1rem' }}>{meetings[0].title}</div>
+                      <div style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '4px' }}>{new Date(meetings[0].date).toLocaleDateString()} at {meetings[0].time}</div>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#94a3b8' }}>No upcoming meetings</div>
+                  )}
+                </div>
+
+                {/* Open Snags Widget */}
+                <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>Open Snags</h3>
+                    <AlertTriangle size={24} color="#64748b" />
+                  </div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+                    {snags ? snags.filter((s: any) => s.status !== 'Closed' && s.status !== 'Fixed').length : 0}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -265,22 +304,26 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Task Management</h2>
-              <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Add Task</button>
+              <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Task', endpoint: `/api/projects/${id}/tasks`, fields: [{name: 'title', label: 'Title', type: 'text', required: true}, {name: 'description', label: 'Description', type: 'textarea'}, {name: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'In Review', 'Completed']}, {name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Critical']}, {name: 'progress', label: 'Progress (%)', type: 'number'}, {name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox'}, {name: 'dueDate', label: 'Due Date', type: 'date'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Task</button>
             </div>
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                   <th style={{ padding: '1rem' }}>Task Title</th>
                   <th style={{ padding: '1rem' }}>Status</th>
+                  <th style={{ padding: '1rem' }}>Progress</th>
                   <th style={{ padding: '1rem' }}>Priority</th>
                   <th style={{ padding: '1rem' }}>Assignee</th>
                   <th style={{ padding: '1rem' }}>Due Date</th>
                 </tr>
               </thead>
               <tbody>
-                {MOCK_TASKS.map(task => (
-                  <tr key={task.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', fontWeight: 500, color: '#0f172a' }}>{task.title}</td>
+                {tasks?.map(task => (
+                  <tr key={task.id} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: task.isOverallProgressTracker ? '#fffbeb' : 'transparent' }}>
+                    <td style={{ padding: '1rem', fontWeight: 500, color: '#0f172a' }}>
+                      {task.title}
+                      {task.isOverallProgressTracker && <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>⭐ Tracker</span>}
+                    </td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
                         padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
@@ -288,9 +331,17 @@ export const ProjectWorkspace: React.FC = () => {
                         color: task.status === 'Completed' ? '#166534' : task.status === 'In Progress' ? '#075985' : '#475569'
                       }}>{task.status}</span>
                     </td>
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '100px', backgroundColor: '#e2e8f0', borderRadius: '9999px', height: '6px' }}>
+                          <div style={{ backgroundColor: task.progress === 100 ? '#22c55e' : '#3b82f6', height: '6px', borderRadius: '9999px', width: `${task.progress || 0}%` }}></div>
+                        </div>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{task.progress || 0}%</span>
+                      </div>
+                    </td>
                     <td style={{ padding: '1rem' }}>{task.priority}</td>
-                    <td style={{ padding: '1rem' }}>{task.assignedTo}</td>
-                    <td style={{ padding: '1rem' }}>{task.dueDate}</td>
+                    <td style={{ padding: '1rem' }}>{task.assignedTo?.name || '-'}</td>
+                    <td style={{ padding: '1rem' }}>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -302,13 +353,55 @@ export const ProjectWorkspace: React.FC = () => {
           {activeTab === 'schedule' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Schedule</h2>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Add Milestone</button>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Schedule & Meetings</h2>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Schedule Meeting', endpoint: `/api/projects/${id}/meetings`, fields: [{name: 'title', label: 'Meeting Title', type: 'text', required: true}, {name: 'date', label: 'Date', type: 'date', required: true}, {name: 'time', label: 'Time', type: 'text', required: true, placeholder: 'e.g. 10:00 AM'}, {name: 'locationOrLink', label: 'Location or Link', type: 'text', required: true}, {name: 'attendees', label: 'Attendees', type: 'text'}, {name: 'description', label: 'Agenda/Description', type: 'textarea'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Meeting</button>
               </div>
-              <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '8px', border: '2px dashed #cbd5e1', color: '#64748b' }}>
-                <CalendarDays size={48} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
-                <h3>Gantt Chart & Timeline</h3>
-                <p>The interactive project timeline and milestones will be displayed here.</p>
+
+              {/* Upcoming Meetings List */}
+              <div style={{ marginBottom: '2rem', backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#334155' }}>Upcoming Meetings</h3>
+                {meetings && meetings.length > 0 ? (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {meetings.map((m: any) => (
+                      <div key={m.id} style={{ padding: '1.25rem', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '1.05rem', marginBottom: '0.25rem' }}>{m.title}</div>
+                          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>{new Date(m.date).toLocaleDateString()} @ {m.time} | Location: {m.locationOrLink}</div>
+                          {m.attendees && <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '6px' }}><strong>Attendees:</strong> {m.attendees}</div>}
+                        </div>
+                        <span style={{ padding: '0.3rem 0.8rem', borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 600, backgroundColor: m.status === 'Completed' ? '#dcfce7' : '#e0f2fe', color: m.status === 'Completed' ? '#166534' : '#075985' }}>{m.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: '#64748b' }}>No upcoming meetings scheduled.</p>
+                )}
+              </div>
+
+              {/* Task Progress Tracker */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#334155' }}>Task Progress Tracker</h3>
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  {tasks && tasks.length > 0 ? tasks.map((task: any) => (
+                    <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', backgroundColor: task.isOverallProgressTracker ? '#fffbeb' : 'white', padding: '1rem', borderRadius: '8px', border: '1px solid', borderColor: task.isOverallProgressTracker ? '#fbbf24' : '#cbd5e1' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                            {task.title}
+                            {task.isOverallProgressTracker && <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>⭐ Tracker</span>}
+                          </span>
+                          <span style={{ color: '#64748b', fontSize: '0.95rem', fontWeight: 500 }}>{task.progress || 0}%</span>
+                        </div>
+                        <div style={{ width: '100%', backgroundColor: '#f1f5f9', borderRadius: '9999px', height: '12px' }}>
+                          <div style={{ backgroundColor: (task.progress || 0) === 100 ? '#22c55e' : '#0ea5e9', height: '12px', borderRadius: '9999px', width: `${task.progress || 0}%`, transition: 'width 0.3s ease-in-out' }}></div>
+                        </div>
+                      </div>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }} onClick={() => setModalConfig({ title: 'Update Progress', endpoint: `/api/projects/${id}/tasks/${task.id}`, method: 'PUT', fields: [{name: 'progress', label: 'Progress (%)', type: 'number', required: true, defaultValue: task.progress || 0}, {name: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'In Review', 'Completed'], defaultValue: task.status}] })}>Update</button>
+                    </div>
+                  )) : (
+                    <p style={{ color: '#64748b' }}>No tasks found for this project.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}

@@ -81,6 +81,16 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
+              ) : f.type === 'checkbox' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input 
+                    type="checkbox" 
+                    required={f.required}
+                    checked={!!formData[f.name]}
+                    onChange={e => setFormData({ ...formData, [f.name]: e.target.checked })}
+                  />
+                  <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Check if yes</span>
+                </div>
               ) : (
                 <input 
                   type={f.type} 
