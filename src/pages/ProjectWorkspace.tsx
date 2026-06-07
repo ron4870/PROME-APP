@@ -23,12 +23,6 @@ const MOCK_TASKS = [
   { id: 3, title: 'Environmental Impact Assessment', status: 'Not Started', priority: 'Medium', assignedTo: 'Alice Engineer', dueDate: '2025-03-01' }
 ];
 
-const MOCK_DOCS = [
-  { id: 1, documentNumber: 'DRW-001', title: 'Site Plan Overview', type: 'Drawing', revision: 'A', status: 'Issued for Review', issueDate: '2025-01-10', uploader: 'Bob Technician' },
-  { id: 2, documentNumber: 'RFI-042', title: 'Clarification on Material Spec', type: 'RFI', revision: '0', status: 'Approved', issueDate: '2025-01-12', uploader: 'Alice Engineer' },
-  { id: 3, documentNumber: 'SUB-011', title: 'Concrete Mix Design', type: 'Submittal', revision: '1', status: 'Draft', issueDate: '2025-02-01', uploader: 'Bob Technician' }
-];
-
 const MOCK_RESOURCES = [
   { id: 1, type: 'Personnel', name: 'Alice Engineer', role: 'Lead Design', allocation: '100%', dates: 'Jan 15 - Dec 31' },
   { id: 2, type: 'Equipment', name: 'Total Station TS16', role: 'Survey', allocation: '100%', dates: 'Jan 20 - Feb 28' }
@@ -75,7 +69,7 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { variations, snags, correspondence, fetchAll } = useProjectModules(id, token);
+  const { variations, snags, correspondence, documents, fetchAll } = useProjectModules(id, token);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
@@ -460,7 +454,7 @@ export const ProjectWorkspace: React.FC = () => {
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Documents</h2>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button className="btn btn-secondary"><Filter size={16} style={{ marginRight: '8px' }}/> Filter</button>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Document', endpoint: `/api/projects/${id}/documents`, fields: [{name: 'documentNumber', label: 'Document Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Drawing', 'RFI', 'Submittal', 'General']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
               </div>
             </div>
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -476,15 +470,25 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_DOCS.map(doc => (
+                {documents.map((doc: any) => (
                   <tr key={doc.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{doc.documentNumber}</td>
                     <td style={{ padding: '1rem', fontWeight: 500 }}>{doc.title}</td>
                     <td style={{ padding: '1rem' }}>{doc.type}</td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>{doc.revision}</td>
-                    <td style={{ padding: '1rem' }}>{doc.status}</td>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate}</td>
-                    <td style={{ padding: '1rem' }}><button style={{ background: 'none', border: 'none', color: '#0ea5e9', cursor: 'pointer' }}><Download size={18}/></button></td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: doc.status === 'Approved' ? '#dcfce7' : '#fef3c7', color: doc.status === 'Approved' ? '#166534' : '#b45309' }}>{doc.status}</span>
+                    </td>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
+                    <td style={{ padding: '1rem' }}>
+                      {doc.fileUrl ? (
+                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
+                          <Download size={16} /> View
+                        </a>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>-</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
