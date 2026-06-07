@@ -714,22 +714,53 @@ router.post('/:id/procurement', authenticate, checkProjectAccess(), async (req, 
 });
 
 // POST Daily Report
-router.post('/:id/daily-reports', authenticate, checkProjectAccess(), async (req, res) => {
+router.post('/:id/daily-reports', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
   try {
-    const { date, weatherCondition, manpowerCount, equipmentCount, summary } = req.body;
+    const projectId = req.params.id;
+    const { date, weatherCondition, manpowerCount, equipmentCount, summary, location } = req.body;
+    const file = req.file;
+    let fileUrl = null;
+
+    if (file) {
+      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+
+      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+      const driveFile = await driveService.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink, webContentLink',
+        supportsAllDrives: true
+      });
+      const fileId = driveFile.data.id;
+      if (fileId) {
+        await driveService.permissions.create({
+          fileId: fileId,
+          requestBody: { role: 'reader', type: 'anyone' },
+          supportsAllDrives: true
+        });
+        fileUrl = JSON.stringify({ view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
+      }
+    }
+
     const newRep = await prisma.projectDailyReport.create({
       data: {
-        projectId: parseInt(req.params.id),
+        projectId: parseInt(projectId),
         date: date ? new Date(date) : new Date(),
         weatherMorning: weatherCondition,
         activeManpower: parseInt(manpowerCount || '0'),
         activeEquipment: parseInt(equipmentCount || '0'),
         activities: summary || '',
+        location: location || null,
+        fileUrl: fileUrl,
         reportedById: (req as any).user!.userId
       }
     });
     res.json(newRep);
   } catch (error) {
+    console.error('Error in daily reports post:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

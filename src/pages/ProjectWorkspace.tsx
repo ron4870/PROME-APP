@@ -75,6 +75,7 @@ export const ProjectWorkspace: React.FC = () => {
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
   const [corrFilter, setCorrFilter] = useState('');
   const [docFilter, setDocFilter] = useState('');
+  const [dailyReportFilter, setDailyReportFilter] = useState('');
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -315,32 +316,50 @@ export const ProjectWorkspace: React.FC = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Daily Reports</h2>
-                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Daily Report', endpoint: `/api/projects/${id}/daily-reports`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'weatherCondition', label: 'Weather', type: 'text'}, {name: 'manpowerCount', label: 'Active Manpower', type: 'number'}, {name: 'equipmentCount', label: 'Active Equipment', type: 'number'}, {name: 'summary', label: 'Activities Summary', type: 'textarea', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Report</button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input type="text" placeholder="Filter reports..." value={dailyReportFilter} onChange={(e) => setDailyReportFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+                  <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Daily Report', endpoint: `/api/projects/${id}/daily-reports`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'location', label: 'Location', type: 'text', required: true}, {name: 'weatherCondition', label: 'Weather', type: 'text'}, {name: 'manpowerCount', label: 'Active Manpower', type: 'number'}, {name: 'equipmentCount', label: 'Active Equipment', type: 'number'}, {name: 'summary', label: 'Activities Summary', type: 'textarea', required: true}, {name: 'file', label: 'Attach PDF', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Report</button>
+                </div>
               </div>
               <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '1rem' }}>Date</th>
+                      <th style={{ padding: '1rem' }}>Location</th>
                       <th style={{ padding: '1rem' }}>Weather</th>
                       <th style={{ padding: '1rem' }}>Manpower</th>
                       <th style={{ padding: '1rem' }}>Equipment</th>
                       <th style={{ padding: '1rem' }}>Activities</th>
+                      <th style={{ padding: '1rem' }}>Attachment</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {dailyReports?.map((report: any) => (
+                    {dailyReports?.filter((r: any) => !dailyReportFilter || r.location?.toLowerCase().includes(dailyReportFilter.toLowerCase()) || r.activities?.toLowerCase().includes(dailyReportFilter.toLowerCase()) || r.date?.includes(dailyReportFilter)).map((report: any) => {
+                      let dlLink = null;
+                      if (report.fileUrl) {
+                        try { dlLink = JSON.parse(report.fileUrl).download; } catch(e) { dlLink = report.fileUrl; }
+                      }
+                      return (
                       <tr key={report.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '1rem', fontWeight: 500 }}>{report.date ? new Date(report.date).toLocaleDateString() : ''}</td>
+                        <td style={{ padding: '1rem' }}>{report.location || '-'}</td>
                         <td style={{ padding: '1rem' }}>{report.weatherMorning || '-'}</td>
                         <td style={{ padding: '1rem' }}>{report.activeManpower || 0}</td>
                         <td style={{ padding: '1rem' }}>{report.activeEquipment || 0}</td>
                         <td style={{ padding: '1rem', color: '#475569' }}>{report.activities}</td>
+                        <td style={{ padding: '1rem' }}>
+                          {dlLink ? (
+                            <a href={dlLink} download style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}><Download size={16} /> Download</a>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>-</span>
+                          )}
+                        </td>
                       </tr>
-                    ))}
+                    )})}
                     {(!dailyReports || dailyReports.length === 0) && (
                       <tr>
-                        <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No daily reports logged yet.</td>
+                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No daily reports logged yet.</td>
                       </tr>
                     )}
                   </tbody>

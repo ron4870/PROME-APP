@@ -1013,6 +1013,9 @@ model ProjectDailyReport {
   activities     String  @db.Text
   issuesOrDelays String? @db.Text
 
+  location       String?
+  fileUrl        String? @db.Text
+
   reportedById Int
   reportedBy   User @relation("ProjectReportAuthor", fields: [reportedById], references: [id])
 
