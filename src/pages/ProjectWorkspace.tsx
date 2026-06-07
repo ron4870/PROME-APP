@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, CalendarRange, BarChartHorizontal } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
 import { useProjectModules } from '../hooks/useProjectModules';
+import { ProjectGanttChart } from '../components/ProjectGanttChart';
 
 interface Project {
   id: number;
@@ -64,13 +65,17 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, fetchAll } = useProjectModules(id, token);
+  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, milestones, fetchAll } = useProjectModules(id, token);
 
   const overallTrackerTask = tasks?.find((t: any) => t.isOverallProgressTracker);
   const overallProgress = overallTrackerTask ? overallTrackerTask.progress : 0;
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
+  const [showGantt, setShowGantt] = useState(false);
+  const [showDependencyModal, setShowDependencyModal] = useState(false);
+  const [depSuccessor, setDepSuccessor] = useState('');
+  const [depPredecessor, setDepPredecessor] = useState('');
   const [corrFilter, setCorrFilter] = useState('');
   const [docFilter, setDocFilter] = useState('');
   const [dailyReportFilter, setDailyReportFilter] = useState('');
@@ -149,6 +154,26 @@ export const ProjectWorkspace: React.FC = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to update permissions');
+    }
+  };
+
+  const handleLinkDependency = async () => {
+    if (!depSuccessor || !depPredecessor) return alert('Select both tasks');
+    try {
+      const res = await fetch(`/api/projects/${id}/tasks/${depSuccessor}/dependencies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ predecessorId: parseInt(depPredecessor) })
+      });
+      if (!res.ok) throw new Error('Failed to link tasks');
+      fetchAll();
+      setShowDependencyModal(false);
+      setDepSuccessor('');
+      setDepPredecessor('');
+      alert('Dependency linked successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to link dependencies');
     }
   };
 
@@ -418,19 +443,20 @@ export const ProjectWorkspace: React.FC = () => {
                   Configure milestones, manage task dependencies, and automatically generate your project's Gantt chart timeline.
                 </p>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <button className="btn btn-secondary" onClick={() => alert('Milestones feature coming soon!')}>
+                  <button className="btn btn-secondary" onClick={() => setModalConfig({ title: 'Add Milestone', endpoint: `/api/projects/${id}/milestones`, fields: [{name: 'title', label: 'Milestone Title', type: 'text', required: true}, {name: 'description', label: 'Description', type: 'textarea'}, {name: 'targetDate', label: 'Target Date', type: 'date', required: true}, {name: 'status', label: 'Status', type: 'select', options: ['Pending', 'Achieved', 'Delayed'], defaultValue: 'Pending'}] })}>
                     <Flag size={16} style={{ marginRight: '8px' }}/> Add Milestone
                   </button>
-                  <button className="btn btn-secondary" onClick={() => alert('Dependencies feature coming soon!')}>
+                  <button className="btn btn-secondary" onClick={() => setShowDependencyModal(true)}>
                     <GitMerge size={16} style={{ marginRight: '8px' }}/> Manage Dependencies
                   </button>
-                  <button className="btn btn-secondary" onClick={() => alert('Timeline Configuration coming soon!')}>
-                    <CalendarRange size={16} style={{ marginRight: '8px' }}/> Configure Timeline
-                  </button>
-                  <button className="btn btn-primary" onClick={() => alert('Gantt Chart generation coming soon!')}>
-                    <BarChartHorizontal size={16} style={{ marginRight: '8px' }}/> Generate Gantt Chart
+                  <button className="btn btn-primary" onClick={() => setShowGantt(!showGantt)}>
+                    <BarChartHorizontal size={16} style={{ marginRight: '8px' }}/> {showGantt ? 'Hide Gantt Chart' : 'Generate Gantt Chart'}
                   </button>
                 </div>
+                
+                {showGantt && (
+                  <ProjectGanttChart tasks={tasks} milestones={milestones} />
+                )}
               </div>
 
               {/* Upcoming Meetings List */}
@@ -1222,6 +1248,34 @@ export const ProjectWorkspace: React.FC = () => {
         token={token}
         onSuccess={fetchAll}
       />
+      {showDependencyModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '500px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0', color: '#0f172a' }}>Link Task Dependencies</h3>
+            
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#475569', fontWeight: 500 }}>Successor Task (Task to be blocked)</label>
+              <select value={depSuccessor} onChange={(e) => setDepSuccessor(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                <option value="">Select a task...</option>
+                {tasks?.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: '2rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#475569', fontWeight: 500 }}>Predecessor Task (Must finish first)</label>
+              <select value={depPredecessor} onChange={(e) => setDepPredecessor(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                <option value="">Select a task...</option>
+                {tasks?.filter((t: any) => t.id.toString() !== depSuccessor).map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button className="btn btn-secondary" onClick={() => setShowDependencyModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleLinkDependency}>Link Tasks</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

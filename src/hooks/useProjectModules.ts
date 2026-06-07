@@ -17,6 +17,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
   const [subcontractors, setSubcontractors] = useState<any[]>([]);
   const [snags, setSnags] = useState<any[]>([]);
   const [correspondence, setCorrespondence] = useState<any[]>([]);
+  const [milestones, setMilestones] = useState<any[]>([]);
 
   const fetchAll = async () => {
     if (!projectId || !token) return;
@@ -25,7 +26,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
       
       const [
         taskRes, meetingRes, docRes, resRes, finRes, hseRes, qualRes, riskRes,
-        procRes, dailyRes, varRes, invoiceRes, subRes, snagRes, corrRes
+        procRes, dailyRes, varRes, invoiceRes, subRes, snagRes, corrRes, milestoneRes
       ] = await Promise.all([
         fetch(`/api/projects/${projectId}/tasks`, { headers }),
         fetch(`/api/projects/${projectId}/meetings`, { headers }),
@@ -42,6 +43,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
         fetch(`/api/projects/${projectId}/subcontractors`, { headers }),
         fetch(`/api/projects/${projectId}/snags`, { headers }),
         fetch(`/api/projects/${projectId}/correspondence`, { headers }),
+        fetch(`/api/projects/${projectId}/milestones`, { headers }),
       ]);
 
       if (taskRes.ok) setTasks(await taskRes.json());
@@ -60,6 +62,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
       if (subRes.ok) setSubcontractors(await subRes.json());
       if (snagRes.ok) setSnags(await snagRes.json());
       if (corrRes.ok) setCorrespondence(await corrRes.json());
+      if (milestoneRes.ok) setMilestones(await milestoneRes.json());
     } catch (err) {
       console.error('Failed to fetch project modules data', err);
     }
@@ -71,6 +74,6 @@ export const useProjectModules = (projectId: string | undefined, token: string |
 
   return {
     tasks, meetings, documents, resources, financials, hse, quality, risks,
-    procurement, dailyReports, variations, paymentInvoices, subcontractors, snags, correspondence, fetchAll // expose this to allow refetching
+    procurement, dailyReports, variations, paymentInvoices, subcontractors, snags, correspondence, milestones, fetchAll
   };
 };
