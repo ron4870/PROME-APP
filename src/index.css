@@ -734,3 +734,18 @@ a:hover {
     color: #881337;
   }
 }
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.document-section {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  background: white;
+}

@@ -3,24 +3,44 @@ import { ShieldAlert, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 
 export default function NotificationsPage() {
   const [inbox, setInbox] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchInbox();
+    fetchData();
   }, []);
 
-  const fetchInbox = async () => {
+  const fetchData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/workflows/inbox', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setInbox(Array.isArray(data) ? data : []);
+      
+      const [inboxRes, notifRes] = await Promise.all([
+        fetch('/api/workflows/inbox', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      const inboxData = await inboxRes.json();
+      const notifData = await notifRes.json();
+
+      setInbox(Array.isArray(inboxData) ? inboxData : []);
+      setNotifications(Array.isArray(notifData) ? notifData : []);
     } catch (err) {
-      console.error('Failed to fetch inbox');
+      console.error('Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Failed to mark as read', err);
     }
   };
 
@@ -35,7 +55,7 @@ export default function NotificationsPage() {
         },
         body: JSON.stringify({ action, comments: 'Actioned from Unified Inbox' })
       });
-      fetchInbox();
+      fetchData();
     } catch (err) {
       alert('Failed to process action');
     }
@@ -148,6 +168,97 @@ export default function NotificationsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* General Notifications Section */}
+      <div style={{ marginTop: '3rem', marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: '1.25rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ShieldAlert size={20} color="#004B87" />
+          General Alerts & Notifications
+        </h2>
+      </div>
+
+      {notifications.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+          <p style={{ color: '#64748b' }}>No new notifications.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {notifications.map((notif) => (
+            <div 
+              key={notif.id} 
+              style={{ 
+                backgroundColor: notif.isRead ? '#f8fafc' : '#f0f9ff', 
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '1.5rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ 
+                    padding: '2px 8px', 
+                    borderRadius: '12px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 600,
+                    backgroundColor: '#e2e8f0',
+                    color: '#475569'
+                  }}>
+                    {notif.type.toUpperCase()}
+                  </span>
+                  {!notif.isRead && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0284c7' }}>NEW</span>
+                  )}
+                </div>
+                <h3 style={{ margin: '0 0 4px 0', color: '#0f172a', fontSize: '1.1rem' }}>{notif.title}</h3>
+                <p style={{ margin: 0, color: '#475569', fontSize: '0.9rem' }}>{notif.message}</p>
+                <div style={{ marginTop: '12px', color: '#94a3b8', fontSize: '0.8rem' }}>
+                  {new Date(notif.createdAt).toLocaleString()}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {notif.link && (
+                  <a 
+                    href={notif.link}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'white',
+                      color: '#0284c7',
+                      border: '1px solid #0284c7',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      textDecoration: 'none'
+                    }}
+                  >
+                    View Details
+                  </a>
+                )}
+                {!notif.isRead && (
+                  <button 
+                    onClick={() => markAsRead(notif.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#e2e8f0',
+                      color: '#475569',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    Mark as Read
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

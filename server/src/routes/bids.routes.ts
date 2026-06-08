@@ -1,0 +1,609 @@
+import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
+import jwt from 'jsonwebtoken';
+import { GoogleGenAI } from '@google/genai';
+
+const router = Router();
+const prisma = new PrismaClient();
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-prome-key';
+
+// Middleware to protect routes
+const authMiddleware = (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// ==========================================
+// OPPORTUNITIES
+// ==========================================
+
+// Get all opportunities
+router.get('/opportunities', authMiddleware, async (req, res) => {
+  try {
+    const opportunities = await prisma.bidOpportunity.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { bids: true }
+    });
+    res.json(opportunities);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch opportunities' });
+  }
+});
+
+// Create new opportunity
+router.post('/opportunities', authMiddleware, async (req, res) => {
+  try {
+    const { title, description, client, country, source, type, deadline, status } = req.body;
+    const opp = await prisma.bidOpportunity.create({
+      data: {
+        title,
+        description,
+        client,
+        country,
+        source,
+        type,
+        deadline: deadline ? new Date(deadline) : null,
+        status: status || 'Identified'
+      }
+    });
+    res.status(201).json(opp);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to create opportunity' });
+  }
+});
+
+// Email Webhook for Opportunities
+router.post('/webhook/email', async (req, res) => {
+  try {
+    const { subject, text, from } = req.body;
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    const prompt = `
+      Extract civil engineering bid opportunity details from this email.
+      Return your response in pure JSON format exactly like this, without markdown formatting or code blocks:
+      {
+        "title": "Project Name or Subject",
+        "client": "Client Name",
+        "country": "Country",
+        "type": "EOI or RFP or DP",
+        "description": "Brief summary of the project",
+        "deadline": "YYYY-MM-DD or null"
+      }
+      Email Subject: ${subject}
+      Email Body: ${text}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { temperature: 0.1 }
+    });
+
+    const cleanText = (response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanText);
+
+    const opp = await prisma.bidOpportunity.create({
+      data: {
+        title: result.title || subject || 'Email Opportunity',
+        description: result.description || text || '',
+        client: result.client || 'Unknown',
+        country: result.country || 'Unknown',
+        source: 'Email',
+        type: result.type || 'Unknown',
+        deadline: result.deadline ? new Date(result.deadline) : null,
+        status: 'Identified'
+      }
+    });
+    res.status(201).json(opp);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to process email webhook' });
+  }
+});
+
+// Newspaper OCR
+router.post('/opportunities/ocr', authMiddleware, async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'No image provided' });
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: 'image/jpeg'
+          }
+        },
+        "Extract civil engineering bid opportunity details from this newspaper clipping. Return your response in pure JSON format exactly like this, without markdown formatting or code blocks: { \"title\": \"...\", \"client\": \"...\", \"country\": \"...\", \"type\": \"...\", \"description\": \"...\", \"deadline\": \"YYYY-MM-DD or null\" }"
+      ],
+      config: { temperature: 0.1 }
+    });
+
+    const cleanText = (response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanText);
+
+    const opp = await prisma.bidOpportunity.create({
+      data: {
+        title: result.title || 'Newspaper Opportunity',
+        description: result.description || '',
+        client: result.client || 'Unknown',
+        country: result.country || 'Unknown',
+        source: 'Newspaper',
+        type: result.type || 'Unknown',
+        deadline: result.deadline ? new Date(result.deadline) : null,
+        status: 'Identified'
+      }
+    });
+    res.status(201).json(opp);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to process OCR' });
+  }
+});
+
+// Web Search for Opportunities
+router.post('/opportunities/search', authMiddleware, async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    const prompt = `
+      You are an AI tasked with finding active civil engineering tenders/bids online.
+      Search the web for: ${query}
+      If you find real opportunities, summarize them.
+      Return your response as a JSON array of objects exactly like this, without markdown formatting or code blocks:
+      [
+        {
+          "title": "Project Name",
+          "client": "Client Name",
+          "country": "Country",
+          "type": "EOI or RFP",
+          "description": "Brief summary",
+          "deadline": "YYYY-MM-DD or null"
+        }
+      ]
+      If you cannot use search, just return an empty array [].
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { 
+        temperature: 0.2,
+        // Attempting to enable Google Search grounding if the SDK supports it.
+        // Even if it ignores it, we'll gracefully handle it.
+        tools: [{ googleSearch: {} }] 
+      }
+    });
+
+    const cleanText = (response.text || "[]").replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanText);
+
+    const createdOpps = [];
+    for (const opp of (Array.isArray(result) ? result : [])) {
+       const created = await prisma.bidOpportunity.create({
+         data: {
+           title: opp.title || 'Web Search Opportunity',
+           description: opp.description || '',
+           client: opp.client || 'Unknown',
+           country: opp.country || 'Unknown',
+           source: 'Web Search',
+           type: opp.type || 'Unknown',
+           deadline: opp.deadline ? new Date(opp.deadline) : null,
+           status: 'Identified'
+         }
+       });
+       createdOpps.push(created);
+    }
+    
+    res.status(201).json(createdOpps);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to search for opportunities' });
+  }
+});
+
+// AI Triage
+router.post('/opportunities/:id/triage', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const opp = await prisma.bidOpportunity.findUnique({ where: { id: Number(id) } });
+    if (!opp) return res.status(404).json({ error: 'Opportunity not found' });
+    
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+    }
+
+    const prompt = `
+      You are an expert civil engineering bid manager for PROME.
+      Analyze this opportunity and provide a Go/No-Go recommendation and a score (0-100).
+      Return your response in pure JSON format exactly like this, without markdown formatting or code blocks:
+      {
+        "score": 85,
+        "recommendation": "Go. Strong fit for our past road infrastructure projects."
+      }
+
+      Opportunity Details:
+      Title: ${opp.title}
+      Client: ${opp.client || 'Unknown'}
+      Country: ${opp.country || 'Unknown'}
+      Type: ${opp.type || 'Unknown'}
+      Description: ${opp.description || 'No description provided.'}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+      }
+    });
+
+    let result;
+    try {
+      const text = response.text || "{}";
+      // Clean up potential markdown formatting from Gemini response
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      result = JSON.parse(cleanText);
+    } catch (e) {
+      console.error("Failed to parse Gemini response:", response.text);
+      result = { score: 50, recommendation: "Could not analyze the opportunity with certainty. Please review manually." };
+    }
+
+    const updated = await prisma.bidOpportunity.update({
+      where: { id: Number(id) },
+      data: {
+        aiRecommendation: result.recommendation,
+        aiScore: result.score || 0,
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to triage opportunity' });
+  }
+});
+
+// Update opportunity status
+router.put('/opportunities/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const updated = await prisma.bidOpportunity.update({
+      where: { id: Number(id) },
+      data: { status }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update opportunity' });
+  }
+});
+
+// ==========================================
+// BIDS & PREPARATION
+// ==========================================
+
+// Create a bid from an opportunity
+router.post('/', authMiddleware, async (req, res) => {
+  try {
+    const { opportunityId } = req.body;
+    
+    // Create the Bid
+    const bid = await prisma.bid.create({
+      data: {
+        opportunityId: Number(opportunityId),
+        status: 'Preparation',
+      }
+    });
+
+    // Auto-create standard bid sections
+    const defaultSections = [
+      "Eligibility and Administrative Compliance",
+      "Technical Submission forms",
+      "Powers of Attorney",
+      "Company Experience",
+      "Comments on TORs",
+      "Methodology",
+      "Work Programme",
+      "Task Assignment and Team Composition",
+      "Team CVs",
+      "Staffing Schedule",
+      "Bid Securing Declaration",
+      "Financial Proposal Sheets"
+    ];
+
+    await prisma.bidSection.createMany({
+      data: defaultSections.map(name => ({
+        bidId: bid.id,
+        name,
+        status: 'Pending'
+      }))
+    });
+
+    res.status(201).json(bid);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to initialize bid' });
+  }
+});
+
+// Get all bids
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const bids = await prisma.bid.findMany({
+      include: { opportunity: true, partners: true, results: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(bids);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch bids' });
+  }
+});
+
+// Get single bid with all relations
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const bid = await prisma.bid.findUnique({
+      where: { id: Number(id) },
+      include: {
+        opportunity: true,
+        partners: true,
+        sections: {
+          include: { assignee: { select: { id: true, name: true, email: true } } }
+        },
+        results: true,
+        retrospective: true
+      }
+    });
+    if (!bid) return res.status(404).json({ error: 'Bid not found' });
+    res.json(bid);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch bid details' });
+  }
+});
+
+// Auto-suggest Resources (Staff & Projects)
+router.get('/:id/suggest-resources', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const bid = await prisma.bid.findUnique({
+      where: { id: Number(id) },
+      include: { opportunity: true }
+    });
+    
+    if (!bid) return res.status(404).json({ error: 'Bid not found' });
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, bio: true, skills: true, qualifications: true, division: true }
+    });
+
+    const projects = await prisma.project.findMany({
+      where: { status: 'Completed' },
+      select: { id: true, name: true, client: true, description: true }
+    });
+
+    const prompt = `
+      You are an expert bid resource manager for PROME Consult.
+      Analyze the following Bid Opportunity and suggest the top 3 best-suited Staff (Users) and top 3 best-suited Past Projects to include in the proposal.
+      
+      Bid Opportunity:
+      Title: ${bid.opportunity.title}
+      Description: ${bid.opportunity.description}
+
+      Available Staff:
+      ${JSON.stringify(users)}
+
+      Available Past Projects:
+      ${JSON.stringify(projects)}
+
+      Return your response in pure JSON format exactly like this, without markdown formatting or code blocks:
+      {
+        "suggestedStaff": [
+          { "id": 1, "name": "...", "reason": "Why they are a good fit" }
+        ],
+        "suggestedProjects": [
+          { "id": 1, "name": "...", "reason": "Why this project is relevant" }
+        ]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { temperature: 0.1 }
+    });
+
+    const cleanText = (response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanText);
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to suggest resources' });
+  }
+});
+
+// Update Bid Section Assignment or Status
+router.put('/sections/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, assigneeId, content } = req.body;
+    
+    const updated = await prisma.bidSection.update({
+      where: { id: Number(id) },
+      data: {
+        ...(status && { status }),
+        ...(assigneeId !== undefined && { assigneeId: assigneeId ? Number(assigneeId) : null }),
+        ...(content && { content })
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update section' });
+  }
+});
+
+// AI Draft Generation for Bid Sections
+router.post('/sections/:id/draft', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const section = await prisma.bidSection.findUnique({
+      where: { id: Number(id) },
+      include: { bid: { include: { opportunity: true } } }
+    });
+
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    // Real DB Query for Context (RAG approach)
+    const similarPastSections = await prisma.bidSection.findMany({
+      where: { 
+        name: section.name,
+        bid: { status: 'Won' },
+        content: { not: null }
+      },
+      take: 2,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const recentProjects = await prisma.project.findMany({
+      where: { status: 'Completed' },
+      select: { name: true, description: true },
+      take: 3,
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    let pastProposalsContext = "Context from past successful PROME proposals and projects:\n\n";
+    
+    if (similarPastSections.length > 0) {
+      pastProposalsContext += "--- PAST WINNING BID SECTIONS ---\n";
+      similarPastSections.forEach(s => {
+        // Limit size to avoid overwhelming the prompt if we had a smaller context window, though Gemini handles large contexts easily.
+        pastProposalsContext += (s.content || "").substring(0, 2500) + "...\n\n";
+      });
+    }
+
+    if (recentProjects.length > 0) {
+      pastProposalsContext += "--- RECENT COMPLETED PROJECTS ---\n";
+      recentProjects.forEach(p => {
+        pastProposalsContext += `Project: ${p.name}\nDescription: ${p.description || 'N/A'}\n\n`;
+      });
+    }
+    
+    if (similarPastSections.length === 0 && recentProjects.length === 0) {
+      pastProposalsContext += "PROME Consult uses a robust methodology emphasizing ISO 9001:2015 quality standards. We deploy experienced engineers rapidly and manage risk via continuous stakeholder engagement.";
+    }
+
+    const prompt = `
+      You are an expert bid writer for PROME Consult, a top-tier civil engineering firm.
+      Draft the "${section.name}" section for the following Bid Opportunity.
+      
+      Bid Opportunity:
+      Title: ${section.bid.opportunity.title}
+      Description: ${section.bid.opportunity.description || 'N/A'}
+      Client: ${section.bid.opportunity.client || 'N/A'}
+      
+      Past Proposals Context (Use this to align the tone and standard practices):
+      ${pastProposalsContext}
+      
+      Write a professional, compelling, and structured draft (in Markdown format).
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { temperature: 0.3 }
+    });
+
+    const draftText = response.text || "Failed to generate draft.";
+
+    const updated = await prisma.bidSection.update({
+      where: { id: Number(id) },
+      data: { content: draftText, status: 'In Progress' }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to generate draft' });
+  }
+});
+
+// Generate AI Retrospective Advice
+router.post('/:id/retrospective', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { winLossReason } = req.body;
+
+    const bid = await prisma.bid.findUnique({
+      where: { id: Number(id) },
+      include: { opportunity: true }
+    });
+
+    if (!bid) return res.status(404).json({ error: 'Bid not found' });
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+    }
+
+    const prompt = `
+      You are an expert bid analyst for PROME Consult, a civil engineering firm.
+      Review the outcome of this bid and provide actionable advice for future bids. Focus on what we can do better next time or what strengths we should double down on. Keep it concise (1-2 paragraphs max).
+      
+      Bid Title: ${bid.opportunity.title}
+      Client: ${bid.opportunity.client || 'Unknown'}
+      Win/Loss Reason provided by the team: "${winLossReason || 'No reason provided'}"
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.7,
+      }
+    });
+
+    const aiAdvice = response.text || "Unable to generate advice.";
+
+    // Upsert the retrospective
+    const retrospective = await prisma.bidRetrospective.upsert({
+      where: { bidId: Number(id) },
+      update: {
+        winLossReason,
+        aiAdvice
+      },
+      create: {
+        bidId: Number(id),
+        winLossReason,
+        aiAdvice,
+      }
+    });
+
+    res.json(retrospective);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to generate retrospective advice' });
+  }
+});
+
+export default router;

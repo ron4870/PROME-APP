@@ -20,6 +20,19 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
+  React.useEffect(() => {
+    if (isOpen && config) {
+      const initialData: any = {};
+      config.fields.forEach(f => {
+        if (f.defaultValue !== undefined) {
+          initialData[f.name] = f.defaultValue;
+        }
+      });
+      setFormData(initialData);
+      setFile(null);
+    }
+  }, [isOpen, config]);
+
   if (!isOpen || !config) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,18 +52,27 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
       }
 
       const res = await fetch(config.endpoint, {
-        method: 'POST',
+        method: config.method || 'POST',
         headers,
         body
       });
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        let errText = 'Failed to save';
+        try {
+          const errData = await res.json();
+          errText = errData.message || errData.error || errText;
+        } catch(e) {
+          errText = await res.text();
+        }
+        throw new Error(errText);
+      }
       setFormData({});
       setFile(null);
       onSuccess();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to save data');
+      alert(`Failed to save data: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -74,6 +96,7 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
               ) : f.type === 'select' ? (
                 <select
                   required={f.required}
+                  value={formData[f.name] !== undefined ? formData[f.name] : ''}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
                   onChange={e => setFormData({ ...formData, [f.name]: e.target.value })}
                 >
@@ -99,7 +122,7 @@ export const GenericModal: React.FC<Props> = ({ isOpen, onClose, config, token, 
                   type={f.type} 
                   required={f.required}
                   placeholder={f.placeholder}
-                  defaultValue={f.defaultValue}
+                  value={formData[f.name] !== undefined ? formData[f.name] : ''}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
                   onChange={e => setFormData({ ...formData, [f.name]: e.target.value })}
                 />

@@ -168,7 +168,11 @@ export default function AdminDashboard() {
     { key: 'ped', label: 'Engineering Design (PED)' },
     { key: 'pdmd', label: 'Project Delivery (PDMD)' },
     { key: 'hrad', label: 'Human Resources (HRAD)' },
-    { key: 'fd', label: 'Finance & Accounts (FD)' }
+    { key: 'fd', label: 'Finance & Accounts (FD)' },
+    { key: 'wiki_view', label: 'Wiki Module - View Pages' },
+    { key: 'wiki_draft', label: 'Wiki Module - Draft Pages' },
+    { key: 'wiki_review', label: 'Wiki Module - Review Pages' },
+    { key: 'wiki_approve', label: 'Wiki Module - Approve Pages' }
   ];
 
   return (

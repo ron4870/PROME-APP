@@ -7,7 +7,7 @@ export const useProjectModules = (projectId: string | undefined, token: string |
   const [resources, setResources] = useState<any[]>([]);
   const [financials, setFinancials] = useState<any[]>([]);
   const [hse, setHse] = useState<{ incidents: any[] }>({ incidents: [] });
-  const [quality, setQuality] = useState<{ ncrs: any[] }>({ ncrs: [] });
+  const [quality, setQuality] = useState<{ ncrs: any[], inspections: any[] }>({ ncrs: [], inspections: [] });
   const [risks, setRisks] = useState<any[]>([]);
   
   const [procurement, setProcurement] = useState<{ requisitions: any[], inventory: any[] }>({ requisitions: [], inventory: [] });

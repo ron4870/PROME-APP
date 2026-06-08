@@ -63,6 +63,8 @@ model User {
   trainingsConducted  TrainingRecord[]     @relation("InternalTrainer")
   trainingAttendances TrainingAttendance[] @relation("TrainingAttendee")
   evaluationsDone     TrainingAttendance[] @relation("CompetencyEvaluator")
+  // Quality & Inspections
+  inspections         ProjectInspection[]  @relation("ProjectInspector")
 
   // Equipment Relations
   ownedEquipment Equipment[] @relation("EquipmentOwner")
@@ -118,9 +120,18 @@ model User {
   // External Manuals
   uploadedManuals Manual[]
 
+  // Custom Wiki Relations
+  authoredWikiPages    WikiPage[]     @relation("WikiAuthor")
+  approvedWikiPages    WikiPage[]     @relation("WikiApprover")
+  createdWikiTemplates WikiTemplate[] @relation("WikiTemplateCreator")
+
+  assignedBidSections BidSection[] @relation("BidSectionAssignee")
+  
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   ProjectUserPermission ProjectUserPermission[]
+  notifications         Notification[]
+  aiSessions            AiChatSession[]
 }
 
 model Document {
@@ -816,6 +827,7 @@ model Project {
   risks           Risk[]
   capas           CapaReport[]
   ncrs            NonConformityReport[]
+  inspections     ProjectInspection[]
   hseIncidents    HseIncident[]
   audits          Audit[]
   masterDocuments MasterDocument[]
@@ -840,6 +852,7 @@ model Project {
   meetings             ProjectMeeting[]
 
   userPermissions ProjectUserPermission[]
+  notifications   Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -895,8 +908,27 @@ model ProjectTask {
   dueDate       DateTime?
   completedDate DateTime?
 
+  frequency            String?
+  lastNotificationDate DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  message     String   @db.Text
+  type        String   @default("System")
+  isRead      Boolean  @default(false)
+  link        String?
+  
+  projectId   Int?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
 }
 
 model ProjectMilestone {
@@ -1192,6 +1224,25 @@ model ProjectSnag {
   updatedAt DateTime @updatedAt
 }
 
+// 5b. Project Inspections
+model ProjectInspection {
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  date      DateTime
+  type      String   // "Concrete Pour", "Rebar", "Soil Compaction", "Welding", "Safety", "General"
+  location  String
+  result    String   // "Passed", "Failed", "Passed with Comments"
+  comments  String?  @db.Text
+
+  inspectorId Int
+  inspector   User @relation("ProjectInspector", fields: [inspectorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // 6. Formal Correspondence / Communications Log
 model ProjectCorrespondence {
   id        Int     @id @default(autoincrement())
@@ -1302,4 +1353,194 @@ model FormSubmission {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// CUSTOM WIKI MODULE
+// ==========================================
+
+model WikiFolder {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?      @db.Text
+  
+  parentId    Int?
+  parent      WikiFolder?  @relation("SubFolders", fields: [parentId], references: [id], onDelete: Cascade)
+  subFolders  WikiFolder[] @relation("SubFolders")
+
+  pages       WikiPage[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([name, parentId])
+}
+
+model WikiPage {
+  id          Int        @id @default(autoincrement())
+  title       String
+  content     String     @db.Text
+  status      String     @default("Draft") // "Draft", "Review", "Approved"
+  version     String     @default("1.0")
+  
+  folderId    Int
+  folder      WikiFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  authorId    Int
+  author      User       @relation("WikiAuthor", fields: [authorId], references: [id])
+  
+  approvedById Int?
+  approvedBy   User?     @relation("WikiApprover", fields: [approvedById], references: [id])
+
+  // Inter-page linking
+  outgoingLinks WikiPageLink[] @relation("SourceWikiLink")
+  incomingLinks WikiPageLink[] @relation("TargetWikiLink")
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model WikiPageLink {
+  id          Int      @id @default(autoincrement())
+  sourceId    Int
+  targetId    Int
+  
+  sourcePage  WikiPage @relation("SourceWikiLink", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetPage  WikiPage @relation("TargetWikiLink", fields: [targetId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([sourceId, targetId])
+}
+
+model WikiTemplate {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  content     String   @db.Text
+  creatorId   Int
+  creator     User     @relation("WikiTemplateCreator", fields: [creatorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==========================================
+// AI ASSISTANT MODULE
+// ==========================================
+
+model AiChatSession {
+  id        Int             @id @default(autoincrement())
+  title     String          @default("New Chat")
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiChatMessage[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model AiChatMessage {
+  id        Int           @id @default(autoincrement())
+  sessionId Int
+  session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String        // 'user' or 'model'
+  content   String        @db.Text // The text content of the message
+  createdAt DateTime      @default(now())
+}
+
+// ==========================================
+// BIDS MANAGEMENT MODULE
+// ==========================================
+
+model BidOpportunity {
+  id              Int      @id @default(autoincrement())
+  title           String
+  description     String?  @db.Text
+  client          String?
+  country         String?
+  source          String?  // "Newspaper", "Email", "Website", "Manual"
+  type            String   @default("RFP") // "EOI", "RFP", "DP"
+  deadline        DateTime?
+  status          String   @default("Identified") // "Identified", "Bid Solo", "Partner", "No-Go"
+  aiRecommendation String? @db.Text
+  aiScore         Float?   // AI Confidence score (0-100)
+
+  bids            Bid[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Bid {
+  id              Int      @id @default(autoincrement())
+  opportunityId   Int
+  opportunity     BidOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  
+  status          String   @default("Preparation") // "Preparation", "Submitted", "Won", "Lost", "Cancelled"
+  
+  finalDocumentUrl String? @db.Text // URL to uploaded stamped/scanned bid
+
+  partners        BidPartner[]
+  sections        BidSection[]
+  results         BidResult?
+  retrospective   BidRetrospective?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BidPartner {
+  id              Int      @id @default(autoincrement())
+  bidId           Int
+  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  companyName     String
+  role            String?  // "Lead", "JV Partner", "Sub-consultant"
+  contactPerson   String?
+  contactEmail    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BidSection {
+  id              Int      @id @default(autoincrement())
+  bidId           Int
+  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  
+  name            String   // e.g. "Methodology", "Financial Proposal", "Company Experience"
+  status          String   @default("Pending") // "Pending", "In Progress", "Completed"
+  content         String?  @db.Text
+  documentUrl     String?  @db.Text // Draft file URL
+
+  assigneeId      Int?
+  assignee        User?    @relation("BidSectionAssignee", fields: [assigneeId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BidResult {
+  id              Int      @id @default(autoincrement())
+  bidId           Int      @unique
+  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
+
+  technicalScore  Float?
+  financialScore  Float?
+  combinedScore   Float?
+  ranking         Int?     // e.g., 1st, 2nd
+
+  competitorData  Json?    // Array of objects storing competitor names and scores
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BidRetrospective {
+  id              Int      @id @default(autoincrement())
+  bidId           Int      @unique
+  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
+
+  userFeedback    String?  @db.Text
+  aiAdvice        String?  @db.Text
+  winLossReason   String?  @db.Text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

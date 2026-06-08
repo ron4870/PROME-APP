@@ -220,6 +220,46 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Update a project
+router.put('/:id', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: (req as any).user!.userId },
+      include: { role: true }
+    });
+
+    const membership = (req as any).projectMembership;
+    
+    // Only Administrators or Project Managers can edit project details
+    const canEdit = user?.role?.name === 'Administrator' || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes(membership?.role || '');
+
+    if (!canEdit) {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to edit this project' });
+    }
+
+    const { name, client, description, startDate, endDate, budget, status } = req.body;
+    const projectId = parseInt(req.params.id);
+
+    const project = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        name: name !== undefined ? name : undefined,
+        client: client !== undefined ? client : undefined,
+        description: description !== undefined ? description : undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : null,
+        budget: budget ? parseFloat(budget) : null,
+        status: status || undefined
+      }
+    });
+
+    res.json(project);
+  } catch (error) {
+    console.error('Error updating project:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Assign Member to Project
 router.post('/:id/members', authenticate, checkProjectAccess(), async (req, res) => {
   try {
@@ -425,8 +465,14 @@ router.get('/:id/quality', authenticate, checkProjectAccess(), async (req, res) 
       where: { projectId: parseInt(req.params.id) },
       orderBy: { createdAt: 'desc' }
     });
-    // Engineering Inspections would be fetched here
-    res.json({ ncrs });
+    
+    const inspections = await prisma.projectInspection.findMany({
+      where: { projectId: parseInt(req.params.id) },
+      include: { inspector: { select: { name: true } } },
+      orderBy: { date: 'desc' }
+    });
+
+    res.json({ ncrs, inspections });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -620,7 +666,7 @@ router.get('/:id/equipment-logs', authenticate, checkProjectAccess(), async (req
 // POST Project Tasks
 router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) => {
   try {
-    const { title, status, priority, assignedToId, dueDate, description, progress, isOverallProgressTracker } = req.body;
+    const { title, status, priority, assignedToId, dueDate, description, progress, isOverallProgressTracker, frequency } = req.body;
     const newTask = await prisma.projectTask.create({
       data: {
         projectId: parseInt(req.params.id),
@@ -632,9 +678,32 @@ router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =
         description,
         progress: progress ? parseInt(progress) : 0,
         isOverallProgressTracker: isOverallProgressTracker === true || isOverallProgressTracker === 'true',
+        frequency: frequency || null,
         milestoneId: req.body.milestoneId ? parseInt(req.body.milestoneId) : undefined
       }
     });
+
+    if (newTask.assignedToId) {
+      const assignedUser = await prisma.user.findUnique({ where: { id: newTask.assignedToId } });
+      const project = await prisma.project.findUnique({ where: { id: parseInt(req.params.id) } });
+      if (assignedUser && project) {
+        await prisma.notification.create({
+          data: {
+            userId: assignedUser.id,
+            projectId: project.id,
+            title: `New Task: ${title}`,
+            message: `You have been assigned a new task: ${title} in project ${project.name}.`,
+            type: 'ProjectTask',
+            link: `/projects/${project.id}`
+          }
+        });
+        if (assignedUser.email) {
+          const { sendTaskAssignmentEmail } = await import('../services/email.service');
+          await sendTaskAssignmentEmail(assignedUser.email, assignedUser.name || 'User', project.name, title, project.id);
+        }
+      }
+    }
+
     res.json(newTask);
   } catch (error) {
     console.error(error);
@@ -645,36 +714,74 @@ router.post('/:id/tasks', authenticate, checkProjectAccess(), async (req, res) =
 // PUT Project Tasks (Update progress & details)
 router.put('/:id/tasks/:taskId', authenticate, checkProjectAccess(), async (req, res) => {
   try {
-    const { progress, status, title, description, priority, assignedToId, dueDate, isOverallProgressTracker } = req.body;
+    const { progress, status, title, description, priority, assignedToId, dueDate, isOverallProgressTracker, frequency, milestoneId } = req.body;
     const taskId = parseInt(req.params.taskId);
+
+    if (isNaN(taskId)) {
+      return res.status(400).json({ message: 'Invalid taskId' });
+    }
 
     const userObj = await prisma.user.findUnique({ where: { id: (req as any).user.userId }, include: { role: true } });
     const isManagerOrAdmin = userObj?.role?.name === 'Administrator' || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes((req as any).projectMembership?.role || '');
     
+    let parsedProgress = undefined;
+    if (progress !== undefined && progress !== null && progress !== '') {
+      parsedProgress = parseInt(progress, 10);
+      if (isNaN(parsedProgress)) parsedProgress = undefined;
+    }
+
     const updateData: any = {
-      progress: progress !== undefined ? parseInt(progress) : undefined,
+      progress: parsedProgress,
       status: status || undefined,
-      completedDate: status === 'Completed' || progress === 100 ? new Date() : undefined,
-      milestoneId: req.body.milestoneId ? parseInt(req.body.milestoneId) : undefined
+      completedDate: status === 'Completed' || parsedProgress === 100 ? new Date() : undefined,
+      milestoneId: milestoneId ? parseInt(milestoneId) : undefined
     };
 
     if (isManagerOrAdmin) {
       if (title !== undefined) updateData.title = title;
       if (description !== undefined) updateData.description = description;
       if (priority !== undefined) updateData.priority = priority;
-      if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId) : null;
-      if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+      if (assignedToId !== undefined) {
+        updateData.assignedToId = (assignedToId === 'null' || !assignedToId) ? null : parseInt(assignedToId);
+      }
+      if (dueDate !== undefined) {
+        updateData.dueDate = (dueDate === 'null' || !dueDate) ? null : new Date(dueDate);
+      }
       if (isOverallProgressTracker !== undefined) updateData.isOverallProgressTracker = isOverallProgressTracker === true || isOverallProgressTracker === 'true';
+      if (frequency !== undefined) updateData.frequency = frequency || null;
     }
 
     const updatedTask = await prisma.projectTask.update({
       where: { id: taskId },
       data: updateData
     });
+
+    // Notify on assignment update
+    if (assignedToId && assignedToId !== 'null') {
+      const assignedUser = await prisma.user.findUnique({ where: { id: parseInt(assignedToId) } });
+      const project = await prisma.project.findUnique({ where: { id: parseInt(req.params.id) } });
+      if (assignedUser && project) {
+        await prisma.notification.create({
+          data: {
+            userId: assignedUser.id,
+            projectId: project.id,
+            title: `Task Update: ${title || updatedTask.title}`,
+            message: `You have been assigned or updated on task: ${title || updatedTask.title} in project ${project.name}.`,
+            type: 'ProjectTask',
+            link: `/projects/${project.id}`
+          }
+        });
+        if (assignedUser.email) {
+          const { sendTaskAssignmentEmail } = await import('../services/email.service');
+          await sendTaskAssignmentEmail(assignedUser.email, assignedUser.name || 'User', project.name, title || updatedTask.title, project.id);
+        }
+      }
+    }
+
     res.json(updatedTask);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+  } catch (error: any) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ message: 'Server error updating task', details: error.message || error });
   }
 });
 
@@ -902,7 +1009,7 @@ router.post('/:id/hse', authenticate, checkProjectAccess(), async (req, res) => 
 });
 
 // POST Quality NCRs
-router.post('/:id/quality', authenticate, checkProjectAccess(), async (req, res) => {
+router.post('/:id/quality/ncrs', authenticate, checkProjectAccess(), async (req, res) => {
   try {
     const { title, productOrService, description, source, severity } = req.body;
     const newNcr = await prisma.nonConformityReport.create({
@@ -918,6 +1025,27 @@ router.post('/:id/quality', authenticate, checkProjectAccess(), async (req, res)
       }
     });
     res.json(newNcr);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST Quality Inspections
+router.post('/:id/quality/inspections', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const { date, type, location, result, comments } = req.body;
+    const newInsp = await prisma.projectInspection.create({
+      data: {
+        projectId: parseInt(req.params.id),
+        date: date ? new Date(date) : new Date(),
+        type: type || 'General',
+        location: location || 'Site',
+        result: result || 'Passed',
+        comments,
+        inspectorId: (req as any).user!.userId
+      }
+    });
+    res.json(newInsp);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

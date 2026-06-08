@@ -61,6 +61,7 @@ const UGANDA_MOW_FRICTION = {
   60: 0.15,
   70: 0.15,
   80: 0.14,
+  90: 0.135,
   100: 0.13,
   120: 0.11
 };
@@ -71,6 +72,26 @@ const UGANDA_MOW_SPEEDS = {
   'Ib': { 'level': 100, 'rolling': 80, 'mountainous': 70, 'escarpment': 60 },
   'II': { 'level': 80, 'rolling': 70, 'mountainous': 60, 'escarpment': 50 },
   'III': { 'level': 70, 'rolling': 60, 'mountainous': 50, 'escarpment': 40 }
+};
+
+// Uganda MoW Relative Gradients (1/G) by Design Speed
+const UGANDA_MOW_MAX_REL_GRADIENT = {
+  40: 0.0070,
+  50: 0.0065,
+  60: 0.0060,
+  70: 0.0055,
+  80: 0.0050,
+  90: 0.00475,
+  100: 0.0045,
+  120: 0.0040
+};
+
+// Uganda MoW Lane Width by Design Class (m)
+const UGANDA_MOW_LANE_WIDTH = {
+  'Ia': 3.5,
+  'Ib': 3.5,
+  'II': 3.5,
+  'III': 3.0
 };
 
 // UK DMRB Desirable Minimum Radii (CD 109)
@@ -185,10 +206,10 @@ function updateDesignCriteria() {
   state.rMin = rMin;
   document.getElementById('info-rmin').textContent = rMin + ' m';
   
-  // Automatically update any PI that has a radius smaller than the new minimum
+  // Automatically update any PI that has a radius smaller than the new minimum (unless it's explicitly 0)
   let changed = false;
   state.pis.forEach(pi => {
-    if (pi.r !== undefined && pi.r < rMin) {
+    if (pi.r !== undefined && pi.r !== 0 && pi.r < rMin) {
       pi.r = rMin;
       changed = true;
     }
@@ -507,24 +528,24 @@ function calculateGeometry() {
       if (delta > Math.PI) delta -= 2*Math.PI;
       if (delta < -Math.PI) delta += 2*Math.PI;
       
-      const r = pi2.r || state.rMin;
-      const lsIn = pi2.lsIn || 0;
-      const lsOut = pi2.lsOut || 0;
+      const r = pi2.r !== undefined ? pi2.r : state.rMin;
+      const lsIn = r > 0 ? (pi2.lsIn || 0) : 0;
+      const lsOut = r > 0 ? (pi2.lsOut || 0) : 0;
       const absDelta = Math.abs(delta);
       const rot = delta > 0 ? "cw" : "ccw";
       
-      let theta_in = lsIn > 0 ? lsIn / (2 * r) : 0;
-      let theta_out = lsOut > 0 ? lsOut / (2 * r) : 0;
+      let theta_in = r > 0 && lsIn > 0 ? lsIn / (2 * r) : 0;
+      let theta_out = r > 0 && lsOut > 0 ? lsOut / (2 * r) : 0;
       
-      let p_in = lsIn > 0 ? (lsIn * lsIn) / (24 * r) : 0;
-      let p_out = lsOut > 0 ? (lsOut * lsOut) / (24 * r) : 0;
+      let p_in = r > 0 && lsIn > 0 ? (lsIn * lsIn) / (24 * r) : 0;
+      let p_out = r > 0 && lsOut > 0 ? (lsOut * lsOut) / (24 * r) : 0;
       
-      let k_in = lsIn > 0 ? (lsIn / 2) - (lsIn * lsIn * lsIn) / (240 * r * r) : 0;
-      let k_out = lsOut > 0 ? (lsOut / 2) - (lsOut * lsOut * lsOut) / (240 * r * r) : 0;
+      let k_in = r > 0 && lsIn > 0 ? (lsIn / 2) - (lsIn * lsIn * lsIn) / (240 * r * r) : 0;
+      let k_out = r > 0 && lsOut > 0 ? (lsOut / 2) - (lsOut * lsOut * lsOut) / (240 * r * r) : 0;
       
-      let T_in = r * Math.tan(absDelta / 2);
-      let T_out = r * Math.tan(absDelta / 2);
-      let Lc = r * absDelta;
+      let T_in = r > 0 ? r * Math.tan(absDelta / 2) : 0;
+      let T_out = r > 0 ? r * Math.tan(absDelta / 2) : 0;
+      let Lc = r > 0 ? r * absDelta : 0;
       
       let valid_spirals = false;
       if (theta_in + theta_out < absDelta) {
@@ -533,12 +554,15 @@ function calculateGeometry() {
               T_in = k_in + (r + p_out - (r + p_in) * Math.cos(absDelta)) / Math.sin(absDelta);
               T_out = k_out + (r + p_in - (r + p_out) * Math.cos(absDelta)) / Math.sin(absDelta);
           }
-          Lc = r * (absDelta - theta_in - theta_out);
+          Lc = r > 0 ? r * (absDelta - theta_in - theta_out) : 0;
       } else {
           // Spirals overlap, revert to simple curve for visual
           theta_in = 0; theta_out = 0;
           p_in = 0; p_out = 0;
           k_in = 0; k_out = 0;
+          T_in = r > 0 ? r * Math.tan(absDelta / 2) : 0;
+          T_out = r > 0 ? r * Math.tan(absDelta / 2) : 0;
+          Lc = r > 0 ? r * absDelta : 0;
       }
       
       const tsX = pi2.x - T_in * Math.sin(azimuth);
@@ -575,9 +599,9 @@ function calculateGeometry() {
              };
          }
       } else {
-         const cx = tsX + r * Math.sin(azimuth + rot_dir * Math.PI/2);
-         const cy = tsY + r * Math.cos(azimuth + rot_dir * Math.PI/2);
-         center = {x: cx, y: cy};
+         const cx = tsX + (r > 0 ? r * Math.sin(azimuth + rot_dir * Math.PI/2) : 0);
+         const cy = tsY + (r > 0 ? r * Math.cos(azimuth + rot_dir * Math.PI/2) : 0);
+         center = r > 0 ? {x: cx, y: cy} : null;
       }
       
       elements.push({ 
@@ -644,6 +668,104 @@ function calculateGeometry() {
   }
   
   return elements;
+}
+
+// Get coordinate at a given station
+function getCoordinateAtStation(elements, st) {
+  if (elements.length === 0) return null;
+  if (st <= elements[0].station) return { x: elements[0].x, y: elements[0].y, az: elements.length > 1 ? elements[1].az : 0 };
+  
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    
+    if (el.type === 'Curve') {
+      const prevEl = elements[i-2]; 
+      const tangent = elements[i-1];
+      let startSt = 0, startPt = null;
+      if (prevEl) {
+        if (prevEl.type === 'Point') { startSt = prevEl.station; startPt = { x: prevEl.x, y: prevEl.y }; }
+        else if (prevEl.type === 'Curve') { startSt = prevEl.station_pt; startPt = prevEl.pt; }
+      }
+      const az = tangent.az;
+      
+      // Tangent before curve
+      if (st >= startSt && st < el.station_pc) {
+        const d = st - startSt;
+        return { x: startPt.x + d * Math.sin(az), y: startPt.y + d * Math.cos(az), az: az };
+      }
+      
+      // Spiral In
+      if (el.lsIn > 0 && st >= el.station_pc && st < el.station_sc) {
+        const l = st - el.station_pc;
+        const r = el.radius;
+        const ls = el.lsIn;
+        const rot_dir = el.rot === 'cw' ? 1 : -1;
+        const x_loc = l - Math.pow(l, 5) / (40 * r * r * ls * ls);
+        const y_loc = Math.pow(l, 3) / (6 * r * ls) - Math.pow(l, 7) / (336 * Math.pow(r, 3) * Math.pow(ls, 3));
+        const y_dir = rot_dir * y_loc;
+        const ptAz = el.azIn + rot_dir * (l * l) / (2 * r * ls);
+        return {
+          x: el.pc.x + x_loc * Math.sin(el.azIn) + y_dir * Math.cos(el.azIn),
+          y: el.pc.y + x_loc * Math.cos(el.azIn) - y_dir * Math.sin(el.azIn),
+          az: ptAz
+        };
+      }
+      
+      // Circular Curve
+      const startCircSt = el.lsIn > 0 ? el.station_sc : el.station_pc;
+      const endCircSt = el.lsOut > 0 ? el.station_cs : el.station_pt;
+      if (st >= startCircSt && st < endCircSt) {
+        const startCircPt = el.lsIn > 0 ? el.sc : el.pc;
+        const l = st - startCircSt;
+        const r = el.radius;
+        const rot_dir = el.rot === 'cw' ? 1 : -1;
+        const theta = l / r; 
+        const cx = el.center.x;
+        const cy = el.center.y;
+        const dx = startCircPt.x - cx;
+        const dy = startCircPt.y - cy;
+        const theta_rot = -rot_dir * theta;
+        const x_new = cx + dx * Math.cos(theta_rot) - dy * Math.sin(theta_rot);
+        const y_new = cy + dx * Math.sin(theta_rot) + dy * Math.cos(theta_rot);
+        const startCircAz = el.lsIn > 0 ? el.az_sc : el.azIn;
+        const ptAz = startCircAz + rot_dir * theta;
+        return { x: x_new, y: y_new, az: ptAz };
+      }
+      
+      // Spiral Out
+      if (el.lsOut > 0 && st >= el.station_cs && st < el.station_pt) {
+        const l_from_pt = el.station_pt - st; 
+        const r = el.radius;
+        const ls = el.lsOut;
+        const rot_dir = el.rot === 'cw' ? 1 : -1;
+        const x_loc = l_from_pt - Math.pow(l_from_pt, 5) / (40 * r * r * ls * ls);
+        const y_loc = Math.pow(l_from_pt, 3) / (6 * r * ls) - Math.pow(l_from_pt, 7) / (336 * Math.pow(r, 3) * Math.pow(ls, 3));
+        const effective_rot = -rot_dir;
+        const y_dir = effective_rot * y_loc;
+        const azBack = el.azOut + Math.PI;
+        const ptAz = el.azOut - rot_dir * (l_from_pt * l_from_pt) / (2 * r * ls);
+        return {
+          x: el.pt.x + x_loc * Math.sin(azBack) + y_dir * Math.cos(azBack),
+          y: el.pt.y + x_loc * Math.cos(azBack) - y_dir * Math.sin(azBack),
+          az: ptAz
+        };
+      }
+    } else if (el.type === 'Point' && el.name === 'POE') {
+      const prevEl = elements[i-2];
+      const tangent = elements[i-1];
+      let startSt = 0, startPt = null;
+      if (prevEl) {
+        if (prevEl.type === 'Point') { startSt = prevEl.station; startPt = { x: prevEl.x, y: prevEl.y }; }
+        else if (prevEl.type === 'Curve') { startSt = prevEl.station_pt; startPt = prevEl.pt; }
+      }
+      const az = tangent ? tangent.az : 0;
+      if (st >= startSt && st <= el.station) {
+        const d = st - startSt;
+        return { x: startPt.x + d * Math.sin(az), y: startPt.y + d * Math.cos(az), az: az };
+      }
+    }
+  }
+  return null;
 }
 
 // Drawing Logic
@@ -912,6 +1034,35 @@ function draw() {
       ctx.fillText(`${ptLbl}: ${formatStation(el.station_pt)}`, ptSc.x + 10, ptSc.y + 15);
     }
   });
+
+  // Draw 100m Station Ticks
+  const lastElement = elements[elements.length - 1];
+  if (lastElement && lastElement.station > 0) {
+    const maxSt = lastElement.station;
+    ctx.font = '10px Inter';
+    ctx.fillStyle = '#64748b'; // slate-500
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1;
+    
+    for (let st = 100; st <= maxSt; st += 100) {
+      const coords = getCoordinateAtStation(elements, st);
+      if (coords) {
+        const pt = mapToCanvas(coords.x, coords.y);
+        
+        const tickLen = 6;
+        const sDx = Math.sin(coords.az + Math.PI/2);
+        const sDy = -Math.cos(coords.az + Math.PI/2);
+        
+        ctx.beginPath();
+        ctx.moveTo(pt.x - sDx * tickLen, pt.y - sDy * tickLen);
+        ctx.lineTo(pt.x + sDx * tickLen, pt.y + sDy * tickLen);
+        ctx.stroke();
+        
+        const text = formatStation(st);
+        ctx.fillText(text, pt.x + sDx * (tickLen + 2) + 2, pt.y + sDy * (tickLen + 2) + 4);
+      }
+    }
+  }
 }
 
 // Map Tile Logic (From Hydrology App)
@@ -1053,16 +1204,43 @@ function updateDataPanel() {
       
       // Calculate standard-specific minimums
       const v = state.designSpeed;
-      const r = c.radius || state.rMin;
+      const r = c.radius !== undefined ? c.radius : state.rMin;
       let lsMin = v / 1.8; // Default 2 seconds rule (Uganda MoW base)
+      let pThreshold = 0.20; // default for AASHTO
       
-      if (state.standard === 'aashto') {
+      if (r === 0) {
+        lsMin = 0;
+        pThreshold = 0;
+      } else if (state.standard === 'aashto') {
         lsMin = Math.max((v * v * v) / (46.7 * r), v / 1.8);
+        pThreshold = 0.20;
       } else if (state.standard === 'ukdmrb') {
         lsMin = (v * v * v) / (14 * r);
+        pThreshold = 0.25;
+      } else if (state.standard === 'ugandamow') {
+        const dClass = document.getElementById('ugandamow-design-class').value;
+        const w = UGANDA_MOW_LANE_WIDTH[dClass] || 3.5;
+        const g = UGANDA_MOW_MAX_REL_GRADIENT[v] || 0.005;
+        
+        const lComfort = (v * v * v) / (46.7 * r);
+        const lRunoff = (w * state.eMax) / g;
+        const lTime = v / 1.8;
+        
+        lsMin = Math.max(lComfort, lRunoff, lTime);
+        pThreshold = 0.25;
       }
       
-      lsMin = Math.ceil(lsMin);
+      let pShift = 0;
+      if (r > 0) {
+        pShift = (lsMin * lsMin) / (24 * r);
+      }
+      
+      if (pShift < pThreshold || r === 0) {
+        lsMin = 0;
+      } else {
+        lsMin = Math.ceil(lsMin);
+      }
+      
       const rMin = state.rMin;
       
       html += `
@@ -1197,7 +1375,7 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
           } else if (el.tagName === 'Curve') {
             segments.push({
               type: 'Curve',
-              radius: parseFloat(el.getAttribute('radius')) || state.rMin
+              radius: parseFloat(el.getAttribute('radius')) || 0
             });
           }
         }
@@ -1226,7 +1404,7 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
                 const nextLine = lines[lineIdx + 1];
                 const pi = getIntersection(currentLine, nextLine);
                 if (pi) {
-                  let r = state.rMin, lsIn = 0, lsOut = 0;
+                  let r = 0, lsIn = 0, lsOut = 0;
                   let j = i + 1;
                   let seenSpiral = false;
                   while (j < segments.length && segments[j].type !== 'Line') {

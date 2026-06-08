@@ -46,6 +46,8 @@ import AppLayout from './components/AppLayout';
 
 // Division Pages
 import PMBDD from './pages/divisions/PMBDD';
+import BidsManagement from './pages/divisions/BidsManagement';
+import BidWorkspace from './pages/divisions/BidWorkspace';
 import CPSD from './pages/divisions/CPSD';
 import PED from './pages/divisions/PED';
 import PDMD from './pages/divisions/PDMD';
@@ -58,6 +60,8 @@ import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManualsDirectory from './pages/ManualsDirectory';
+import Wiki from './pages/Wiki';
+import AIAssistant from './pages/AIAssistant';
 
 
 // Simple protected route component
@@ -147,9 +151,13 @@ function App() {
         <Route path="/forms/funds-requisition" element={<ProtectedRoute><FundsRequisitionForm /></ProtectedRoute>} />
         <Route path="/manuals" element={<ProtectedRoute><ManualsDirectory /></ProtectedRoute>} />
         <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
+        <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
+        <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
         
         {/* Division Routes */}
         <Route path="/division/pmbdd" element={<ProtectedRoute><PMBDD /></ProtectedRoute>} />
+        <Route path="/division/pmbdd/bids" element={<ProtectedRoute><BidsManagement /></ProtectedRoute>} />
+        <Route path="/division/pmbdd/bids/:id" element={<ProtectedRoute><BidWorkspace /></ProtectedRoute>} />
         <Route path="/division/cpsd" element={<ProtectedRoute><CPSD /></ProtectedRoute>} />
         <Route path="/division/ped" element={<ProtectedRoute><PED /></ProtectedRoute>} />
         <Route path="/division/ped/roads-highways" element={<ProtectedRoute><PEDRoadsHighways /></ProtectedRoute>} />

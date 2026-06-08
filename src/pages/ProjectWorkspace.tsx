@@ -19,17 +19,6 @@ interface Project {
 
 // Fallback Mock Data
 
-const MOCK_RESOURCES = [
-  { id: 1, type: 'Personnel', name: 'Alice Engineer', role: 'Lead Design', allocation: '100%', dates: 'Jan 15 - Dec 31' },
-  { id: 2, type: 'Equipment', name: 'Total Station TS16', role: 'Survey', allocation: '100%', dates: 'Jan 20 - Feb 28' }
-];
-
-const MOCK_FINANCIALS = [
-  { id: 1, type: 'Budget Allocation', amount: 500000, date: '2025-01-10', desc: 'Initial Project Funding', status: 'Approved' },
-  { id: 2, type: 'Expense', amount: 15000, date: '2025-01-22', desc: 'Surveying Contractor', status: 'Paid' },
-  { id: 3, type: 'Invoice', amount: 100000, date: '2025-02-01', desc: 'Milestone 1 Billing', status: 'Pending' }
-];
-
 const MOCK_HSE = {
   metrics: { lti: 120, trir: 0.8, toolboxTalks: 14, walkdowns: 8 },
   incidents: [
@@ -38,22 +27,6 @@ const MOCK_HSE = {
   ]
 };
 
-const MOCK_QUALITY = {
-  ncrs: [
-    { id: 1, number: 'NCR-2025-001', title: 'Concrete slump test failed', severity: 'High', status: 'Open' },
-    { id: 2, number: 'NCR-2025-002', title: 'Incorrect rebar spacing', severity: 'Medium', status: 'Closed' }
-  ],
-  inspections: [
-    { id: 1, date: '2025-02-15', type: 'Pre-Pour Inspection', location: 'Foundation A', result: 'Passed' },
-    { id: 2, date: '2025-02-20', type: 'Compaction Test', location: 'Access Road', result: 'Failed' }
-  ]
-};
-
-const MOCK_RISKS = [
-  { id: 1, title: 'Heavy rains delaying earthworks', category: 'Environmental', likelihood: 'High', impact: 'Medium', score: 12 },
-  { id: 2, title: 'Supply chain delay for structural steel', category: 'Operational', likelihood: 'Medium', impact: 'High', score: 15 },
-  { id: 3, title: 'Community protests over noise', category: 'Social', likelihood: 'Low', impact: 'Low', score: 4 }
-];
 
 // ADVANCED ENGINEERING MODULES MOCK DATA
 
@@ -65,7 +38,7 @@ export const ProjectWorkspace: React.FC = () => {
   const { user, token } = useAuth();
   
   // Real data fetching hook
-  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, milestones, hse, fetchAll } = useProjectModules(id, token);
+  const { tasks, meetings, variations, snags, correspondence, documents, dailyReports, paymentInvoices, milestones, hse, quality, risks, resources, financials, procurement, subcontractors, fetchAll } = useProjectModules(id, token);
 
   const overallTrackerTask = tasks?.find((t: any) => t.isOverallProgressTracker);
   const overallProgress = overallTrackerTask ? overallTrackerTask.progress : 0;
@@ -81,6 +54,7 @@ export const ProjectWorkspace: React.FC = () => {
   const [dailyReportFilter, setDailyReportFilter] = useState('');
   const [paymentInvoiceFilter, setPaymentInvoiceFilter] = useState('');
   const [project, setProject] = useState<Project | null>(null);
+  const [projectNotifications, setProjectNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +75,16 @@ export const ProjectWorkspace: React.FC = () => {
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setProject(data);
+
+      // Fetch notifications
+      const notifRes = await fetch(`/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (notifRes.ok) {
+        const notifs = await notifRes.json();
+        setProjectNotifications(notifs.filter((n: any) => n.projectId === parseInt(id || '0')));
+      }
+
     } catch (err) {
       console.error('Failed to fetch project', err);
       // Fallback
@@ -214,7 +198,20 @@ export const ProjectWorkspace: React.FC = () => {
             </div>
           </div>
           <div>
-            {canEdit && <button className="btn btn-primary">Project Settings</button>}
+            {canEdit && <button className="btn btn-primary" onClick={() => {
+              setModalConfig({
+                title: 'Project Settings',
+                endpoint: `/api/projects/${id}`,
+                method: 'PUT',
+                fields: [
+                  { name: 'name', label: 'Project Name', type: 'text', required: true, defaultValue: project?.name },
+                  { name: 'client', label: 'Client', type: 'text', required: true, defaultValue: project?.client },
+                  { name: 'status', label: 'Status', type: 'select', options: ['Active', 'On Hold', 'Completed'], defaultValue: project?.status },
+                  { name: 'startDate', label: 'Start Date', type: 'date', required: true, defaultValue: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '' },
+                  { name: 'description', label: 'Description', type: 'textarea', defaultValue: (project as any)?.description || '' }
+                ]
+              });
+            }}>Project Settings</button>}
           </div>
         </div>
       </div>
@@ -242,6 +239,9 @@ export const ProjectWorkspace: React.FC = () => {
               { id: 'risks', label: 'Risk Register', icon: <AlertTriangle size={18} /> },
               { id: 'resources', label: 'Team', icon: <Users size={18} /> },
               { id: 'snag_list', label: 'Snag List', icon: <ListChecks size={18} /> },
+              { id: 'procurement', label: 'Procurement', icon: <DollarSign size={18} /> },
+              { id: 'subcontractors', label: 'Subcontractors', icon: <Users size={18} /> },
+              { id: 'equipment_logs', label: 'Plant & Equipment', icon: <Building2 size={18} /> },
               { id: 'financials', label: 'Financials', icon: <DollarSign size={18} /> }
             ]
             .filter(tab => getModuleAccess(tab.label) !== 'None')
@@ -297,11 +297,28 @@ export const ProjectWorkspace: React.FC = () => {
                               Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date set'} • Progress: {task.progress || 0}%
                             </div>
                           </div>
-                          <span style={{ 
-                            padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
-                            backgroundColor: task.status === 'In Progress' ? '#e0f2fe' : '#f1f5f9',
-                            color: task.status === 'In Progress' ? '#075985' : '#475569'
-                          }}>{task.status}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ 
+                              padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                              backgroundColor: task.status === 'In Progress' ? '#e0f2fe' : '#f1f5f9',
+                              color: task.status === 'In Progress' ? '#075985' : '#475569'
+                            }}>{task.status}</span>
+                            <button 
+                              className="btn btn-secondary" 
+                              style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                              onClick={() => setModalConfig({ 
+                                title: 'Update Task Progress', 
+                                endpoint: `/api/projects/${id}/tasks/${task.id}`, 
+                                method: 'PUT', 
+                                fields: [
+                                  {name: 'progress', label: 'Progress (%)', type: 'number', required: true, defaultValue: task.progress || 0}, 
+                                  {name: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'In Review', 'Completed'], defaultValue: task.status}
+                                ] 
+                              })}
+                            >
+                              Update
+                            </button>
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -351,6 +368,38 @@ export const ProjectWorkspace: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Project Notifications Widget */}
+              <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>Project Alerts & Notifications</h3>
+                  <ShieldAlert size={24} color="#0ea5e9" />
+                </div>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {projectNotifications.length > 0 ? (
+                    projectNotifications.map((notif: any) => (
+                      <div key={notif.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>{notif.title}</div>
+                          <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                            {notif.message}
+                          </div>
+                        </div>
+                        <span style={{ 
+                          padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                          backgroundColor: '#e0f2fe',
+                          color: '#075985'
+                        }}>{notif.type}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: '#94a3b8', padding: '1rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                      No recent notifications for this project.
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -378,6 +427,7 @@ export const ProjectWorkspace: React.FC = () => {
                     options: project?.members?.map((m: any) => ({ label: `${m.user.name} (${m.role})`, value: m.user.id.toString() })) || [] 
                   });
                   baseFields.push({name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox'});
+                  baseFields.push({name: 'frequency', label: 'Task Frequency', type: 'select', options: ['None', 'Daily', 'Weekdays (Monday-Friday)', 'Weekly', 'Monthly', 'Quarterly (Every 3 Months)', 'Annual']});
                 }
 
                 setModalConfig({ 
@@ -438,7 +488,8 @@ export const ProjectWorkspace: React.FC = () => {
                             {name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Critical'], defaultValue: task.priority},
                             {name: 'assignedToId', label: 'Assign To', type: 'select', options: project?.members?.map((m: any) => ({ label: `${m.user.name} (${m.role})`, value: m.user.id.toString() })) || [], defaultValue: task.assignedToId?.toString()},
                             {name: 'dueDate', label: 'Due Date', type: 'date', defaultValue: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''},
-                            {name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox', defaultValue: task.isOverallProgressTracker}
+                            {name: 'isOverallProgressTracker', label: 'Set as Overall Progress Tracker?', type: 'checkbox', defaultValue: task.isOverallProgressTracker},
+                            {name: 'frequency', label: 'Task Frequency', type: 'select', options: ['None', 'Daily', 'Weekdays (Monday-Friday)', 'Weekly', 'Monthly', 'Quarterly (Every 3 Months)', 'Annual'], defaultValue: task.frequency || 'None'}
                           );
                         }
                         setModalConfig({
@@ -637,6 +688,152 @@ export const ProjectWorkspace: React.FC = () => {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'procurement' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Procurement & Materials</h2>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button className="btn btn-secondary" onClick={() => setModalConfig({ title: 'Add Inventory Item', endpoint: `/api/projects/${id}/inventory`, fields: [{name: 'itemName', label: 'Item Name', type: 'text', required: true}, {name: 'category', label: 'Category', type: 'text'}, {name: 'quantity', label: 'Quantity', type: 'number', required: true}, {name: 'unit', label: 'Unit', type: 'text', required: true}, {name: 'minimumStock', label: 'Minimum Stock Alert', type: 'number'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Inventory</button>
+                  <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'New Material Requisition', endpoint: `/api/projects/${id}/procurement`, fields: [{name: 'itemDescription', label: 'Item Description', type: 'textarea', required: true}, {name: 'quantity', label: 'Quantity', type: 'number', required: true}, {name: 'unit', label: 'Unit', type: 'text', required: true}, {name: 'requestedDate', label: 'Requested Date', type: 'date', required: true}, {name: 'requiredDate', label: 'Required Date', type: 'date', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Request Material</button>
+                </div>
+              </div>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#334155' }}>Material Requisitions</h3>
+              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Item</th>
+                    <th style={{ padding: '1rem' }}>Quantity</th>
+                    <th style={{ padding: '1rem' }}>Requested</th>
+                    <th style={{ padding: '1rem' }}>Required By</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(procurement?.requisitions || []).map((req: any) => (
+                    <tr key={req.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem', fontWeight: 500 }}>{req.itemDescription}</td>
+                      <td style={{ padding: '1rem' }}>{req.quantity} {req.unit}</td>
+                      <td style={{ padding: '1rem' }}>{req.requestedDate ? new Date(req.requestedDate).toLocaleDateString() : ''}</td>
+                      <td style={{ padding: '1rem' }}>{req.requiredDate ? new Date(req.requiredDate).toLocaleDateString() : ''}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#e0f2fe', color: '#0369a1' }}>{req.status || 'Pending'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!procurement?.requisitions || procurement.requisitions.length === 0) && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No material requisitions found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#334155' }}>Site Inventory</h3>
+              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Item Name</th>
+                    <th style={{ padding: '1rem' }}>Category</th>
+                    <th style={{ padding: '1rem' }}>Stock Level</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(procurement?.inventory || []).map((inv: any) => (
+                    <tr key={inv.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem', fontWeight: 500 }}>{inv.itemName}</td>
+                      <td style={{ padding: '1rem' }}>{inv.category}</td>
+                      <td style={{ padding: '1rem' }}>{inv.quantity} {inv.unit}</td>
+                      <td style={{ padding: '1rem' }}>
+                        {inv.quantity <= (inv.minimumStock || 0) ? 
+                          <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Low Stock</span> : 
+                          <span style={{ color: '#22c55e', fontWeight: 'bold' }}>Sufficient</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!procurement?.inventory || procurement.inventory.length === 0) && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Inventory is empty.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'subcontractors' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Subcontractor Management</h2>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Subcontractor', endpoint: `/api/projects/${id}/subcontractors`, fields: [{name: 'supplierId', label: 'Supplier ID', type: 'number', required: true}, {name: 'scopeOfWork', label: 'Scope of Work', type: 'textarea', required: true}, {name: 'contractValue', label: 'Contract Value', type: 'number', required: true}, {name: 'startDate', label: 'Start Date', type: 'date'}, {name: 'endDate', label: 'End Date', type: 'date'}, {name: 'status', label: 'Status', type: 'select', options: ['Active', 'Completed', 'Terminated']}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Subcontractor</button>
+              </div>
+              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Subcontractor</th>
+                    <th style={{ padding: '1rem' }}>Scope of Work</th>
+                    <th style={{ padding: '1rem' }}>Contract Value</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subcontractors?.map((sub: any) => (
+                    <tr key={sub.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem', fontWeight: 500 }}>{sub.supplier?.name || `Supplier #${sub.supplierId}`}</td>
+                      <td style={{ padding: '1rem', color: '#475569' }}>{sub.scopeOfWork}</td>
+                      <td style={{ padding: '1rem' }}>${sub.contractValue?.toLocaleString() || 0}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: sub.status === 'Active' ? '#dcfce7' : '#f1f5f9', color: sub.status === 'Active' ? '#166534' : '#475569' }}>{sub.status || 'Active'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!subcontractors || subcontractors.length === 0) && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No subcontractors found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'equipment_logs' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Plant & Equipment Telemetry</h2>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Equipment Usage', endpoint: `/api/projects/${id}/equipment-logs`, fields: [{name: 'equipmentId', label: 'Equipment ID', type: 'number', required: true}, {name: 'date', label: 'Date', type: 'date', required: true}, {name: 'runningHours', label: 'Running Hours', type: 'number', required: true}, {name: 'fuelConsumed', label: 'Fuel Consumed', type: 'number'}, {name: 'breakdownStatus', label: 'Breakdown?', type: 'checkbox'}, {name: 'breakdownDetails', label: 'Breakdown Details', type: 'textarea'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Usage</button>
+              </div>
+              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Date</th>
+                    <th style={{ padding: '1rem' }}>Equipment</th>
+                    <th style={{ padding: '1rem' }}>Running Hours</th>
+                    <th style={{ padding: '1rem' }}>Fuel Consumed</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resources?.filter((r: any) => r.resourceType === 'Equipment').map((res: any) => (
+                    <tr key={res.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem' }}>{new Date().toLocaleDateString()}</td>
+                      <td style={{ padding: '1rem', fontWeight: 500 }}>{res.equipment?.name || `Equip #${res.equipmentId}`}</td>
+                      <td style={{ padding: '1rem' }}>8 hrs</td>
+                      <td style={{ padding: '1rem' }}>120 L</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#dcfce7', color: '#166534' }}>Operational</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!resources || resources.filter((r: any) => r.resourceType === 'Equipment').length === 0) && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No equipment logs found.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -898,7 +1095,25 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Resource Allocations</h2>
-              <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Allocate Resource</button>
+              {canEdit && (
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => setModalConfig({
+                    title: 'Allocate Resource',
+                    endpoint: `/api/projects/${id}/resources`,
+                    fields: [
+                      { name: 'type', label: 'Resource Type', type: 'select', options: ['Personnel', 'Equipment'], required: true },
+                      { name: 'userId', label: 'Select Personnel (if Personnel)', type: 'select', options: project?.members?.map((m: any) => ({ value: m.user.id.toString(), label: `${m.user.name} (${m.role})` })) || [] },
+                      { name: 'role', label: 'Role / Usage', type: 'text', required: true },
+                      { name: 'allocation', label: 'Allocation (%)', type: 'number', required: true, defaultValue: 100 },
+                      { name: 'startDate', label: 'Start Date', type: 'date', required: true },
+                      { name: 'endDate', label: 'End Date', type: 'date', required: false }
+                    ]
+                  })}
+                >
+                  <Plus size={16} style={{ marginRight: '8px' }}/> Allocate Resource
+                </button>
+              )}
             </div>
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -911,17 +1126,21 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_RESOURCES.map(res => (
+                {resources.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>No resources allocated yet.</td></tr>
+                ) : resources.map(res => (
                   <tr key={res.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem' }}>
-                      <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', backgroundColor: res.type === 'Personnel' ? '#f3e8ff' : '#fef3c7', color: res.type === 'Personnel' ? '#7e22ce' : '#b45309' }}>
-                        {res.type}
+                      <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', backgroundColor: res.resourceType === 'Personnel' ? '#f3e8ff' : '#fef3c7', color: res.resourceType === 'Personnel' ? '#7e22ce' : '#b45309' }}>
+                        {res.resourceType}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', fontWeight: 500 }}>{res.name}</td>
+                    <td style={{ padding: '1rem', fontWeight: 500 }}>{res.user?.name || res.equipment?.name || 'Unknown'}</td>
                     <td style={{ padding: '1rem' }}>{res.role}</td>
-                    <td style={{ padding: '1rem' }}>{res.allocation}</td>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>{res.dates}</td>
+                    <td style={{ padding: '1rem' }}>{res.allocationPercentage}%</td>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>
+                      {new Date(res.startDate).toLocaleDateString()} - {res.endDate ? new Date(res.endDate).toLocaleDateString() : 'Ongoing'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -934,21 +1153,44 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Financial Tracking</h2>
-              <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Transaction</button>
+              {canEdit && (
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => setModalConfig({
+                    title: 'Log Transaction',
+                    endpoint: `/api/projects/${id}/financials`,
+                    fields: [
+                      { name: 'type', label: 'Transaction Type', type: 'select', options: ['Budget Allocation', 'Expense', 'Invoice'], required: true },
+                      { name: 'amount', label: 'Amount', type: 'number', required: true },
+                      { name: 'date', label: 'Date', type: 'date', required: true },
+                      { name: 'description', label: 'Description', type: 'text', required: true },
+                      { name: 'status', label: 'Status', type: 'select', options: ['Pending', 'Approved', 'Paid', 'Rejected'], required: true, defaultValue: 'Pending' }
+                    ]
+                  })}
+                >
+                  <Plus size={16} style={{ marginRight: '8px' }}/> Log Transaction
+                </button>
+              )}
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
               <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Total Budget</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>$500,000</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>
+                  ${financials?.filter(f => f.type === 'Budget Allocation').reduce((acc, f) => acc + f.amount, 0).toLocaleString()}
+                </div>
               </div>
               <div style={{ padding: '1.5rem', backgroundColor: '#fff1f2', borderRadius: '8px', border: '1px solid #fecdd3' }}>
                 <div style={{ color: '#be123c', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Expenses Logged</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#9f1239' }}>$15,000</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#9f1239' }}>
+                  ${financials?.filter(f => f.type === 'Expense').reduce((acc, f) => acc + f.amount, 0).toLocaleString()}
+                </div>
               </div>
               <div style={{ padding: '1.5rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                 <div style={{ color: '#15803d', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Invoiced to Client</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#166534' }}>$100,000</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#166534' }}>
+                  ${financials?.filter(f => f.type === 'Invoice').reduce((acc, f) => acc + f.amount, 0).toLocaleString()}
+                </div>
               </div>
             </div>
 
@@ -963,11 +1205,13 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_FINANCIALS.map(fin => (
+                {(!financials || financials.length === 0) ? (
+                  <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>No transactions logged yet.</td></tr>
+                ) : financials.map(fin => (
                   <tr key={fin.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>{fin.date}</td>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>{new Date(fin.date).toLocaleDateString()}</td>
                     <td style={{ padding: '1rem' }}>{fin.type}</td>
-                    <td style={{ padding: '1rem', fontWeight: 500 }}>{fin.desc}</td>
+                    <td style={{ padding: '1rem', fontWeight: 500 }}>{fin.description}</td>
                     <td style={{ padding: '1rem', fontFamily: 'monospace', fontWeight: 600 }}>${fin.amount.toLocaleString()}</td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
@@ -1166,8 +1410,8 @@ export const ProjectWorkspace: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Quality Assurance & Control</h2>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn btn-secondary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Inspection</button>
-                <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log NCR</button>
+                <button className="btn btn-secondary" onClick={() => setModalConfig({ title: 'Log Inspection', endpoint: `/api/projects/${id}/quality/inspections`, fields: [{name: 'date', label: 'Inspection Date', type: 'date', required: true}, {name: 'type', label: 'Type', type: 'select', options: ['Concrete Pour', 'Rebar', 'Soil Compaction', 'Welding', 'Safety', 'General']}, {name: 'location', label: 'Location', type: 'text', required: true}, {name: 'result', label: 'Result', type: 'select', options: ['Passed', 'Failed', 'Passed with Comments']}, {name: 'comments', label: 'Comments', type: 'textarea'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Inspection</button>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log NCR', endpoint: `/api/projects/${id}/quality/ncrs`, fields: [{name: 'title', label: 'Title', type: 'text', required: true}, {name: 'productOrService', label: 'Product/Service', type: 'text'}, {name: 'description', label: 'Description', type: 'textarea', required: true}, {name: 'source', label: 'Source', type: 'select', options: ['Incoming Inspection', 'In-Process', 'Final Inspection', 'Customer Return']}, {name: 'severity', label: 'Severity', type: 'select', options: ['Minor', 'Major', 'Critical']}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log NCR</button>
               </div>
             </div>
             
@@ -1182,15 +1426,15 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_QUALITY.ncrs.map(ncr => (
+                {quality.ncrs && quality.ncrs.length > 0 ? quality.ncrs.map(ncr => (
                   <tr key={ncr.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{ncr.number}</td>
+                    <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#0369a1' }}>{ncr.ncrNumber}</td>
                     <td style={{ padding: '1rem', fontWeight: 500 }}>{ncr.title}</td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
                         padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem',
-                        backgroundColor: ncr.severity === 'High' ? '#fee2e2' : '#fef3c7',
-                        color: ncr.severity === 'High' ? '#991b1b' : '#b45309'
+                        backgroundColor: ncr.severity === 'Critical' || ncr.severity === 'Major' ? '#fee2e2' : '#fef3c7',
+                        color: ncr.severity === 'Critical' || ncr.severity === 'Major' ? '#991b1b' : '#b45309'
                       }}>{ncr.severity}</span>
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -1201,7 +1445,11 @@ export const ProjectWorkspace: React.FC = () => {
                       }}>{ncr.status}</span>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No NCRs found.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
 
@@ -1216,9 +1464,9 @@ export const ProjectWorkspace: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_QUALITY.inspections.map(insp => (
+                {quality.inspections && quality.inspections.length > 0 ? quality.inspections.map(insp => (
                   <tr key={insp.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>{insp.date}</td>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>{new Date(insp.date).toLocaleDateString()}</td>
                     <td style={{ padding: '1rem', fontWeight: 500 }}>{insp.type}</td>
                     <td style={{ padding: '1rem' }}>{insp.location}</td>
                     <td style={{ padding: '1rem' }}>
@@ -1229,7 +1477,11 @@ export const ProjectWorkspace: React.FC = () => {
                       }}>{insp.result}</span>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No inspections logged yet.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1240,7 +1492,7 @@ export const ProjectWorkspace: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Risk Register</h2>
-              <button className="btn btn-primary"><Plus size={16} style={{ marginRight: '8px' }}/> Log Risk</button>
+              <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Project Risk', endpoint: `/api/projects/${id}/risks`, fields: [{name: 'title', label: 'Risk Title', type: 'text', required: true}, {name: 'type', label: 'Type', type: 'select', options: ['Risk', 'Opportunity'], required: true}, {name: 'category', label: 'Category', type: 'select', options: ['Operational', 'Strategic', 'Financial', 'Compliance', 'Project', 'HSE'], required: true}, {name: 'description', label: 'Description', type: 'textarea', required: true}, {name: 'likelihood', label: 'Likelihood (1-5)', type: 'number', required: true}, {name: 'impact', label: 'Impact (1-5)', type: 'number', required: true}, {name: 'mitigationPlan', label: 'Mitigation Plan', type: 'textarea', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Risk</button>
             </div>
             
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1251,10 +1503,15 @@ export const ProjectWorkspace: React.FC = () => {
                   <th style={{ padding: '1rem' }}>Likelihood</th>
                   <th style={{ padding: '1rem' }}>Impact</th>
                   <th style={{ padding: '1rem' }}>Score</th>
+                  <th style={{ padding: '1rem' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {MOCK_RISKS.map(risk => (
+                {(!risks || risks.length === 0) ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No risks logged yet.</td>
+                  </tr>
+                ) : risks.map((risk: any) => (
                   <tr key={risk.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem', fontWeight: 500 }}>{risk.title}</td>
                     <td style={{ padding: '1rem' }}>{risk.category}</td>
@@ -1262,10 +1519,13 @@ export const ProjectWorkspace: React.FC = () => {
                     <td style={{ padding: '1rem' }}>{risk.impact}</td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
-                        padding: '0.3rem 0.6rem', borderRadius: '50%', fontSize: '0.875rem', fontWeight: 700,
-                        backgroundColor: risk.score >= 15 ? '#fee2e2' : risk.score >= 10 ? '#fef3c7' : '#dcfce7',
-                        color: risk.score >= 15 ? '#991b1b' : risk.score >= 10 ? '#b45309' : '#166534'
-                      }}>{risk.score}</span>
+                        padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', fontWeight: 600,
+                        backgroundColor: (risk.score || 0) >= 15 ? '#fee2e2' : (risk.score || 0) >= 10 ? '#fef3c7' : '#dcfce7',
+                        color: (risk.score || 0) >= 15 ? '#991b1b' : (risk.score || 0) >= 10 ? '#b45309' : '#166534'
+                      }}>{risk.score || '-'}</span>
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#f1f5f9', color: '#334155' }}>{risk.status || 'Identified'}</span>
                     </td>
                   </tr>
                 ))}
