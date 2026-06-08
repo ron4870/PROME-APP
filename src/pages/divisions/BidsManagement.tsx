@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Brain, Briefcase, ChevronRight, XCircle, Upload, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const fetchWithAuth = async (url: string, options: any = {}) => {
   const token = localStorage.getItem('token');
