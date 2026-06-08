@@ -80,7 +80,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   if (location.pathname.startsWith('/division/pmbdd')) {
     navLinks = [
       { label: 'PMO', path: '#' },
-      { label: 'Bids', path: '#' },
+      { label: 'Bids', path: '/division/pmbdd/bids' },
       { label: 'IMS', path: '/iso-documents' },
       { label: 'Records', path: '#' }
     ];
