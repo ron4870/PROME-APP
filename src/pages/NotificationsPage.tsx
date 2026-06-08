@@ -47,7 +47,8 @@ export default function NotificationsPage() {
   const handleAction = async (stepId: number, action: 'Approved' | 'Rejected') => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:4000/api/workflows/step/${stepId}/action`, {
+      const API_URL = import.meta.env.VITE_API_URL || '/api';
+      await fetch(`${API_URL}/workflows/step/${stepId}/action`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
