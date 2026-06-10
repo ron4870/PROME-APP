@@ -25,7 +25,8 @@ const CATEGORIES = [
   'Legal Documents',
   'Financial Documents',
   'Certificates',
-  'Company Profiles'
+  'Company Profiles',
+  'Insurance Documents'
 ];
 
 const DISCIPLINES = [
