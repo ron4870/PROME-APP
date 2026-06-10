@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Library, Upload, X, Search, FileText, Filter, FileSpreadsheet, Globe, PenTool, ExternalLink } from 'lucide-react';
+import { Library, Upload, X, Search, FileText, Filter, FileSpreadsheet, Globe, PenTool, ExternalLink, Scale, Landmark, Award, Building2, ShieldCheck } from 'lucide-react';
 
 interface LibraryItem {
   id: number;
@@ -140,6 +140,11 @@ const LibraryModule: React.FC = () => {
     if (category.includes('Software')) return <Filter size={24} color="#0891b2" />;
     if (category.includes('Journals')) return <FileText size={24} color="#dc2626" />;
     if (category.includes('Templates')) return <FileSpreadsheet size={24} color="#16a34a" />;
+    if (category.includes('Legal')) return <Scale size={24} color="#b45309" />;
+    if (category.includes('Financial')) return <Landmark size={24} color="#15803d" />;
+    if (category.includes('Certificates')) return <Award size={24} color="#eab308" />;
+    if (category.includes('Company Profiles')) return <Building2 size={24} color="#1d4ed8" />;
+    if (category.includes('Insurance')) return <ShieldCheck size={24} color="#be185d" />;
     return <PenTool size={24} color="#475569" />;
   };
 
@@ -198,44 +203,56 @@ const LibraryModule: React.FC = () => {
           <p className="text-gray-500">Try adjusting your filters or upload a new document to the library.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map(item => (
-            <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex flex-col">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-                  {getCategoryIcon(item.category)}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-900 leading-tight mb-1">{item.title}</h3>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="px-2 py-0.5 rounded bg-red-50 text-red-700 font-medium">{item.category}</span>
-                    {item.discipline && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">{item.discipline}</span>}
+        <div className="space-y-12">
+          {CATEGORIES.map(category => {
+            const categoryItems = items.filter(item => item.category === category);
+            if (categoryItems.length === 0) return null;
+            
+            return (
+              <section key={category}>
+                <div className="flex items-center gap-3 mb-6 border-b border-gray-200 pb-2">
+                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+                    {getCategoryIcon(category)}
                   </div>
+                  <h2 className="text-2xl font-bold text-gray-800">{category}</h2>
                 </div>
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-4 flex-1 line-clamp-3">
-                {item.description || "No description provided."}
-              </p>
-              
-              <div className="flex justify-between items-end border-t border-gray-100 pt-4 mt-auto">
-                <div className="text-xs text-gray-500">
-                  <p>Uploaded by: <span className="font-semibold text-gray-700">{item.uploader?.name}</span></p>
-                  <p>Version: {item.version} • {new Date(item.createdAt).toLocaleDateString()}</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {categoryItems.map(item => (
+                    <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex flex-col">
+                      <div className="flex flex-col gap-2 mb-4">
+                        <h3 className="font-bold text-gray-900 leading-tight">{item.title}</h3>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {item.discipline && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">{item.discipline}</span>}
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-4 flex-1 line-clamp-3">
+                        {item.description || "No description provided."}
+                      </p>
+                      
+                      <div className="flex justify-between items-end border-t border-gray-100 pt-4 mt-auto">
+                        <div className="text-xs text-gray-500">
+                          <p>Uploaded by: <span className="font-semibold text-gray-700">{item.uploader?.name}</span></p>
+                          <p>Version: {item.version} • {new Date(item.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        {item.fileUrl && (
+                          <a 
+                            href={item.fileUrl} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-800"
+                          >
+                            View <ExternalLink size={16} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {item.fileUrl && (
-                  <a 
-                    href={item.fileUrl} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-800"
-                  >
-                    View <ExternalLink size={16} />
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
 
