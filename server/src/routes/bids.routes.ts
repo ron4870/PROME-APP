@@ -3,12 +3,16 @@ import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
 import jwt from 'jsonwebtoken';
 import { GoogleGenAI } from '@google/genai';
+import pdfParse from 'pdf-parse';
 import { getOrCreateBidFolder } from '../services/drive.service';
 
 const router = Router();
 const prisma = new PrismaClient();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-prome-key';
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Middleware to protect routes
 const authMiddleware = (req: any, res: any, next: any) => {
@@ -500,6 +504,79 @@ router.put('/sections/:id', authMiddleware, async (req, res) => {
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update section' });
+  }
+});
+
+// AI Bid Checklist Generation
+router.post('/sections/:id/generate-checklist', authMiddleware, upload.single('document'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No document uploaded' });
+    }
+
+    const section = await prisma.bidSection.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    // Parse the PDF
+    let documentText = '';
+    try {
+      const pdfData = await pdfParse(req.file.buffer);
+      documentText = pdfData.text;
+    } catch (parseErr) {
+      return res.status(400).json({ error: 'Failed to parse PDF document' });
+    }
+
+    const prompt = `
+      You are an expert Bid Manager analyzing a tender document (RFP/ToR).
+      Extract a robust checklist of key procedures, mandatory documents, and requirements that must be met during the preparation and submission of the bid.
+      
+      Document Text Extract:
+      ${documentText.substring(0, 30000)} // Limit text to avoid exceeding token limits if it's too large
+      
+      Return a JSON array of checklist items. Each item must have:
+      1. "category": A string grouping the item (e.g. "Mandatory Requirements", "Procedural Steps", "Financial Docs").
+      2. "task": The specific requirement or action item.
+      3. "mandatory": Boolean indicating if it's strictly mandatory.
+      
+      Output ONLY valid JSON. Example format:
+      [
+        { "category": "Administrative", "task": "Submit valid trading license", "mandatory": true }
+      ]
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { 
+        temperature: 0.2,
+        responseMimeType: "application/json"
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      return res.status(500).json({ error: 'Failed to generate checklist' });
+    }
+
+    const checklistItems = JSON.parse(resultText);
+    
+    // Add IDs and completed state to the items
+    const formattedItems = checklistItems.map((item: any) => ({
+      id: Math.random().toString(36).substring(7),
+      ...item,
+      completed: false
+    }));
+
+    res.json(formattedItems);
+  } catch (error) {
+    console.error('Checklist Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate checklist' });
   }
 });
 

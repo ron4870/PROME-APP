@@ -6,6 +6,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import GanttChartBuilder from './GanttChartBuilder';
 import TeamCVBuilder from './TeamCVBuilder';
+import BidChecklistBuilder from './BidChecklistBuilder';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -238,6 +239,14 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
                 team={data}
                 onChange={setData}
                 wikiPages={wikiPages}
+              />
+            )}
+
+            {section.name.toLowerCase().includes('checklist') && (
+              <BidChecklistBuilder
+                sectionId={section.id}
+                checklist={data}
+                onChange={setData}
               />
             )}
             
