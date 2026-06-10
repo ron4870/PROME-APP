@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Brain, Download, Paperclip, Save, Loader2, Link as LinkIcon, Trash2 } from 'lucide-react';
 import TipTapEditor from '../TipTapEditor';
 import { useAuth } from '../../contexts/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import GanttChartBuilder from './GanttChartBuilder';
+import TeamCVBuilder from './TeamCVBuilder';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -33,8 +34,18 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
   const [data, setData] = useState<any[]>(
     typeof section.data === 'string' ? JSON.parse(section.data) : (section.data || [])
   );
+  const [wikiPages, setWikiPages] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
+
+  // Fetch wiki pages for Team CVs section
+  useEffect(() => {
+    if (section.name.toLowerCase().includes('cv') || section.name.toLowerCase().includes('team')) {
+      fetchWithAuth(`${API_BASE}/wiki/pages`)
+        .then(res => setWikiPages(res))
+        .catch(err => console.error('Failed to fetch wiki pages', err));
+    }
+  }, [section.name]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -218,6 +229,15 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
                 tasks={data} 
                 onChange={setData} 
                 users={users} 
+              />
+            )}
+
+            {(section.name.toLowerCase().includes('cv') || section.name.toLowerCase().includes('team')) && (
+              <TeamCVBuilder
+                sectionId={section.id}
+                team={data}
+                onChange={setData}
+                wikiPages={wikiPages}
               />
             )}
             

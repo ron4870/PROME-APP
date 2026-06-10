@@ -503,6 +503,79 @@ router.put('/sections/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// AI CV Evaluation for Team CVs Section
+router.post('/sections/:id/evaluate-cv', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, requirements, wikiPageId } = req.body;
+
+    if (!role || !requirements || !wikiPageId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const section = await prisma.bidSection.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+
+    // Fetch the Wiki Page to use as CV
+    const wikiPage = await prisma.wikiPage.findUnique({
+      where: { id: Number(wikiPageId) }
+    });
+
+    if (!wikiPage) return res.status(404).json({ error: 'Wiki Page (CV) not found' });
+    
+    const prompt = `
+      You are an expert HR technical evaluator for a bid proposal.
+      Evaluate the following CV/Profile against the project requirements for the role of "${role}".
+      
+      Requirements for Role:
+      ${requirements}
+      
+      Staff CV/Profile (from internal Wiki):
+      Title: ${wikiPage.title}
+      Content:
+      ${wikiPage.content}
+      
+      Provide a rigorous evaluation. Return a JSON object with EXACTLY two fields:
+      1. "score": An integer between 0 and 100 representing the overall fit.
+      2. "opinion": A professional, concise opinion (max 3 sentences) on whether this CV should be used for this role and why.
+      
+      Output ONLY valid JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { 
+        temperature: 0.2,
+        responseMimeType: "application/json"
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      return res.status(500).json({ error: 'Failed to generate evaluation' });
+    }
+
+    const evaluation = JSON.parse(resultText);
+    res.json({
+      role,
+      requirements,
+      wikiPageId,
+      staffName: wikiPage.title,
+      score: evaluation.score,
+      opinion: evaluation.opinion,
+      status: "Evaluated"
+    });
+  } catch (error) {
+    console.error('CV Evaluation Error:', error);
+    res.status(500).json({ error: 'Failed to evaluate CV' });
+  }
+});
+
 // AI Draft Generation for Bid Sections
 router.post('/sections/:id/draft', authMiddleware, async (req, res) => {
   try {
