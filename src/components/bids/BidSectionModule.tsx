@@ -114,11 +114,10 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
   };
 
   const publishPDF = async () => {
-    const editorEl = document.querySelector('.ProseMirror');
-    if (!editorEl) return alert('No content to publish');
+    if (!contentRef.current) return alert('No content to publish');
 
     try {
-      const canvas = await html2canvas(editorEl as HTMLElement, {
+      const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true
       });
@@ -131,7 +130,10 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
       // If content is very long, it might get cut off in a single page
       // For a robust implementation, jsPDF needs chunking, but for this mock, one page scale is fine.
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, pdf.internal.pageSize.getHeight()));
-      pdf.save(`PROME_${bid.opportunity?.title.replace(/\\s+/g, '_')}_${section.name.replace(/\\s+/g, '_')}.pdf`);
+      
+      const bidTitle = bid?.opportunity?.title || 'Bid';
+      const sectionName = section?.name || 'Section';
+      pdf.save(`PROME_${bidTitle.replace(/\s+/g, '_')}_${sectionName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       alert('Failed to generate PDF');
     }
