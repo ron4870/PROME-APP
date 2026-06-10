@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { Library, Upload, X, Search, FileText, Filter, FileSpreadsheet, Globe, PenTool, ExternalLink } from 'lucide-react';
 
 interface LibraryItem {
