@@ -4,6 +4,7 @@ import TipTapEditor from '../TipTapEditor';
 import { useAuth } from '../../contexts/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import GanttChartBuilder from './GanttChartBuilder';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -29,6 +30,9 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
   const [references, setReferences] = useState<any[]>(
     typeof section.references === 'string' ? JSON.parse(section.references) : (section.references || [])
   );
+  const [data, setData] = useState<any[]>(
+    typeof section.data === 'string' ? JSON.parse(section.data) : (section.data || [])
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
   
@@ -44,7 +48,8 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
           content,
           status,
           assigneeId: assigneeId ? Number(assigneeId) : null,
-          references
+          references,
+          data
         }),
       });
       if (!silent) alert('Section saved successfully');
@@ -206,12 +211,24 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
             </button>
           </div>
           
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }} ref={contentRef}>
-            <TipTapEditor 
-              content={content} 
-              onChange={setContent} 
-              editable={true}
-            />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }} ref={contentRef}>
+          
+            {section.name.toLowerCase().includes('work programme') && (
+              <GanttChartBuilder 
+                tasks={data} 
+                onChange={setData} 
+                users={users} 
+              />
+            )}
+            
+            <div>
+              <h3 style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem' }}>Introductory Notes (Optional)</h3>
+              <TipTapEditor 
+                content={content} 
+                onChange={setContent} 
+                editable={true}
+              />
+            </div>
           </div>
         </div>
 

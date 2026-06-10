@@ -485,7 +485,7 @@ router.get('/:id/suggest-resources', authMiddleware, async (req, res) => {
 router.put('/sections/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, assigneeId, content, references } = req.body;
+    const { status, assigneeId, content, references, data } = req.body;
     
     const updated = await prisma.bidSection.update({
       where: { id: Number(id) },
@@ -493,7 +493,8 @@ router.put('/sections/:id', authMiddleware, async (req, res) => {
         ...(status && { status }),
         ...(assigneeId !== undefined && { assigneeId: assigneeId ? Number(assigneeId) : null }),
         ...(content !== undefined && { content }),
-        ...(references !== undefined && { references })
+        ...(references !== undefined && { references }),
+        ...(data !== undefined && { data })
       }
     });
     res.json(updated);

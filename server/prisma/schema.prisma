@@ -1510,6 +1510,7 @@ model BidSection {
   content         String?  @db.Text
   documentUrl     String?  @db.Text // Draft file URL
   references      Json?    @default("[]") // For uploaded/linked files
+  data            Json?    @default("[]") // For structured data like Gantt charts
 
   assigneeId      Int?
   assignee        User?    @relation("BidSectionAssignee", fields: [assigneeId], references: [id])
