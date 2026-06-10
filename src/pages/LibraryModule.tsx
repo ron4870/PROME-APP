@@ -134,18 +134,18 @@ const LibraryModule: React.FC = () => {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    if (category.includes('Codes')) return <Globe size={24} color="#2563eb" />;
-    if (category.includes('Guidelines')) return <Library size={24} color="#9333ea" />;
-    if (category.includes('Software')) return <Filter size={24} color="#0891b2" />;
-    if (category.includes('Journals')) return <FileText size={24} color="#dc2626" />;
-    if (category.includes('Templates')) return <FileSpreadsheet size={24} color="#16a34a" />;
-    if (category.includes('Legal')) return <Scale size={24} color="#b45309" />;
-    if (category.includes('Financial')) return <Landmark size={24} color="#15803d" />;
-    if (category.includes('Certificates')) return <Award size={24} color="#eab308" />;
-    if (category.includes('Company Profiles')) return <Building2 size={24} color="#1d4ed8" />;
-    if (category.includes('Insurance')) return <ShieldCheck size={24} color="#be185d" />;
-    return <PenTool size={24} color="#475569" />;
+  const getCategoryIcon = (category: string, size = 24) => {
+    if (category.includes('Codes')) return <Globe size={size} color="#2563eb" strokeWidth={1.5} />;
+    if (category.includes('Guidelines')) return <Library size={size} color="#9333ea" strokeWidth={1.5} />;
+    if (category.includes('Software')) return <Filter size={size} color="#0891b2" strokeWidth={1.5} />;
+    if (category.includes('Journals')) return <FileText size={size} color="#dc2626" strokeWidth={1.5} />;
+    if (category.includes('Templates')) return <FileSpreadsheet size={size} color="#16a34a" strokeWidth={1.5} />;
+    if (category.includes('Legal')) return <Scale size={size} color="#b45309" strokeWidth={1.5} />;
+    if (category.includes('Financial')) return <Landmark size={size} color="#15803d" strokeWidth={1.5} />;
+    if (category.includes('Certificates')) return <Award size={size} color="#eab308" strokeWidth={1.5} />;
+    if (category.includes('Company Profiles')) return <Building2 size={size} color="#1d4ed8" strokeWidth={1.5} />;
+    if (category.includes('Insurance')) return <ShieldCheck size={size} color="#be185d" strokeWidth={1.5} />;
+    return <PenTool size={size} color="#475569" strokeWidth={1.5} />;
   };
 
   return (
@@ -164,34 +164,44 @@ const LibraryModule: React.FC = () => {
         </button>
       </div>
 
-      {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-8 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search by title, description or tags..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-          />
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-red-50 to-white p-10 rounded-2xl border border-red-100 shadow-sm mb-10 text-center relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-5"><Library size={200} /></div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-4 relative z-10">Find what you need, instantly.</h2>
+        
+        {/* Large Prominent Search */}
+        <div className="max-w-2xl mx-auto relative z-10 mb-6">
+          <div className="relative flex items-center w-full">
+            <Search className="absolute left-4 text-gray-400" size={24} />
+            <input 
+              type="text" 
+              placeholder="Search library documents by title, tags or description..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 text-lg border-2 border-red-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-500 shadow-sm outline-none transition-all"
+            />
+          </div>
         </div>
-        <select 
-          value={filterCategory} 
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="w-full md:w-48 px-3 py-2 border border-gray-300 rounded-lg outline-none"
-        >
-          <option value="">All Categories</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select 
-          value={filterDiscipline} 
-          onChange={(e) => setFilterDiscipline(e.target.value)}
-          className="w-full md:w-56 px-3 py-2 border border-gray-300 rounded-lg outline-none"
-        >
-          <option value="">All Disciplines</option>
-          {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
+
+        {/* Filters */}
+        <div className="flex flex-wrap justify-center gap-4 relative z-10">
+          <select 
+            value={filterCategory} 
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg outline-none bg-white/80 backdrop-blur-sm shadow-sm"
+          >
+            <option value="">All Categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select 
+            value={filterDiscipline} 
+            onChange={(e) => setFilterDiscipline(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg outline-none bg-white/80 backdrop-blur-sm shadow-sm"
+          >
+            <option value="">All Disciplines</option>
+            {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -217,35 +227,46 @@ const LibraryModule: React.FC = () => {
                   <h2 className="text-2xl font-bold text-gray-800">{category}</h2>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex flex-wrap gap-6">
                   {categoryItems.map(item => (
-                    <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex flex-col">
-                      <div className="flex flex-col gap-2 mb-4">
-                        <h3 className="font-bold text-gray-900 leading-tight">{item.title}</h3>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {item.discipline && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">{item.discipline}</span>}
-                        </div>
+                    <div key={item.id} className="group relative flex flex-col items-center justify-start p-3 rounded-xl hover:bg-gray-50 transition-colors w-28 text-center cursor-pointer">
+                      <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover:shadow-md transition-shadow mb-3 flex items-center justify-center">
+                        {getCategoryIcon(item.category, 40)}
                       </div>
+                      <span className="text-xs font-semibold text-gray-700 leading-tight line-clamp-3 px-1 w-full">
+                        {item.title}
+                      </span>
                       
-                      <p className="text-sm text-gray-600 mb-4 flex-1 line-clamp-3">
-                        {item.description || "No description provided."}
-                      </p>
-                      
-                      <div className="flex justify-between items-end border-t border-gray-100 pt-4 mt-auto">
-                        <div className="text-xs text-gray-500">
-                          <p>Uploaded by: <span className="font-semibold text-gray-700">{item.uploader?.name}</span></p>
-                          <p>Version: {item.version} • {new Date(item.createdAt).toLocaleDateString()}</p>
+                      {/* Document Details Tooltip Popover - Appears after 1s delay */}
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-white p-5 rounded-xl shadow-2xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all delay-1000 duration-300 z-50 text-left pointer-events-none group-hover:pointer-events-auto origin-bottom transform scale-95 group-hover:scale-100">
+                        <div className="flex flex-col gap-1 mb-3">
+                          <h3 className="font-bold text-gray-900 leading-tight">{item.title}</h3>
+                          {item.discipline && <span className="text-[10px] uppercase font-bold tracking-wider text-red-600">{item.discipline}</span>}
                         </div>
+                        
+                        <p className="text-xs text-gray-600 mb-4 line-clamp-4">
+                          {item.description || "No description provided."}
+                        </p>
+                        
+                        <div className="space-y-1 text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100 mb-3">
+                          <p>Uploader: <span className="font-medium text-gray-800">{item.uploader?.name}</span></p>
+                          <p>Version: <span className="font-medium text-gray-800">{item.version}</span></p>
+                          <p>Date: <span className="font-medium text-gray-800">{new Date(item.createdAt).toLocaleDateString()}</span></p>
+                        </div>
+
                         {item.fileUrl && (
                           <a 
                             href={item.fileUrl} 
                             target="_blank" 
                             rel="noreferrer"
-                            className="flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-800"
+                            className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 py-2 rounded-lg text-sm font-semibold transition-colors"
                           >
-                            View <ExternalLink size={16} />
+                            Open Document <ExternalLink size={14} />
                           </a>
                         )}
+                        
+                        {/* Caret pointing down */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-[8px] border-transparent border-t-white drop-shadow-md"></div>
                       </div>
                     </div>
                   ))}
