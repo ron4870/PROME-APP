@@ -257,7 +257,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // Save AI response to DB
     const aiDbMessage = await prisma.aiChatMessage.create({
       data: {
-        sessionId,
+        sessionId: Number(sessionId),
         role: 'model',
         content: aiMessageText
       }

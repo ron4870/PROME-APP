@@ -127,12 +127,19 @@ router.post('/opportunities/ocr', authMiddleware, async (req, res) => {
       model: 'gemini-2.5-flash',
       contents: [
         {
-          inlineData: {
-            data: base64Data,
-            mimeType: 'image/jpeg'
-          }
-        },
-        "Extract civil engineering bid opportunity details from this newspaper clipping. Return your response in pure JSON format exactly like this, without markdown formatting or code blocks: { \"title\": \"...\", \"client\": \"...\", \"country\": \"...\", \"type\": \"...\", \"description\": \"...\", \"deadline\": \"YYYY-MM-DD or null\" }"
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: 'image/jpeg'
+              }
+            },
+            {
+              text: "Extract civil engineering bid opportunity details from this newspaper clipping. Return your response in pure JSON format exactly like this, without markdown formatting or code blocks: { \"title\": \"...\", \"client\": \"...\", \"country\": \"...\", \"type\": \"...\", \"description\": \"...\", \"deadline\": \"YYYY-MM-DD or null\" }"
+            }
+          ]
+        }
       ],
       config: { temperature: 0.1 }
     });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Brain, Briefcase, ChevronRight, XCircle, Upload, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,8 +29,10 @@ export default function BidsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [formData, setFormData] = useState({ title: '', client: '', country: '', description: '', type: 'RFP', deadline: '' });
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -111,10 +113,7 @@ export default function BidsManagement() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = (file: File) => {
     setIsUploading(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -131,9 +130,35 @@ export default function BidsManagement() {
         alert('Failed to extract opportunity from image');
       } finally {
         setIsUploading(false);
+        // Reset the file input so the same file can be selected again if needed
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   return (
@@ -421,14 +446,33 @@ export default function BidsManagement() {
               </button>
             </div>
             
-            <div style={{ padding: '2rem', border: '2px dashed #cbd5e1', borderRadius: '8px', cursor: 'pointer' }}>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              style={{ 
+                padding: '2rem', 
+                border: isDragging ? '2px dashed var(--primary-color)' : '2px dashed #cbd5e1', 
+                backgroundColor: isDragging ? 'rgba(187, 10, 10, 0.05)' : 'transparent',
+                borderRadius: '8px', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
               {isUploading ? (
                 <div style={{ color: '#0284c7', fontWeight: 600 }}>Extracting Data with AI...</div>
               ) : (
                 <>
-                  <Upload size={32} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
-                  <p style={{ color: '#475569', marginBottom: '1rem' }}>Select an image file (JPG, PNG)</p>
-                  <input type="file" accept="image/*" onChange={handleFileUpload} />
+                  <Upload size={32} color="#94a3b8" style={{ margin: '0 auto 1rem', pointerEvents: 'none' }} />
+                  <p style={{ color: '#475569', marginBottom: '1rem', pointerEvents: 'none' }}>Select or drag and drop an image file (JPG, PNG)</p>
+                  <input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept="image/*" 
+                    style={{ display: 'none' }} 
+                    onChange={handleFileUpload} 
+                  />
                 </>
               )}
             </div>
@@ -438,3 +482,4 @@ export default function BidsManagement() {
     </div>
   );
 }
+
