@@ -164,21 +164,20 @@ const LibraryModule: React.FC = () => {
         </button>
       </div>
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-red-50 to-white p-10 rounded-2xl border border-red-100 shadow-sm mb-10 text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-5"><Library size={200} /></div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-4 relative z-10">Find what you need, instantly.</h2>
+      {/* Search Section */}
+      <div className="mb-10 text-center relative overflow-hidden">
         
         {/* Large Prominent Search */}
         <div className="max-w-2xl mx-auto relative z-10 mb-6">
+          <label className="block text-left text-sm font-semibold text-gray-700 mb-2 ml-1">Search library documents by title, tags or description...</label>
           <div className="relative flex items-center w-full">
             <Search className="absolute left-4 text-gray-400" size={24} />
             <input 
               type="text" 
-              placeholder="Search library documents by title, tags or description..." 
+              placeholder="" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-14 pr-6 py-4 text-lg border-2 border-red-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-500 shadow-sm outline-none transition-all"
+              className="w-full pl-14 pr-6 py-4 text-lg border border-gray-300 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-500 shadow-sm outline-none transition-all"
             />
           </div>
         </div>
@@ -188,7 +187,7 @@ const LibraryModule: React.FC = () => {
           <select 
             value={filterCategory} 
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg outline-none bg-white/80 backdrop-blur-sm shadow-sm"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg outline-none bg-white shadow-sm"
           >
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -196,7 +195,7 @@ const LibraryModule: React.FC = () => {
           <select 
             value={filterDiscipline} 
             onChange={(e) => setFilterDiscipline(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg outline-none bg-white/80 backdrop-blur-sm shadow-sm"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg outline-none bg-white shadow-sm"
           >
             <option value="">All Disciplines</option>
             {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
