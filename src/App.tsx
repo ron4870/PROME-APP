@@ -60,6 +60,7 @@ import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManualsDirectory from './pages/ManualsDirectory';
+import LibraryModule from './pages/LibraryModule';
 import Wiki from './pages/Wiki';
 import AIAssistant from './pages/AIAssistant';
 
@@ -150,6 +151,7 @@ function App() {
         <Route path="/forms" element={<ProtectedRoute><FormsDirectory /></ProtectedRoute>} />
         <Route path="/forms/funds-requisition" element={<ProtectedRoute><FundsRequisitionForm /></ProtectedRoute>} />
         <Route path="/manuals" element={<ProtectedRoute><ManualsDirectory /></ProtectedRoute>} />
+        <Route path="/library" element={<ProtectedRoute><LibraryModule /></ProtectedRoute>} />
         <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
         <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
         <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />

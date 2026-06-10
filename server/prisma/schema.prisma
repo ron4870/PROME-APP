@@ -117,8 +117,8 @@ model User {
   // Form Relations
   formSubmissions             FormSubmission[]             @relation("UserFormSubmissions")
 
-  // External Manuals
   uploadedManuals Manual[]
+  uploadedLibraryItems LibraryItem[]
 
   // Custom Wiki Relations
   authoredWikiPages    WikiPage[]     @relation("WikiAuthor")
@@ -143,6 +143,21 @@ model Document {
   uploader      User     @relation(fields: [uploaderId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model LibraryItem {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  category    String   // e.g., STANDARD, MANUAL, JOURNAL, PROJECT_REPORT, TEMPLATE
+  discipline  String?  // e.g., Structural, Highway, Water, Electrical, General
+  fileUrl     String?  // Link to the uploaded file
+  version     String   @default("1.0")
+  uploaderId  Int
+  uploader    User     @relation(fields: [uploaderId], references: [id])
+  tags        String?  // Comma-separated tags for search
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model UserDocument {

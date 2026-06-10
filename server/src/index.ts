@@ -35,6 +35,7 @@ import wikiRoutes from './routes/wiki.routes';
 import notificationRoutes from './routes/notification.routes';
 import aiRoutes from './routes/ai.routes';
 import bidsRoutes from './routes/bids.routes';
+import libraryRoutes from './routes/library.routes';
 import { setupCronJobs } from './services/cron.service';
 dotenv.config();
 
@@ -86,6 +87,7 @@ app.use('/api/wiki', wikiRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/bids', bidsRoutes);
+app.use('/api/library', libraryRoutes);
 
 import { driveService, GOOGLE_DRIVE_FOLDER_ID, upload } from './services/drive.service';
 
