@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Library, Upload, X, Search, FileText, Download, Filter, FileSpreadsheet, Globe, PenTool, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Library, Upload, X, Search, FileText, Filter, FileSpreadsheet, Globe, PenTool, ExternalLink } from 'lucide-react';
 
 interface LibraryItem {
   id: number;
@@ -36,9 +35,6 @@ const DISCIPLINES = [
 ];
 
 const LibraryModule: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
