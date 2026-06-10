@@ -336,6 +336,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Auto-create standard bid sections
     const defaultSections = [
+      "Bid Checklist",
       "Eligibility and Administrative Compliance",
       "Technical Submission forms",
       "Powers of Attorney",
