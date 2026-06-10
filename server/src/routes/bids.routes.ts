@@ -537,13 +537,19 @@ router.post('/sections/:id/generate-checklist', authMiddleware, upload.single('d
       You are an expert Bid Manager analyzing a tender document (RFP/ToR).
       Extract a robust checklist of key procedures, mandatory documents, and requirements that must be met during the preparation and submission of the bid.
       
+      CRITICAL EXTRACTION RULES:
+      1. Interpret any items described with the word "shall" or "must" as strictly mandatory.
+      2. Specifically look out for and extract requirements related to "Taxes".
+      3. Specifically look out for and extract requirements related to "Lists the Table of Forms".
+      4. Extract any other relevant administrative, technical, or financial clauses.
+      
       Document Text Extract:
       ${documentText.substring(0, 30000)} // Limit text to avoid exceeding token limits if it's too large
       
       Return a JSON array of checklist items. Each item must have:
-      1. "category": A string grouping the item (e.g. "Mandatory Requirements", "Procedural Steps", "Financial Docs").
+      1. "category": A string grouping the item (e.g. "Mandatory Requirements", "Taxes & Financial", "Procedural Steps", "Table of Forms").
       2. "task": The specific requirement or action item.
-      3. "mandatory": Boolean indicating if it's strictly mandatory.
+      3. "mandatory": Boolean indicating if it's strictly mandatory (remember the "shall" rule).
       
       Output ONLY valid JSON. Example format:
       [
