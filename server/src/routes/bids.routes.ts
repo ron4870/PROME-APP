@@ -550,10 +550,11 @@ router.post('/sections/:id/generate-checklist', authMiddleware, upload.single('d
       1. "category": A string grouping the item (e.g. "Mandatory Requirements", "Taxes & Financial", "Procedural Steps", "Table of Forms").
       2. "task": The specific requirement or action item.
       3. "mandatory": Boolean indicating if it's strictly mandatory (remember the "shall" rule).
+      4. "reference": A string indicating the Section and Page Number where this requirement is found (e.g. "Section 4.1, Page 12"). If unknown, leave empty.
       
       Output ONLY valid JSON. Example format:
       [
-        { "category": "Administrative", "task": "Submit valid trading license", "mandatory": true }
+        { "category": "Administrative", "task": "Submit valid trading license", "mandatory": true, "reference": "Section 2, Page 5" }
       ]
     `;
 

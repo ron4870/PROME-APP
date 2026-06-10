@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { Upload, Loader2, Plus, Trash2, CheckSquare, AlertCircle } from 'lucide-react';
+import { Upload, Loader2, Plus, Trash2, CheckSquare, AlertCircle, BookOpen } from 'lucide-react';
 
 export interface ChecklistItem {
   id: string;
@@ -7,6 +7,7 @@ export interface ChecklistItem {
   task: string;
   mandatory: boolean;
   completed: boolean;
+  reference?: string;
 }
 
 interface Props {
@@ -200,7 +201,12 @@ export default function BidChecklistBuilder({ sectionId, checklist, onChange }: 
                       />
                       
                       <div style={{ flex: 1, textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? '#94a3b8' : '#0f172a', fontSize: '0.95rem' }}>
-                        {item.task}
+                        <div>{item.task}</div>
+                        {item.reference && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem', fontSize: '0.75rem', color: '#64748b' }}>
+                            <BookOpen size={12} /> {item.reference}
+                          </div>
+                        )}
                       </div>
                       
                       {item.mandatory && !item.completed && (
