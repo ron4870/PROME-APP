@@ -21,7 +21,11 @@ const CATEGORIES = [
   'Software & IT Guides',
   'Journals & Research',
   'Past Project Reports',
-  'Standard Templates'
+  'Standard Templates',
+  'Legal Documents',
+  'Financial Documents',
+  'Certificates',
+  'Company Profiles'
 ];
 
 const DISCIPLINES = [
@@ -51,6 +55,7 @@ const LibraryModule: React.FC = () => {
   const [uploadDiscipline, setUploadDiscipline] = useState(DISCIPLINES[5]);
   const [uploadVersion, setUploadVersion] = useState('1.0');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const fetchItems = async () => {
     try {
@@ -91,20 +96,21 @@ const LibraryModule: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('title', uploadTitle);
+      formData.append('description', uploadDescription);
+      formData.append('category', uploadCategory);
+      formData.append('discipline', uploadDiscipline);
+      formData.append('version', uploadVersion);
+      if (uploadFileUrl) formData.append('fileUrl', uploadFileUrl);
+      if (uploadFile) formData.append('file', uploadFile);
+
       const response = await fetch('/api/library', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          title: uploadTitle,
-          description: uploadDescription,
-          category: uploadCategory,
-          discipline: uploadDiscipline,
-          version: uploadVersion,
-          fileUrl: uploadFileUrl
-        })
+        body: formData
       });
 
       if (response.ok) {
@@ -114,6 +120,7 @@ const LibraryModule: React.FC = () => {
         setUploadDescription('');
         setUploadVersion('1.0');
         setUploadFileUrl('');
+        setUploadFile(null);
         fetchItems();
       } else {
         const data = await response.json();
@@ -308,7 +315,27 @@ const LibraryModule: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File URL / Google Drive Link</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload PDF Document</label>
+                  <input 
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setUploadFile(e.target.files[0]);
+                      }
+                    }}
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                  />
+                </div>
+
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-gray-300"></div>
+                  <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-medium">Or</span>
+                  <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">External File URL / Google Drive Link</label>
                   <input 
                     type="url"
                     value={uploadFileUrl}
@@ -316,7 +343,7 @@ const LibraryModule: React.FC = () => {
                     placeholder="https://drive.google.com/..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Provide a link to the document hosted on PROME Drive or SharePoint.</p>
+                  <p className="text-xs text-gray-500 mt-1">Provide a link to the document hosted on PROME Drive or SharePoint if it's too large to upload.</p>
                 </div>
 
               </div>

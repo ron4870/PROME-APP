@@ -1,17 +1,37 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// In a real production setup, configure AWS credentials here
-// The current app might just be using local file uploads or a configured S3 bucket
-// We will use multer with memory storage so we can upload it manually, or configure multer properly
-// Here we are using a simple memory storage to handle the file buffer.
-const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads/library');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `library-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
 
-// Mock S3 or file upload helper (Modify according to PROME app's existing file upload structure)
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDFs are allowed'));
+    }
+  }
+});
 // For now, let's assume there is an upload route or we just store metadata if fileUrl is provided.
 // I will implement basic CRUD
 
@@ -48,19 +68,19 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Upload/Create new library item
-// Ideally this endpoint handles the file via S3, but we'll accept a fileUrl from the frontend if they use the existing Drive upload component, 
-// OR we can handle the file upload locally.
-// Let's assume the frontend will send the metadata, and optionally the fileUrl.
-router.post('/', async (req: any, res: any) => {
+router.post('/', authenticateToken, upload.single('file'), async (req: any, res: any) => {
   try {
-    // Basic auth check
-    const userId = req.user?.userId; // Assuming authMiddleware runs before this
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { title, description, category, discipline, version, tags, fileUrl } = req.body;
+    const { title, description, category, discipline, version, tags } = req.body;
+    let fileUrl = req.body.fileUrl;
+    
+    if (req.file) {
+      fileUrl = `/uploads/library/${req.file.filename}`;
+    }
 
     if (!title || !category) {
       return res.status(400).json({ error: 'Title and category are required' });
