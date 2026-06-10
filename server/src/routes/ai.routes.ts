@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 import { GoogleGenAI, Type } from '@google/genai';
-import { upload } from '../services/drive.service';
+import { upload, driveService } from '../services/drive.service';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -121,6 +121,53 @@ const systemTools = [
       type: Type.OBJECT,
       properties: {},
     }
+  },
+  {
+    name: "getEmployees",
+    description: "Returns a list of all employees and users in the system.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "getBids",
+    description: "Returns a list of all bids/tenders.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "getLibraryDocuments",
+    description: "Returns a list of documents in the corporate library. Optionally filter by search query.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "Optional search query to filter documents by title or description." }
+      }
+    }
+  },
+  {
+    name: "getIsoDocuments",
+    description: "Returns a list of all ISO quality documents.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "searchGoogleDrive",
+    description: "Searches the connected PROME Google Drive workspace for files by name and returns their secure web links.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "The filename or keyword to search for in Google Drive." }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "getProjectDetails",
+    description: "Gets detailed information about a specific project by its ID.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        projectId: { type: Type.NUMBER, description: "The ID of the project." }
+      },
+      required: ["projectId"]
+    }
   }
 ];
 
@@ -231,6 +278,40 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
         } else if (call.name === 'getProjects') {
           const projects = await prisma.project.findMany({ select: { id: true, name: true, status: true }, take: 10 });
           functionResponse = { projects };
+        } else if (call.name === 'getEmployees') {
+          const employees = await prisma.user.findMany({ select: { id: true, name: true, email: true, role: { select: { name: true } }, division: true, skills: true } });
+          functionResponse = { employees };
+        } else if (call.name === 'getBids') {
+          const bids = await prisma.bid.findMany({ select: { id: true, title: true, clientName: true, status: true, submissionDate: true } });
+          functionResponse = { bids };
+        } else if (call.name === 'getLibraryDocuments') {
+          const args = call.args as any;
+          const query = args.query || '';
+          const documents = await prisma.libraryItem.findMany({
+            where: query ? { OR: [{ title: { contains: query, mode: 'insensitive' } }, { description: { contains: query, mode: 'insensitive' } }] } : undefined,
+            select: { id: true, title: true, category: true, version: true, fileUrl: true }
+          });
+          functionResponse = { documents };
+        } else if (call.name === 'getIsoDocuments') {
+          const documents = await prisma.isoDocument.findMany({ select: { id: true, documentNumber: true, title: true, status: true, revision: true } });
+          functionResponse = { documents };
+        } else if (call.name === 'searchGoogleDrive') {
+          const args = call.args as any;
+          const query = args.query;
+          const driveRes = await driveService.files.list({
+            q: `name contains '${query}'`,
+            fields: 'files(id, name, webViewLink, mimeType)',
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true
+          });
+          functionResponse = { files: driveRes.data.files || [] };
+        } else if (call.name === 'getProjectDetails') {
+          const args = call.args as any;
+          const project = await prisma.project.findUnique({
+            where: { id: args.projectId },
+            include: { tasks: true, members: { include: { user: true } }, financials: true }
+          });
+          functionResponse = project ? { project } : { error: 'Project not found' };
         } else {
           functionResponse = { error: 'Function not found' };
         }
