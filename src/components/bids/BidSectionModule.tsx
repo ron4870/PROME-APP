@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import GanttChartBuilder from './GanttChartBuilder';
 import TeamCVBuilder from './TeamCVBuilder';
 import BidChecklistBuilder from './BidChecklistBuilder';
+import BidEligibilityBuilder from './BidEligibilityBuilder';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -32,8 +33,8 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
   const [references, setReferences] = useState<any[]>(
     typeof section.references === 'string' ? JSON.parse(section.references) : (section.references || [])
   );
-  const [data, setData] = useState<any[]>(
-    typeof section.data === 'string' ? JSON.parse(section.data) : (section.data || [])
+  const [data, setData] = useState<any>(
+    typeof section.data === 'string' ? JSON.parse(section.data) : (section.data || {})
   );
   const [wikiPages, setWikiPages] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -244,13 +245,19 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
               />
             )}
 
-            {section.name.toLowerCase().includes('checklist') && (
-              <BidChecklistBuilder
+            {section.name.toLowerCase().includes('checklist') ? (
+              <BidChecklistBuilder 
                 sectionId={section.id}
-                checklist={data}
+                checklist={data?.checklist || []}
+                onChange={(items) => setData({ ...data, checklist: items })}
+              />
+            ) : section.name === 'Eligibility and Administrative Compliance' ? (
+              <BidEligibilityBuilder
+                sectionId={section.id}
+                data={data || {}}
                 onChange={setData}
               />
-            )}
+            ) : null}
             
             <div>
               <h3 style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem' }}>Introductory Notes (Optional)</h3>

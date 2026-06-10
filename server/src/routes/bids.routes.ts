@@ -588,6 +588,100 @@ router.post('/sections/:id/generate-checklist', authMiddleware, upload.single('d
   }
 });
 
+// --- GENERATE ELIGIBILITY REQUIREMENTS ---
+router.post(
+  '/sections/:id/generate-eligibility',
+  authMiddleware,
+  upload.single('file'),
+  async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      // Parse PDF
+      const pdfData = await pdfParse(file.buffer);
+      const documentText = pdfData.text;
+
+      // Ensure section exists
+      const section = await prisma.bidSection.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!section) {
+        return res.status(404).json({ error: 'Section not found' });
+      }
+
+      const prompt = `
+      You are an expert Procurement and Bid Manager analyzing a tender document (RFP/ToR).
+      Extract a comprehensive checklist of Eligibility, Qualifications, and Administrative Compliance requirements.
+      
+      CRITICAL EXTRACTION RULES:
+      1. Interpret any items described with the word "shall" or "must" as strictly mandatory.
+      2. Specifically look out for requirements like: Trading Licenses, Certificates of Incorporation, Tax Clearance, Powers of Attorney, Litigation History, Conflict of Interest forms, Joint Venture agreements, etc.
+      3. Extract any specific requirements regarding Eligibility to bid (e.g., country of origin, not blacklisted).
+      4. Ignore technical methodology or pricing details, ONLY focus on administrative and eligibility requirements.
+      
+      Document Text Extract:
+      ${documentText.substring(0, 30000)} // Limit text to avoid exceeding token limits if it's too large
+      
+      Return a JSON array of checklist items. Each item must have:
+      1. "category": A string grouping the item (e.g. "Legal Documents", "Tax Compliance", "Forms & Declarations").
+      2. "task": The specific requirement or document to submit.
+      3. "mandatory": Boolean indicating if it's strictly mandatory.
+      4. "reference": A string indicating the Section and Page Number where this requirement is found (e.g. "Section 4.1, Page 12"). If unknown, leave empty.
+      
+      Output ONLY valid JSON. Example format:
+      [
+        { "category": "Legal Documents", "task": "Submit valid Certificate of Incorporation", "mandatory": true, "reference": "Section 2, Page 5" }
+      ]
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      });
+
+      const responseText = response.text || "[]";
+      let checklist = [];
+      try {
+        checklist = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', responseText);
+        return res.status(500).json({ error: 'AI returned invalid data format' });
+      }
+
+      // Add unique IDs to items
+      checklist = checklist.map((item: any) => ({
+        ...item,
+        id: Math.random().toString(36).substr(2, 9),
+        completed: false
+      }));
+
+      // Update the section data with the new checklist
+      const currentData = section.data ? (typeof section.data === 'string' ? JSON.parse(section.data) : section.data) : {};
+      currentData.eligibilityList = checklist;
+
+      await prisma.bidSection.update({
+        where: { id: parseInt(id) },
+        data: { data: currentData }
+      });
+
+      res.json({ checklist });
+    } catch (error) {
+      console.error('Error generating eligibility list:', error);
+      res.status(500).json({ error: 'Failed to generate eligibility requirements' });
+    }
+  }
+);
+
 // AI CV Evaluation for Team CVs Section
 router.post('/sections/:id/evaluate-cv', authMiddleware, async (req, res) => {
   try {
