@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, FileText, CheckCircle, Brain } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, CheckCircle, Brain, Trash2 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -21,6 +22,8 @@ const fetchWithAuth = async (url: string, options: any = {}) => {
 export default function BidWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPermittedToDelete = user?.role?.name === 'Admin' || user?.role?.name === 'Managing Director' || user?.role?.name === 'Head of Division';
   const [bid, setBid] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('sections'); // sections, partners, retrospective
@@ -107,6 +110,16 @@ export default function BidWorkspace() {
     }
   };
 
+  const handleDeleteWorkspace = async () => {
+    if (!window.confirm('Are you sure you want to delete this Bid Workspace? This action cannot be undone.')) return;
+    try {
+      await fetchWithAuth(`${API_BASE}/bids/${id}`, { method: 'DELETE' });
+      navigate('/division/pmbdd/bids');
+    } catch (error) {
+      alert('Failed to delete bid workspace');
+    }
+  };
+
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Loading Workspace...</div>;
   if (!bid) return <div style={{ padding: '3rem', textAlign: 'center' }}>Bid not found</div>;
 
@@ -133,9 +146,16 @@ export default function BidWorkspace() {
             {bid.opportunity.client} • Deadline: {bid.opportunity.deadline ? new Date(bid.opportunity.deadline).toLocaleDateString() : 'TBD'}
           </p>
         </div>
-        <button className="primary-button" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CheckCircle size={18} /> Finalize Bid
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {isPermittedToDelete && (
+            <button onClick={handleDeleteWorkspace} style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '0.5rem 1rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s ease' }}>
+              <Trash2 size={18} /> Delete Workspace
+            </button>
+          )}
+          <button className="primary-button" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CheckCircle size={18} /> Finalize Bid
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '1.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '2rem' }}>

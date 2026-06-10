@@ -387,6 +387,28 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete a bid workspace (Admin, Managing Director, Head of Division)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: (req as any).userId },
+      include: { role: true }
+    });
+    
+    const roleName = user?.role?.name;
+    if (roleName !== 'Admin' && roleName !== 'Managing Director' && roleName !== 'Head of Division') {
+      return res.status(403).json({ error: 'Unauthorized to delete bid workspaces' });
+    }
+
+    const { id } = req.params;
+    await prisma.bid.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Bid workspace deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting bid workspace:', error);
+    res.status(500).json({ error: 'Failed to delete bid workspace' });
+  }
+});
+
 // Auto-suggest Resources (Staff & Projects)
 router.get('/:id/suggest-resources', authMiddleware, async (req, res) => {
   try {
