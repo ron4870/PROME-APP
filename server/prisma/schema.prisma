@@ -1476,6 +1476,7 @@ model Bid {
   status          String   @default("Preparation") // "Preparation", "Submitted", "Won", "Lost", "Cancelled"
   
   finalDocumentUrl String? @db.Text // URL to uploaded stamped/scanned bid
+  driveFolderId    String? // ID of the generated Google Drive Folder for the workspace
 
   partners        BidPartner[]
   sections        BidSection[]
@@ -1508,6 +1509,7 @@ model BidSection {
   status          String   @default("Pending") // "Pending", "In Progress", "Completed"
   content         String?  @db.Text
   documentUrl     String?  @db.Text // Draft file URL
+  references      Json?    @default("[]") // For uploaded/linked files
 
   assigneeId      Int?
   assignee        User?    @relation("BidSectionAssignee", fields: [assigneeId], references: [id])

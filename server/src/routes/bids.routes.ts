@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
 import jwt from 'jsonwebtoken';
 import { GoogleGenAI } from '@google/genai';
+import { getOrCreateBidFolder } from '../services/drive.service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -312,6 +313,9 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     const { opportunityId } = req.body;
     
+    const opp = await prisma.bidOpportunity.findUnique({ where: { id: Number(opportunityId) } });
+    if (!opp) return res.status(404).json({ error: 'Opportunity not found' });
+
     // Create the Bid
     const bid = await prisma.bid.create({
       data: {
@@ -319,6 +323,12 @@ router.post('/', authMiddleware, async (req, res) => {
         status: 'Preparation',
       }
     });
+
+    try {
+      await getOrCreateBidFolder(bid.id, opp.title, null);
+    } catch (err) {
+      console.error("Failed to create Google Drive folder for bid:", err);
+    }
 
     // Auto-create standard bid sections
     const defaultSections = [
@@ -475,14 +485,15 @@ router.get('/:id/suggest-resources', authMiddleware, async (req, res) => {
 router.put('/sections/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, assigneeId, content } = req.body;
+    const { status, assigneeId, content, references } = req.body;
     
     const updated = await prisma.bidSection.update({
       where: { id: Number(id) },
       data: {
         ...(status && { status }),
         ...(assigneeId !== undefined && { assigneeId: assigneeId ? Number(assigneeId) : null }),
-        ...(content && { content })
+        ...(content !== undefined && { content }),
+        ...(references !== undefined && { references })
       }
     });
     res.json(updated);
@@ -555,7 +566,7 @@ router.post('/sections/:id/draft', authMiddleware, async (req, res) => {
       Past Proposals Context (Use this to align the tone and standard practices):
       ${pastProposalsContext}
       
-      Write a professional, compelling, and structured draft (in Markdown format).
+      Write a professional, compelling, and structured draft formatted as raw HTML (e.g., using <h2>, <p>, <ul>, <li>, <strong>). Do NOT use Markdown formatting or markdown codeblocks (\`\`\`). Only return the raw HTML string.
     `;
 
     const response = await ai.models.generateContent({

@@ -61,3 +61,38 @@ export async function getOrCreateProjectFolder(projectId: number, projectName: s
     
     return newFolderId;
 }
+
+export async function getOrCreateBidFolder(bidId: number, bidTitle: string, currentFolderId: string | null): Promise<string> {
+    if (currentFolderId) return currentFolderId;
+
+    // Create a new folder
+    const folderMetadata = {
+        name: `Bid Workspace: ${bidTitle}`,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [GOOGLE_DRIVE_FOLDER_ID]
+    };
+    
+    const driveFolder = await driveService.files.create({
+        requestBody: folderMetadata,
+        fields: 'id, webViewLink',
+        supportsAllDrives: true
+    });
+    
+    const newFolderId = driveFolder.data.id;
+    if (!newFolderId) throw new Error("Failed to create Google Drive folder");
+    
+    // Set permissions to anyone with link can view/edit
+    await driveService.permissions.create({
+        fileId: newFolderId,
+        requestBody: { role: 'writer', type: 'anyone' },
+        supportsAllDrives: true
+    });
+    
+    // Update the database to save this folder ID
+    await prisma.bid.update({
+        where: { id: bidId },
+        data: { driveFolderId: newFolderId }
+    });
+    
+    return newFolderId;
+}

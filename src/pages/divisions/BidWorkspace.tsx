@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, FileText, CheckCircle, Brain, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileText, CheckCircle, Trash2, Edit3, Clock, Users, Brain } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import BidSectionModule from '../../components/bids/BidSectionModule';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -25,6 +26,7 @@ export default function BidWorkspace() {
   const { user } = useAuth();
   const isPermittedToDelete = user?.role?.name === 'Admin' || user?.role?.name === 'Managing Director' || user?.role?.name === 'Head of Division';
   const [bid, setBid] = useState<any>(null);
+  const [activeSection, setActiveSection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('sections'); // sections, partners, retrospective
   const [users, setUsers] = useState<any[]>([]);
@@ -32,7 +34,6 @@ export default function BidWorkspace() {
   const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   const [suggestedResources, setSuggestedResources] = useState<any>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
-  const [draftingSectionId, setDraftingSectionId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchBidAndUsers();
@@ -48,20 +49,6 @@ export default function BidWorkspace() {
       alert('Failed to load bid workspace');
     } finally {
       setLoading(false);
-    }
-  };
-
-
-  const handleUpdateSection = async (sectionId: number, status: string, assigneeId: string | null) => {
-    try {
-      await fetchWithAuth(`${API_BASE}/bids/sections/${sectionId}`, { 
-        method: 'PUT',
-        body: JSON.stringify({ status, assigneeId: assigneeId ? Number(assigneeId) : null })
-      });
-      fetchBidAndUsers();
-      alert('Section updated');
-    } catch (error) {
-      alert('Failed to update section');
     }
   };
 
@@ -94,19 +81,6 @@ export default function BidWorkspace() {
       alert('Failed to suggest resources');
     } finally {
       setIsSuggesting(false);
-    }
-  };
-
-  const handleDraftSection = async (sectionId: number) => {
-    setDraftingSectionId(sectionId);
-    try {
-      await fetchWithAuth(`${API_BASE}/bids/sections/${sectionId}/draft`, { method: 'POST' });
-      fetchBidAndUsers();
-      alert('Draft generated successfully!');
-    } catch (error) {
-      alert('Failed to generate draft');
-    } finally {
-      setDraftingSectionId(null);
     }
   };
 
@@ -180,69 +154,64 @@ export default function BidWorkspace() {
       </div>
 
       {activeTab === 'sections' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', color: '#1e293b', fontWeight: 600, marginBottom: '1.5rem' }}>Bid Document Sections</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-              {bid.sections.map((sec: any) => (
-                <div key={sec.id} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', borderLeft: sec.status === 'Completed' ? '4px solid #10b981' : sec.status === 'In Progress' ? '4px solid #f59e0b' : '4px solid #cbd5e1' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <FileText size={18} color="#64748b" />
-                      <span style={{ fontWeight: 500, color: '#334155' }}>{sec.name}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          {bid.sections.map((sec: any) => {
+            const isCompleted = sec.status === 'Completed';
+            const isInProgress = sec.status === 'In Progress';
+            return (
+              <div 
+                key={sec.id} 
+                onClick={() => setActiveSection(sec)}
+                style={{ 
+                  padding: '1.5rem', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', cursor: 'pointer', transition: 'all 0.2s',
+                  borderTop: isCompleted ? '4px solid #10b981' : isInProgress ? '4px solid #f59e0b' : '4px solid #cbd5e1'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.5rem', backgroundColor: '#f1f5f9', borderRadius: '8px' }}>
+                      <FileText size={20} color="#475569" />
                     </div>
-                    
-                    <div>
-                    <select 
-                      value={sec.assigneeId || ''} 
-                      onChange={(e) => handleUpdateSection(sec.id, sec.status, e.target.value)}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '100%', outline: 'none' }}
-                    >
-                      <option value="">Unassigned</option>
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
+                    <h4 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem', fontWeight: 600 }}>{sec.name}</h4>
                   </div>
-
-                  <div>
-                    <select 
-                      value={sec.status} 
-                      onChange={(e) => handleUpdateSection(sec.id, e.target.value, sec.assigneeId)}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '100%', outline: 'none', backgroundColor: sec.status === 'Completed' ? '#ecfdf5' : sec.status === 'In Progress' ? '#fffbeb' : '#f8fafc' }}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    {(sec.name === 'Methodology' || sec.name === 'Comments on TORs') && (
-                      <button 
-                        onClick={() => handleDraftSection(sec.id)} 
-                        disabled={draftingSectionId === sec.id}
-                        style={{ padding: '0.5rem', background: 'none', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0284c7', fontWeight: 500 }}
-                      >
-                        <Brain size={14} /> {draftingSectionId === sec.id ? 'Drafting...' : 'Draft with AI'}
-                      </button>
-                    )}
-                    <button style={{ padding: '0.5rem', background: 'none', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569' }}>
-                      <Upload size={14} /> Upload
-                    </button>
-                  </div>
-                  </div>
-
-                  {sec.content && (
-                    <div style={{ marginTop: '0.5rem', padding: '1rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.9rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
-                      {sec.content}
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Clock size={16} /> {sec.status}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <Users size={16} /> {users.find((u: any) => u.id === sec.assigneeId)?.name || 'Unassigned'}
+                  </div>
+                </div>
+
+                <button style={{ 
+                  width: '100%', padding: '0.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', 
+                  borderRadius: '6px', color: '#475569', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' 
+                }}>
+                  <Edit3 size={16} /> Open Workspace
+                </button>
+              </div>
+            );
+          })}
         </div>
+      )}
+
+      {activeSection && (
+        <BidSectionModule 
+          section={activeSection} 
+          users={users} 
+          bid={bid} 
+          onClose={() => setActiveSection(null)} 
+          onUpdate={(updatedSection: any) => {
+            setBid((prev: any) => ({
+              ...prev,
+              sections: prev.sections.map((s: any) => s.id === updatedSection.id ? updatedSection : s)
+            }));
+            setActiveSection(updatedSection);
+          }} 
+        />
       )}
 
       {activeTab === 'team' && (
