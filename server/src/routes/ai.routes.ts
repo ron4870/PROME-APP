@@ -105,7 +105,7 @@ router.delete('/sessions/:id', async (req: Request, res: Response) => {
 });
 
 // Function Calling Definitions (Tools)
-const systemTools = [
+const systemTools: any[] = [
   {
     name: "getSystemStats",
     description: "Gets the total number of users, active projects, and ISO documents in the system.",
@@ -282,7 +282,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
           const employees = await prisma.user.findMany({ select: { id: true, name: true, email: true, role: { select: { name: true } }, division: true, skills: true } });
           functionResponse = { employees };
         } else if (call.name === 'getBids') {
-          const bids = await prisma.bid.findMany({ select: { id: true, title: true, clientName: true, status: true, submissionDate: true } });
+          const bids = await prisma.bid.findMany({ select: { id: true, status: true, opportunity: { select: { title: true, client: true, deadline: true } } } });
           functionResponse = { bids };
         } else if (call.name === 'getLibraryDocuments') {
           const args = call.args as any;
