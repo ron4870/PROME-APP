@@ -19,6 +19,8 @@ export interface ComplianceDocument {
   date: string;
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 interface Props {
   sectionId: number;
   data: any;
@@ -45,7 +47,7 @@ export default function BidEligibilityBuilder({ sectionId, data, onChange }: Pro
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://207.180.197.219:5000/api/bids/sections/${sectionId}/generate-eligibility`, {
+      const res = await fetch(`${API_BASE}/bids/sections/${sectionId}/generate-eligibility`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
