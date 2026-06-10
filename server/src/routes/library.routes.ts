@@ -1,29 +1,16 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
+import { driveService, GOOGLE_DRIVE_FOLDER_ID } from '../services/drive.service';
+import { Readable } from 'stream';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/library');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `library-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
-
 const upload = multer({ 
-  storage,
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
@@ -79,7 +66,42 @@ router.post('/', authenticateToken, upload.single('file'), async (req: any, res:
     let fileUrl = req.body.fileUrl;
     
     if (req.file) {
-      fileUrl = `/uploads/library/${req.file.filename}`;
+      try {
+        console.log(`Uploading ${req.file.originalname} to Google Drive...`);
+        const fileMetadata = {
+          name: `Library_${Date.now()}_${req.file.originalname}`,
+          parents: [GOOGLE_DRIVE_FOLDER_ID]
+        };
+        const media = {
+          mimeType: req.file.mimetype,
+          body: Readable.from(req.file.buffer)
+        };
+
+        const driveFile = await driveService.files.create({
+          requestBody: fileMetadata,
+          media: media,
+          fields: 'id, webViewLink',
+          supportsAllDrives: true
+        });
+
+        const fileId = driveFile.data.id;
+        
+        if (fileId) {
+          // Make the file publicly accessible so users can view it
+          await driveService.permissions.create({
+            fileId: fileId,
+            requestBody: {
+              role: 'reader',
+              type: 'anyone',
+            },
+            supportsAllDrives: true
+          });
+          fileUrl = driveFile.data.webViewLink;
+        }
+      } catch (driveError) {
+        console.error('Error uploading to Google Drive:', driveError);
+        return res.status(500).json({ error: 'Failed to upload document to Google Drive' });
+      }
     }
 
     if (!title || !category) {
