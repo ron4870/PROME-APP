@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Compass, Layers, ChevronRight, Map, Signpost, Waves, Box } from 'lucide-react';
+import { Compass, Layers, ChevronRight, Map, Signpost, BookOpen, Box } from 'lucide-react';
 import { useState } from 'react';
 
 const AppButton = ({ title, description, icon, onClick, colorStart, colorEnd, shadowColor }: any) => {
@@ -160,10 +160,10 @@ export default function PEDRoadsHighways() {
             />
 
             <AppButton 
-              title="Hydraulics & Hydrology" 
-              description="Analyze drainage, culverts, and bridge waterways." 
-              icon={<Waves size={24} />} 
-              onClick={() => window.open('/PROMEHydrology/index.html', '_blank')} 
+              title="Book of Drawings Creator" 
+              description="Compile and generate standardized engineering drawing booklets." 
+              icon={<BookOpen size={24} />} 
+              onClick={() => window.open('#', '_blank')} 
               colorStart="#0ea5e9" colorEnd="#0369a1" shadowColor="#0c4a6e"
             />
           </motion.div>
