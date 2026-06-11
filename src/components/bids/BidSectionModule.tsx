@@ -39,6 +39,9 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
   const [wikiPages, setWikiPages] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isCheckingTor, setIsCheckingTor] = useState(false);
+  const [crossCheckResult, setCrossCheckResult] = useState<any>(null);
+  const [isParsingBoq, setIsParsingBoq] = useState(false);
 
   // Fetch wiki pages for Team CVs section
   useEffect(() => {
@@ -50,7 +53,67 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
   }, [section.name]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const boqInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleTorCheck = async () => {
+    setIsCheckingTor(true);
+    setCrossCheckResult(null);
+    try {
+      const result = await fetchWithAuth(`${API_BASE}/bids/${bid.id}/cross-check-tor`, {
+        method: 'POST',
+        body: JSON.stringify({ content })
+      });
+      setCrossCheckResult(result);
+    } catch (error) {
+      console.error(error);
+      setCrossCheckResult({ error: 'Check failed' });
+    } finally {
+      setIsCheckingTor(false);
+    }
+  };
+
+  const handleBoqUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsingBoq(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/bids/parse-boq`, {
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData
+      });
+
+      if (!res.ok) throw new Error('Failed to parse BOQ');
+      const data = await res.json();
+
+      const formatCurrency = (val: number) => new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX' }).format(val);
+      
+      const boqHtml = `
+        <br/><hr/>
+        <h3>Financial Summary (Auto-Extracted from BOQ)</h3>
+        <ul>
+          <li><strong>Sub-Total:</strong> ${formatCurrency(data.subTotal)}</li>
+          <li><strong>VAT (18%):</strong> ${formatCurrency(data.vat)}</li>
+          <li><strong>WHT (6%):</strong> ${formatCurrency(data.wht)}</li>
+          <li><strong>Final Total (Incl. VAT):</strong> ${formatCurrency(data.finalTotal)}</li>
+        </ul>
+        <br/>
+      `;
+      setContent((prev: string) => prev + boqHtml);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to parse BOQ. Ensure it is a valid Excel file.');
+    } finally {
+      setIsParsingBoq(false);
+      if (boqInputRef.current) boqInputRef.current.value = '';
+    }
+  };
 
   const handleSave = async (silent = false) => {
     setIsSaving(!silent);
@@ -329,7 +392,52 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
               <div style={{ padding: '1rem', backgroundColor: '#eef2ff', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
                 <h4 style={{ margin: '0 0 0.5rem 0', color: '#3730a3' }}>TOR Cross-Checker</h4>
                 <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: '#4f46e5' }}>AI will analyze the current drafted text and compare it against the opportunity Terms of Reference.</p>
-                <button className="primary-button" style={{ width: '100%', fontSize: '0.9rem' }}>Run Check</button>
+                <button 
+                  onClick={handleTorCheck} 
+                  disabled={isCheckingTor} 
+                  className="primary-button" 
+                  style={{ width: '100%', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+                >
+                  {isCheckingTor ? <><Loader2 size={16} className="spin" /> Checking...</> : 'Run Check'}
+                </button>
+                
+                {crossCheckResult && !crossCheckResult.error && (
+                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>Compliance Score:</span>
+                      <span style={{ 
+                        fontWeight: 700, 
+                        color: crossCheckResult.score >= 80 ? '#16a34a' : crossCheckResult.score >= 50 ? '#ca8a04' : '#dc2626' 
+                      }}>
+                        {crossCheckResult.score}%
+                      </span>
+                    </div>
+                    
+                    {crossCheckResult.weaknesses && crossCheckResult.weaknesses.length > 0 && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.85rem', color: '#dc2626' }}>Missing/Weak Points:</strong>
+                        <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem', fontSize: '0.85rem', color: '#475569' }}>
+                          {crossCheckResult.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {crossCheckResult.suggestions && crossCheckResult.suggestions.length > 0 && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.85rem', color: '#2563eb' }}>Suggestions:</strong>
+                        <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem', fontSize: '0.85rem', color: '#475569' }}>
+                          {crossCheckResult.suggestions.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {crossCheckResult?.error && (
+                  <div style={{ marginTop: '1rem', color: '#dc2626', fontSize: '0.85rem', textAlign: 'center' }}>
+                    Failed to run cross-check. Please try again.
+                  </div>
+                )}
               </div>
             )}
             
@@ -337,7 +445,21 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
               <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                 <h4 style={{ margin: '0 0 0.5rem 0', color: '#166534' }}>BOQ Parser</h4>
                 <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: '#15803d' }}>Upload an Excel file to automatically extract BOQ totals and calculate VAT / Withholding tax.</p>
-                <button className="primary-button" style={{ width: '100%', fontSize: '0.9rem', backgroundColor: '#16a34a' }}>Upload BOQ</button>
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls" 
+                  ref={boqInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={handleBoqUpload} 
+                />
+                <button 
+                  onClick={() => boqInputRef.current?.click()} 
+                  disabled={isParsingBoq}
+                  className="primary-button" 
+                  style={{ width: '100%', fontSize: '0.9rem', backgroundColor: '#16a34a', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+                >
+                  {isParsingBoq ? <><Loader2 size={16} className="spin" /> Parsing...</> : 'Upload BOQ'}
+                </button>
               </div>
             )}
 

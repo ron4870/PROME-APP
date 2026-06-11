@@ -899,4 +899,132 @@ router.post('/:id/retrospective', authMiddleware, async (req, res) => {
   }
 });
 
+// ==========================================
+// AI SECTION TOOLS
+// ==========================================
+
+// 1. Methodology TOR Cross-Checker
+router.post('/:id/cross-check-tor', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body; // HTML or text of the drafted section
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+    }
+
+    const bid = await prisma.bid.findUnique({
+      where: { id: Number(id) },
+      include: { opportunity: true }
+    });
+
+    if (!bid || !bid.opportunity) {
+      return res.status(404).json({ error: 'Bid or opportunity not found' });
+    }
+
+    const prompt = `
+      You are an expert bid compliance officer for a civil engineering firm.
+      Review the drafted Methodology section text against the Terms of Reference (TOR) description.
+      Identify any missing requirements, highlight the strengths, and suggest improvements.
+      
+      Respond in pure JSON format exactly like this:
+      {
+        "score": 85, // percentage score indicating compliance
+        "strengths": ["list of strengths"],
+        "weaknesses": ["list of missing or weak points"],
+        "suggestions": ["list of actionable improvements"]
+      }
+      
+      Terms of Reference (Description):
+      ${bid.opportunity.description}
+      
+      Drafted Methodology:
+      ${content}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { temperature: 0.2 }
+    });
+
+    const cleanText = (response.text || "{}").replace(/```json/g, '').replace(/```/g, '').trim();
+    let result;
+    try {
+      result = JSON.parse(cleanText);
+    } catch (e) {
+      result = { error: 'Failed to parse AI response' };
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to run cross-check' });
+  }
+});
+
+// 2. Financial BOQ Parser
+import * as xlsx from 'xlsx';
+
+router.post('/parse-boq', authMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    // Assuming the first sheet is the summary or the main BOQ
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Convert to JSON array
+    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+    
+    let grandTotal = 0;
+    
+    // Simple heuristic: Look for the maximum numeric value in the last few rows or columns
+    // that might represent the grand total.
+    for (let i = data.length - 1; i >= Math.max(0, data.length - 20); i--) {
+      const row = data[i];
+      if (!row) continue;
+      
+      for (let j = 0; j < row.length; j++) {
+        const cell = row[j];
+        if (typeof cell === 'number' && cell > grandTotal) {
+          grandTotal = cell;
+        } else if (typeof cell === 'string') {
+          // Try to parse string numbers like "1,000,000.00"
+          const cleanStr = cell.replace(/,/g, '').trim();
+          if (!isNaN(Number(cleanStr)) && Number(cleanStr) > grandTotal) {
+            grandTotal = Number(cleanStr);
+          }
+        }
+      }
+    }
+
+    if (grandTotal === 0) {
+      return res.status(400).json({ error: 'Could not detect a valid total in the BOQ' });
+    }
+
+    // Apply standard Uganda taxes as confirmed by user
+    const vatRate = 0.18;
+    const whtRate = 0.06;
+    
+    const vat = grandTotal * vatRate;
+    const wht = grandTotal * whtRate;
+    const finalTotal = grandTotal + vat; // Usually BOQ sub-totals are VAT exclusive, and WHT is deducted from the gross, but for display we show SubTotal + VAT.
+
+    res.json({
+      subTotal: grandTotal,
+      vat,
+      wht,
+      finalTotal
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to parse BOQ file' });
+  }
+});
+
 export default router;
