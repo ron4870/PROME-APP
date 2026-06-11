@@ -69,6 +69,8 @@ import Wiki from './pages/Wiki';
 import AIAssistant from './pages/AIAssistant';
 
 
+import BookOfDrawingsCreator from './pages/divisions/BookOfDrawingsCreator';
+
 // Simple protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
@@ -171,10 +173,12 @@ function App() {
         <Route path="/division/ped/water-sanitation" element={<ProtectedRoute><PEDWaterSanitation /></ProtectedRoute>} />
         <Route path="/division/ped/energy-minerals" element={<ProtectedRoute><PEDEnergyMinerals /></ProtectedRoute>} />
         <Route path="/division/ped/transportation-studies" element={<ProtectedRoute><PEDTransportationStudies /></ProtectedRoute>} />
-
+        <Route path="/division/ped/hydrology" element={<ProtectedRoute><PEDHydrology /></ProtectedRoute>} />
         <Route path="/division/ped/alignment-design" element={<ProtectedRoute><PEDAlignmentDesign /></ProtectedRoute>} />
         <Route path="/division/ped/route-optimizer" element={<ProtectedRoute><PEDRouteOptimizer /></ProtectedRoute>} />
-        <Route path="/division/ped/hydrology" element={<ProtectedRoute><PEDHydrology /></ProtectedRoute>} />
+        
+        {/* Book of Drawings Creator */}
+        <Route path="/book-of-drawings" element={<ProtectedRoute><BookOfDrawingsCreator /></ProtectedRoute>} />
         <Route path="/division/pdmd" element={<ProtectedRoute><PDMD /></ProtectedRoute>} />
         <Route path="/division/hrad" element={<ProtectedRoute><HRAD /></ProtectedRoute>} />
         <Route path="/division/fd" element={<ProtectedRoute><FD /></ProtectedRoute>} />

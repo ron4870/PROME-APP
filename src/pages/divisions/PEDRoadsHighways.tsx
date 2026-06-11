@@ -163,7 +163,7 @@ export default function PEDRoadsHighways() {
               title="Book of Drawings Creator" 
               description="Compile and generate standardized engineering drawing booklets." 
               icon={<BookOpen size={24} />} 
-              onClick={() => window.open('#', '_blank')} 
+              onClick={() => window.open('/book-of-drawings', '_blank')} 
               colorStart="#0ea5e9" colorEnd="#0369a1" shadowColor="#0c4a6e"
             />
           </motion.div>
