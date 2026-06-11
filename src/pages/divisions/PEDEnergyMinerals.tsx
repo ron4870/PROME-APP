@@ -79,16 +79,16 @@ export default function PEDEnergyMinerals() {
         <div style={{ flex: '1 1 65%' }}>
            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
              <img 
-               src="https://promeconsult.com/images/engseated.png" 
-               alt="Energy and Mineral Exploration" 
+               src="https://promeconsult.com/images/telcommasts.png" 
+               alt="Energy Development Studies" 
                style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '1.5rem' }} 
              />
-             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Driving Sustainable Resource Development</h2>
+             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Energy Development Studies</h2>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               Our Energy and Mineral Exploration team is dedicated to uncovering and developing natural resources in a sustainable and environmentally conscious manner. We provide comprehensive geospatial analysis, geological surveys, and resource mapping to inform critical investment decisions.
+               PROME Consultants Limited conducts appropriate energy studies, focusing on Energy Conservation and Energy Resources Development for sustainable infrastructure projects.
              </p>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               By leveraging modern technology and satellite imagery, we help stakeholders optimize energy distribution networks, identify high-potential mineral deposits, and ensure strict compliance with environmental regulations throughout the exploration lifecycle.
+               We leverage our deep expertise in the energy sector to identify sustainable and efficient resources for power generation, transmission, and distribution. Our focus spans from traditional Oil and Gas to Renewable Energy sources and Hydropower projects.
              </p>
            </div>
         </div>

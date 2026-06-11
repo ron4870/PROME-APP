@@ -79,16 +79,16 @@ export default function PEDTransportationStudies() {
         <div style={{ flex: '1 1 65%' }}>
            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
              <img 
-               src="https://promeconsult.com/images/engseated.png" 
-               alt="Transportation Studies" 
+               src="https://promeconsult.com/images/nia.jpg" 
+               alt="Multi-modal Transportation Studies" 
                style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '1.5rem' }} 
              />
-             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Pioneering Mobility Solutions</h2>
+             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Multi-modal Transportation Studies</h2>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               Our Transportation Studies group is committed to analyzing, planning, and designing efficient and sustainable mobility networks. We conduct thorough traffic assessments, feasibility studies, and master planning to address modern transportation challenges.
+               Over the years Uganda developed a multi-modal transport system, based initially on railway and waterway services, followed later by roads and air services. Roads are however the dominant mode of transport carrying over 95 per cent of total traffic.
              </p>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               Using advanced simulation and modeling tools, we optimize traffic flow, reduce congestion, and enhance safety across all modes of transport, ensuring that infrastructure investments yield maximum economic and social benefits.
+               PROME Consultants Limited understands that a multi-modal planning approach is needed to solve the urban transport problems of cities in Africa and across the World. With this approach, focus is placed on land use planning that considers diverse transportation options e.g. walking, cycling, public transport and private cars.
              </p>
            </div>
         </div>

@@ -82,16 +82,16 @@ export default function PEDStructures() {
         <div style={{ flex: '1 1 65%' }}>
            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
              <img 
-               src="https://promeconsult.com/images/engseated.png" 
-               alt="Structural Engineering" 
+               src="https://promeconsult.com/images/build.png" 
+               alt="Engineering Design" 
                style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '1.5rem' }} 
              />
-             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Structural Engineering Excellence</h2>
+             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Engineering Design and Structures</h2>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               Our structural design team ensures that all constructed infrastructure—from bridges to multistory buildings—is safe, durable, and cost-effective. We utilize state-of-the-art analysis and design methodologies to evaluate loads, material stresses, and structural integrity.
+               Engineering design is a key aspect when it comes to solving the infrastructure problems facing the World today. PROME has over the years demonstrated competence in the execution of state-of-the-art Engineering designs that are fit for purpose, Economical, and Environmentally conscious.
              </p>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               We strictly adhere to recognized design codes and standards to guarantee structural safety under all foreseeable operating conditions, providing sustainable engineering solutions that stand the test of time.
+               It is a culture of our design team to ensure that all items of works are designed and defined to an adequate level of detail to enable the works to be constructed. Correct specification of the works through material and workmanship specifications and drawings to a sufficient detail is held in high regard.
              </p>
            </div>
         </div>

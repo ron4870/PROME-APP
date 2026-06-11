@@ -81,16 +81,16 @@ export default function PEDWaterSanitation() {
         <div style={{ flex: '1 1 65%' }}>
            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
              <img 
-               src="https://promeconsult.com/images/engseated.png" 
-               alt="Water and Sanitation Engineering" 
+               src="https://promeconsult.com/images/irrigation.png" 
+               alt="Water and Sanitation" 
                style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', borderRadius: '0.5rem', marginBottom: '1.5rem' }} 
              />
-             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Excellence in Water & Sanitation</h2>
+             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Water and Sanitation Services</h2>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               Hydraulic and Hydrology design is a fundamental aspect of sustainable infrastructure. Our team of experts specializes in developing solutions that effectively manage water resources, drainage systems, and sanitation facilities. We utilize advanced modeling techniques to predict water flow, analyze catchment areas, and design robust hydraulic structures.
+               Our Water division specializes in providing comprehensive solutions including Hydrological Assessments, Ground Water Resource Planning, Irrigation and Drainage, and Waste Water Management.
              </p>
              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem', fontSize: '1.05rem' }}>
-               We strictly adhere to international best practices and local regulations, ensuring that all our designs for water supply networks, stormwater management, and wastewater treatment are efficient, environmentally conscious, and resilient to climate change.
+               We aim to deliver sustainable water management solutions that are technically appropriate, economically justifiable, and environmentally responsible. We are committed to ensuring reliable access to clean water and adequate sanitation for communities across the region.
              </p>
            </div>
         </div>
