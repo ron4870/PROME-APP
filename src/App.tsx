@@ -57,6 +57,7 @@ import FDInvoices from './pages/divisions/FDInvoices';
 import PEDRoadsHighways from './pages/divisions/PEDRoadsHighways';
 import PEDStructures from './pages/divisions/PEDStructures';
 import PEDWaterSanitation from './pages/divisions/PEDWaterSanitation';
+import PEDEnergyMinerals from './pages/divisions/PEDEnergyMinerals';
 import PEDHydrology from './pages/divisions/PEDHydrology';
 import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
@@ -167,6 +168,7 @@ function App() {
         <Route path="/division/ped/roads-highways" element={<ProtectedRoute><PEDRoadsHighways /></ProtectedRoute>} />
         <Route path="/division/ped/structures" element={<ProtectedRoute><PEDStructures /></ProtectedRoute>} />
         <Route path="/division/ped/water-sanitation" element={<ProtectedRoute><PEDWaterSanitation /></ProtectedRoute>} />
+        <Route path="/division/ped/energy-minerals" element={<ProtectedRoute><PEDEnergyMinerals /></ProtectedRoute>} />
 
         <Route path="/division/ped/alignment-design" element={<ProtectedRoute><PEDAlignmentDesign /></ProtectedRoute>} />
         <Route path="/division/ped/route-optimizer" element={<ProtectedRoute><PEDRouteOptimizer /></ProtectedRoute>} />
