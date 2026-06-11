@@ -95,7 +95,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     navLinks = [
       { label: 'Transportation Studies', path: '#' },
       { label: 'Roads & Highways', path: '/division/ped/roads-highways' },
-      { label: 'Structures', path: '#' },
+      { label: 'Structures', path: '/division/ped/structures' },
       { label: 'Water & Sanitation', path: '#' },
       { label: 'Energy & Minerals', path: '#' }
     ];

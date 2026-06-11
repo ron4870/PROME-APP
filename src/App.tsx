@@ -55,6 +55,7 @@ import HRAD from './pages/divisions/HRAD';
 import FD from './pages/divisions/FD';
 import FDInvoices from './pages/divisions/FDInvoices';
 import PEDRoadsHighways from './pages/divisions/PEDRoadsHighways';
+import PEDStructures from './pages/divisions/PEDStructures';
 import PEDHydrology from './pages/divisions/PEDHydrology';
 import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
@@ -163,6 +164,7 @@ function App() {
         <Route path="/division/cpsd" element={<ProtectedRoute><CPSD /></ProtectedRoute>} />
         <Route path="/division/ped" element={<ProtectedRoute><PED /></ProtectedRoute>} />
         <Route path="/division/ped/roads-highways" element={<ProtectedRoute><PEDRoadsHighways /></ProtectedRoute>} />
+        <Route path="/division/ped/structures" element={<ProtectedRoute><PEDStructures /></ProtectedRoute>} />
 
         <Route path="/division/ped/alignment-design" element={<ProtectedRoute><PEDAlignmentDesign /></ProtectedRoute>} />
         <Route path="/division/ped/route-optimizer" element={<ProtectedRoute><PEDRouteOptimizer /></ProtectedRoute>} />
