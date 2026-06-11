@@ -69,7 +69,8 @@ import Wiki from './pages/Wiki';
 import AIAssistant from './pages/AIAssistant';
 
 
-import BookOfDrawingsCreator from './pages/divisions/BookOfDrawingsCreator';
+import BookOfDrawingsDashboard from './pages/divisions/BookOfDrawingsDashboard';
+import BookOfDrawingsWorkspace from './pages/divisions/BookOfDrawingsWorkspace';
 
 // Simple protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -177,8 +178,9 @@ function App() {
         <Route path="/division/ped/alignment-design" element={<ProtectedRoute><PEDAlignmentDesign /></ProtectedRoute>} />
         <Route path="/division/ped/route-optimizer" element={<ProtectedRoute><PEDRouteOptimizer /></ProtectedRoute>} />
         
-        {/* Book of Drawings Creator */}
-        <Route path="/book-of-drawings" element={<ProtectedRoute><BookOfDrawingsCreator /></ProtectedRoute>} />
+        {/* Book of Drawings */}
+        <Route path="/book-of-drawings" element={<ProtectedRoute><BookOfDrawingsDashboard /></ProtectedRoute>} />
+        <Route path="/book-of-drawings/:id" element={<ProtectedRoute><BookOfDrawingsWorkspace /></ProtectedRoute>} />
         <Route path="/division/pdmd" element={<ProtectedRoute><PDMD /></ProtectedRoute>} />
         <Route path="/division/hrad" element={<ProtectedRoute><HRAD /></ProtectedRoute>} />
         <Route path="/division/fd" element={<ProtectedRoute><FD /></ProtectedRoute>} />

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { getOrCreateBookOfDrawingsFolder } from '../src/services/drive.service';
 
 const prisma = new PrismaClient();
 
@@ -38,6 +39,47 @@ async function main() {
         roleId: adminRole.id,
       },
     });
+  }
+
+  // Create Book of Drawings Template Project if not exists
+  const existingTemplate = await prisma.bookOfDrawingsProject.findFirst({
+    where: { isTemplate: true }
+  });
+
+  if (!existingTemplate) {
+    const template = await prisma.bookOfDrawingsProject.create({
+      data: {
+        name: 'Template Project',
+        client: 'Prome Consult',
+        description: 'Base template for all Book of Drawings projects. Editing this modifies the default for future projects.',
+        isTemplate: true
+      }
+    });
+
+    const defaultSections = [
+      "Page Layout", "Cover Page", "General", "Typical Cross Sections & Pavement Details",
+      "Setting-Out Data", "Detailed Plan and Profile", "Cross Sections", "Layout Drawings",
+      "Junctions & Intersections", "Utility Services", "Drainage Details", "Structures Details",
+      "Geotechnical Works", "Landscaping Works", "Traffic Accomodation", "Engineer's Facilities",
+      "Road Signs & Marking", "Ancillary Works", "Final Book"
+    ];
+
+    for (const section of defaultSections) {
+      await prisma.bookOfDrawingsPage.create({
+        data: {
+          projectId: template.id,
+          section: section,
+          pageNumber: 1,
+          canvasState: null
+        }
+      });
+    }
+
+    try {
+      await getOrCreateBookOfDrawingsFolder(template.id, template.name, null);
+    } catch (e) {
+      console.error('Failed to create Google Drive folder for Template Project', e);
+    }
   }
 
   console.log('Seeded default roles and admin user successfully.');

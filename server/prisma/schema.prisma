@@ -94,6 +94,7 @@ model User {
   assignedNcrs                NonConformityReport[]        @relation("NcrAssignee")
   // Project Relations
   projectMemberships          ProjectMember[]
+  bookOfDrawingsMemberships   BookOfDrawingsProjectMember[]
   // Project Module Relations
   assignedProjectTasks        ProjectTask[]                @relation("TaskAssignee")
   loggedFinancials            ProjectFinancial[]           @relation("FinancialLogger")
@@ -1561,4 +1562,53 @@ model BidRetrospective {
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ==========================================
+// Book of Drawings
+// ==========================================
+
+model BookOfDrawingsProject {
+  id                Int      @id @default(autoincrement())
+  name              String
+  client            String
+  description       String?  @db.Text
+  isTemplate        Boolean  @default(false)
+  driveFolderId     String?
+  sectionsOrder     Json?
+  finalBookSections Json?
+  sectionShortNames Json?    @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  members     BookOfDrawingsProjectMember[]
+  pages       BookOfDrawingsPage[]
+}
+
+model BookOfDrawingsProjectMember {
+  id        Int    @id @default(autoincrement())
+  projectId Int
+  userId    Int
+  role      String // e.g., Editor, Viewer
+
+  project   BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model BookOfDrawingsPage {
+  id             Int      @id @default(autoincrement())
+  projectId      Int
+  section        String   
+  pageNumber     Int      
+  name           String   @default("Unnamed Page")
+  applyFrame     Boolean  @default(false)
+  includeInFinal Boolean  @default(true)
+  canvasState    String?  @db.Text
+  insertPageData Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
