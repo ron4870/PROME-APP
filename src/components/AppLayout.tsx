@@ -93,7 +93,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     ];
   } else if (location.pathname.startsWith('/division/ped')) {
     navLinks = [
-      { label: 'Transportation Studies', path: '#' },
+      { label: 'Transportation Studies', path: '/division/ped/transportation-studies' },
       { label: 'Roads & Highways', path: '/division/ped/roads-highways' },
       { label: 'Structures', path: '/division/ped/structures' },
       { label: 'Water & Sanitation', path: '/division/ped/water-sanitation' },
