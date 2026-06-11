@@ -212,7 +212,7 @@ const LibraryModule: React.FC = () => {
           <p className="text-gray-500">Try adjusting your filters or upload a new document to the library.</p>
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-20">
           {CATEGORIES.map(category => {
             const categoryItems = items.filter(item => item.category === category);
             if (categoryItems.length === 0) return null;
