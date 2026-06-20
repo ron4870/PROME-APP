@@ -7,6 +7,10 @@ interface DrawingCanvasProps {
   onSelectionCleared?: () => void;
   canvasRefCallback: (canvas: fabric.Canvas) => void;
   zoomLevel?: number;
+  globalZoomMultiplier?: number;
+  isPanMode?: boolean;
+  isInternalFocus?: boolean;
+  onFocusCanvas?: () => void;
 }
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
@@ -14,34 +18,37 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   onSelectionCreated, 
   onSelectionCleared,
   canvasRefCallback,
-  zoomLevel = 1
+  zoomLevel = 1,
+  globalZoomMultiplier = 1,
+  isPanMode = false,
+  isInternalFocus = false,
+  onFocusCanvas
 }) => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
-
-  // We scale the canvas visually to fit the screen, but the internal logical size remains the paper size
-  const [displayScale, setDisplayScale] = React.useState(0.8);
+  const isPanModeRef = useRef(isPanMode);
+  const isInternalFocusRef = useRef(isInternalFocus);
+  const onFocusCanvasRef = useRef(onFocusCanvas);
 
   useEffect(() => {
-    if (!canvasContainerRef.current) return;
-    const parent = canvasContainerRef.current.parentElement;
-    if (!parent) return;
+    isPanModeRef.current = isPanMode;
+    isInternalFocusRef.current = isInternalFocus;
+    onFocusCanvasRef.current = onFocusCanvas;
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.defaultCursor = isPanMode && isInternalFocus ? 'grab' : 'default';
+      fabricCanvasRef.current.selection = !isPanMode && isInternalFocus;
+      // Also update objects so they don't block drag when pan is on, and block interaction if not focused
+      fabricCanvasRef.current.getObjects().forEach(obj => {
+        obj.set('selectable', !isPanMode && isInternalFocus);
+        obj.set('evented', !isPanMode && isInternalFocus);
+      });
+      fabricCanvasRef.current.renderAll();
+    }
+  }, [isPanMode, isInternalFocus, onFocusCanvas]);
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        const { width, height } = entry.contentRect;
-        // Calculate scale to fit within parent with 5% padding
-        const scaleX = (width * 0.95) / paperSize.width;
-        const scaleY = (height * 0.95) / paperSize.height;
-        // Use the smaller scale to ensure the whole paper fits
-        setDisplayScale(Math.min(scaleX, scaleY));
-      }
-    });
-
-    resizeObserver.observe(parent);
-    return () => resizeObserver.disconnect();
-  }, [paperSize]);
+  // We scale the canvas visually to fit the screen, but the internal logical size remains the paper size
+  const displayScale = 1;
 
   // Apply zoom level dynamically
   useEffect(() => {
@@ -72,8 +79,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     canvas.on('selection:updated', (e: any) => onSelectionCreated?.(e.selected?.[0]));
     canvas.on('selection:cleared', () => onSelectionCleared?.());
 
+    canvas.on('mouse:dblclick', function() {
+      if (onFocusCanvasRef.current) {
+        onFocusCanvasRef.current();
+      }
+    });
+
     // Mouse wheel zoom
     canvas.on('mouse:wheel', function(opt) {
+      if (!isInternalFocusRef.current) {
+        // If not focused, ignore and let the event bubble up to trigger global zoom
+        return;
+      }
       const e = opt.e as WheelEvent;
       const delta = e.deltaY;
       let zoom = canvas.getZoom();
@@ -85,12 +102,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       e.stopPropagation();
     });
 
-    // Panning with Alt + Drag
+    // Panning with Alt + Drag or isPanMode (only if internally focused)
     canvas.on('mouse:down', function(opt) {
       const evt = opt.e as MouseEvent;
-      if (evt.altKey === true) {
+      if (isInternalFocusRef.current && (evt.altKey === true || isPanModeRef.current)) {
         (canvas as any).isDragging = true;
         canvas.selection = false;
+        canvas.defaultCursor = 'grabbing';
         (canvas as any).lastPosX = evt.clientX;
         (canvas as any).lastPosY = evt.clientY;
       }
@@ -115,7 +133,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         canvas.setViewportTransform(canvas.viewportTransform);
       }
       (canvas as any).isDragging = false;
-      canvas.selection = true;
+      if (isPanModeRef.current && isInternalFocusRef.current) {
+        canvas.defaultCursor = 'grab';
+        canvas.selection = false;
+      } else {
+        canvas.defaultCursor = 'default';
+        canvas.selection = isInternalFocusRef.current && !isPanModeRef.current;
+      }
     });
 
     // Basic drag-and-drop support for images
@@ -166,17 +190,44 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     };
   }, [paperSize, canvasRefCallback]); // Re-init when paper size changes
 
+  const finalDisplayScale = displayScale * globalZoomMultiplier;
+  const previousGlobalZoomRef = useRef(finalDisplayScale);
+
+  useEffect(() => {
+    if (fabricCanvasRef.current) {
+      const canvas = fabricCanvasRef.current;
+      const newWidth = paperSize.width * finalDisplayScale;
+      const newHeight = paperSize.height * finalDisplayScale;
+      
+      canvas.setDimensions({ width: newWidth, height: newHeight });
+      
+      if (canvas.viewportTransform) {
+        const vpt = [...canvas.viewportTransform] as [number, number, number, number, number, number];
+        const ratio = finalDisplayScale / previousGlobalZoomRef.current;
+        
+        vpt[0] *= ratio;
+        vpt[3] *= ratio;
+        vpt[4] *= ratio;
+        vpt[5] *= ratio;
+        
+        canvas.setViewportTransform(vpt);
+      }
+      previousGlobalZoomRef.current = finalDisplayScale;
+    }
+  }, [finalDisplayScale, paperSize]);
+
   return (
     <div 
       ref={canvasContainerRef}
       className="shadow-2xl ring-1 ring-gray-300 relative bg-gray-100"
       style={{
-        width: paperSize.width * displayScale,
-        height: paperSize.height * displayScale,
-        overflow: 'hidden'
+        width: paperSize.width * finalDisplayScale,
+        height: paperSize.height * finalDisplayScale,
+        overflow: 'hidden',
+        margin: 'auto'
       }}
     >
-      <div style={{ transform: `scale(${displayScale})`, transformOrigin: 'top left', width: paperSize.width, height: paperSize.height }}>
+      <div style={{ width: '100%', height: '100%' }}>
         <canvas ref={canvasElRef} />
       </div>
       <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.5)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', pointerEvents: 'none' }}>

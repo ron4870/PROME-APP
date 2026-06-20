@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutTemplate, Type, Image as ImageIcon, FileType2, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, ZoomIn, ZoomOut, Maximize, Edit2 } from 'lucide-react';
+import { LayoutTemplate, Type, Image as ImageIcon, FileType2, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, ZoomIn, ZoomOut, Maximize, Edit2, Hand } from 'lucide-react';
 import { DrawingCanvas } from '../../components/book-of-drawings/DrawingCanvas';
 import * as fabric from 'fabric';
 import jsPDF from 'jspdf';
@@ -41,11 +41,55 @@ export default function BookOfDrawingsWorkspace() {
   const [paperSize, setPaperSize] = useState<keyof typeof PAPER_SIZES>('A1');
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [_selectionTick, setSelectionTick] = useState(0);
   
   const [isUploadingCad, setIsUploadingCad] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileProgress, setCompileProgress] = useState<string>('');
+  const [globalZoomMultiplier, setGlobalZoomMultiplier] = useState(1);
+  const [isPanMode, setIsPanMode] = useState(false);
+  const [isInternalFocus, setIsInternalFocus] = useState(false);
+  const outerWrapperRef = useRef<HTMLDivElement>(null);
+  const isOuterDraggingRef = useRef(false);
+  const lastOuterPosRef = useRef({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const centerCanvas = () => {
+    if (outerWrapperRef.current) {
+      const wrapper = outerWrapperRef.current;
+      wrapper.scrollLeft = (wrapper.scrollWidth - wrapper.clientWidth) / 2;
+      wrapper.scrollTop = (wrapper.scrollHeight - wrapper.clientHeight) / 2;
+    }
+  };
+
+  const fitCanvasToScreen = () => {
+    if (outerWrapperRef.current) {
+      const wrapper = outerWrapperRef.current;
+      const paperDimensions = PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES];
+      if (paperDimensions) {
+        // Calculate zoom to fit within the viewport with 10% padding
+        const scaleX = (wrapper.clientWidth * 0.9) / paperDimensions.width;
+        const scaleY = (wrapper.clientHeight * 0.9) / paperDimensions.height;
+        const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 1 by default
+        setGlobalZoomMultiplier(fitScale);
+      }
+    }
+  };
+
+  // Auto-fit and center the canvas when a page is opened
+  useEffect(() => {
+    if (activeSection !== 'Final Book' && isCanvasOpen) {
+      // Need a tiny delay for React to render the DOM and apply padding correctly
+      const timer = setTimeout(() => {
+        fitCanvasToScreen();
+        // Call centerCanvas immediately after setting zoom, but we need another tick for layout to update scrollWidth
+        requestAnimationFrame(() => {
+          centerCanvas();
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeSection, isCanvasOpen, paperSize]);
 
   useEffect(() => {
     fetchProject();
@@ -116,6 +160,11 @@ export default function BookOfDrawingsWorkspace() {
       try {
         const state = typeof page.canvasState === 'string' ? JSON.parse(page.canvasState) : page.canvasState;
         canvas.loadFromJSON(state).then(() => {
+          canvas.getObjects().forEach(obj => {
+            if ((obj as any).placeholderType) {
+              applyPlaceholderRenderOverride(obj);
+            }
+          });
           canvas.renderAll();
         });
       } catch (e) {
@@ -176,8 +225,25 @@ export default function BookOfDrawingsWorkspace() {
 
   const saveCanvas = async () => {
     if (!canvas || !activePageId) return;
-    const jsonState = JSON.stringify(canvas.toJSON());
     
+    const jsonStateObj = (canvas as any).toJSON(['placeholderType', 'maxRows', 'fontSize', 'fontFamily', 'textFill', 'label']);
+    
+    // Fabric 7 workaround: manually ensure custom properties are persisted
+    if (jsonStateObj && jsonStateObj.objects) {
+      jsonStateObj.objects.forEach((obj: any, i: number) => {
+        const canvasObj = canvas.getObjects()[i];
+        if (canvasObj && (canvasObj as any).placeholderType) {
+          obj.placeholderType = (canvasObj as any).placeholderType;
+          obj.maxRows = (canvasObj as any).maxRows;
+          obj.fontSize = (canvasObj as any).fontSize;
+          obj.fontFamily = (canvasObj as any).fontFamily;
+          obj.textFill = (canvasObj as any).textFill;
+          obj.label = (canvasObj as any).label;
+        }
+      });
+    }
+
+    const jsonState = JSON.stringify(jsonStateObj);
     try {
       const res = await fetch(`/api/book-of-drawings/${id}/pages/${activePageId}`, {
         method: 'PUT',
@@ -293,6 +359,58 @@ export default function BookOfDrawingsWorkspace() {
     canvas.renderAll();
   };
 
+  const applyPlaceholderRenderOverride = (obj: any) => {
+    if (obj.placeholderType && !obj._originalRenderSaved) {
+      obj._originalRenderSaved = obj._render.bind(obj);
+      obj._render = function(ctx: CanvasRenderingContext2D) {
+        this._originalRenderSaved(ctx);
+        ctx.save();
+        // Reverse the scale so the text doesn't stretch when the rect is resized
+        ctx.scale(1 / (this.scaleX || 1), 1 / (this.scaleY || 1));
+        
+        ctx.fillStyle = this.textFill || '#000000';
+        ctx.font = `${this.fontSize || 14}px ${this.fontFamily || 'Arial'}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const maxWidth = (this.width * (this.scaleX || 1)) - 10;
+        ctx.fillText(this.label || '', 0, 0, maxWidth);
+        
+        ctx.restore();
+      };
+    }
+  };
+
+  const addPlaceholderText = (type: 'pageName' | 'sectionShortName' | 'pageNumber') => {
+    if (!canvas) return;
+    let textStr = '';
+    if (type === 'pageName') textStr = 'PAGE NAME AREA';
+    if (type === 'sectionShortName') textStr = 'SECTION SHORT NAME AREA';
+    if (type === 'pageNumber') textStr = 'PAGE NUMBER AREA';
+
+    const rect = new fabric.Rect({
+      width: 300, height: 60,
+      fill: 'rgba(59, 130, 246, 0.1)',
+      stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [5, 5],
+      originX: 'center', originY: 'center',
+      left: 100, top: 100
+    } as any);
+    
+    // Explicitly assign custom properties
+    (rect as any).placeholderType = type;
+    (rect as any).label = textStr;
+    (rect as any).maxRows = 1;
+    (rect as any).fontSize = 14; // default font size as requested
+    (rect as any).fontFamily = 'Arial';
+    (rect as any).textFill = '#000000';
+    
+    applyPlaceholderRenderOverride(rect);
+    
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.renderAll();
+  };
+
   const handleCadUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activePageId || !canvas) return;
@@ -313,9 +431,24 @@ export default function BookOfDrawingsWorkspace() {
         throw new Error(resData.message || 'Failed to convert CAD');
       }
 
+      // Ensure the SVG has explicit width and height attributes matching the viewBox
+      // This prevents browsers from clamping large SVGs to 300x150 default sizes
+      let svgData = resData.svg;
+      const match = svgData.match(/viewBox="([^"]+)"/i);
+      if (match) {
+        const parts = match[1].trim().split(/\s+,?/);
+        if (parts.length >= 4) {
+          const w = parts[2];
+          const h = parts[3];
+          svgData = svgData.replace(/\s+width="[^"]*"/i, '');
+          svgData = svgData.replace(/\s+height="[^"]*"/i, '');
+          svgData = svgData.replace(/<svg\s+/i, `<svg width="${w}" height="${h}" `);
+        }
+      }
+
       // Convert SVG string to Base64 Data URL to load as a single Image object
       // This is crucial for performance and ensuring canvas.toJSON() serializes it correctly
-      const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(resData.svg);
+      const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
       
       fabric.FabricImage.fromURL(svgDataUrl).then((img: any) => {
         const canvasWidth = canvas.getWidth();
@@ -419,20 +552,41 @@ export default function BookOfDrawingsWorkspace() {
         const dataUrl = headlessCanvas.toDataURL({ 
           format: transparent ? 'png' : 'jpeg', 
           quality: 1, 
-          multiplier: 1 
+          multiplier: 6 
         });
         
         headlessCanvas.dispose();
         return dataUrl;
       };
 
-      // Pre-render layout frame if available
+      let dynamicPlaceholders: any[] = [];
+      if (layoutState && layoutState.objects) {
+        dynamicPlaceholders = layoutState.objects.filter((obj: any) => obj.placeholderType);
+        layoutState.objects = layoutState.objects.filter((obj: any) => !obj.placeholderType);
+      }
+
+      // Ensure pages are compiled strictly in section order and sorted by pageNumber within section
+      const pagesToCompile: any[] = [];
+      for (const sec of finalBookSections) {
+        if (sec === 'Page Layout') continue;
+        const secPages = project.pages.filter((p: any) => p.section === sec);
+        secPages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
+        pagesToCompile.push(...secPages);
+      }
+
+      // Pre-render layout frame if available (without the placeholders)
       setCompileProgress('Preparing Layout Frame...');
       const layoutDataUrl = layoutState ? await renderToDataURL(layoutState) : '';
+
+      const sectionPageCounters: Record<string, number> = {};
 
       for (let i = 0; i < pagesToCompile.length; i++) {
         const page = pagesToCompile[i];
         setCompileProgress(`Compiling Page ${i + 1} of ${pagesToCompile.length}...`);
+        
+        if (!sectionPageCounters[page.section]) sectionPageCounters[page.section] = 0;
+        sectionPageCounters[page.section]++;
+        const sectionPageNum = sectionPageCounters[page.section];
         
         if (i > 0) pdf.addPage();
 
@@ -449,8 +603,32 @@ export default function BookOfDrawingsWorkspace() {
 
         // Render the actual page contents over it
         if (pageState) {
-          const pageDataUrl = await renderToDataURL(pageState, page.applyFrame);
-          pdf.addImage(pageDataUrl, page.applyFrame ? 'PNG' : 'JPEG', 0, 0, dim.width, dim.height);
+          const pageDataUrl = await renderToDataURL(pageState, true);
+          pdf.addImage(pageDataUrl, 'PNG', 0, 0, dim.width, dim.height);
+        }
+
+        // Render dynamic page data if requested
+        if (page.insertPageData && dynamicPlaceholders.length > 0) {
+          for (const p of dynamicPlaceholders) {
+            let textStr = '';
+            if (p.placeholderType === 'pageName') textStr = page.name || '';
+            else if (p.placeholderType === 'sectionShortName') textStr = project.sectionShortNames?.[page.section] || '';
+            else if (p.placeholderType === 'pageNumber') textStr = sectionPageNum < 10 ? `0${sectionPageNum}` : `${sectionPageNum}`;
+            
+            // Calculate center coordinates of the placeholder bounding box
+            const w = p.width * (p.scaleX || 1);
+            const h = p.height * (p.scaleY || 1);
+            const cx = (p.left || 0) + w / 2;
+            const cy = (p.top || 0) + h / 2;
+            
+            // jsPDF font sizes are in points. Fabric canvas logical units match mm in jsPDF. 1 mm = 2.83465 pt.
+            const fontSizePt = (p.fontSize || 14) * 2.83465;
+            pdf.setFont(p.fontFamily || 'Arial');
+            pdf.setFontSize(fontSizePt);
+            pdf.setTextColor(p.textFill || p.fill || '#000000');
+            
+            pdf.text(textStr, cx, cy, { align: 'center', baseline: 'middle', maxWidth: w });
+          }
         }
       }
 
@@ -535,19 +713,20 @@ export default function BookOfDrawingsWorkspace() {
       </div>
 
       {/* 2-Column Workspace Layout */}
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: '2rem', alignItems: 'stretch', height: 'calc(100vh - 180px)' }}>
         
         {/* Left Sidebar */}
-        <div style={{ width: '280px', flexShrink: 0, backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ padding: '0 1.5rem 1rem 1.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+        <div style={{ width: '280px', flexShrink: 0, backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '0 1.5rem 1rem 1.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '1rem', flexShrink: 0 }}>
             <h3 style={{ margin: 0, fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Sections</h3>
           </div>
-          <Reorder.Group 
-            axis="y" 
-            values={sectionsOrder} 
-            onReorder={handleReorderSections} 
-            style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem' }} 
-          >
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <Reorder.Group 
+              axis="y" 
+              values={sectionsOrder} 
+              onReorder={handleReorderSections} 
+              style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem' }} 
+            >
             {sectionsOrder.map((sectionName) => {
               const isFinalBook = sectionName === 'Final Book';
               const pagesCount = project.pages.filter((p: any) => p.section === sectionName).length;
@@ -607,7 +786,8 @@ export default function BookOfDrawingsWorkspace() {
               );
             })}
           </Reorder.Group>
-          <div style={{ padding: '1rem 1.5rem 0 1.5rem', marginTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+          </div>
+          <div style={{ padding: '1rem 1.5rem 0 1.5rem', marginTop: '1rem', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
             <button onClick={handleAddSection} className="btn btn-secondary w-full" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
               <Plus size={16} /> New Section
             </button>
@@ -615,7 +795,7 @@ export default function BookOfDrawingsWorkspace() {
         </div>
 
         {/* Right Content Area */}
-        <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '600px' }}>
+        <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           
           {/* Toolbar */}
           <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -631,6 +811,20 @@ export default function BookOfDrawingsWorkspace() {
                       <ArrowLeft size={14} /> Back to Gallery
                     </button>
                   )}
+                  {activeSection === 'Page Layout' && (
+                    <>
+                      <button onClick={() => addPlaceholderText('pageName')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Type size={14} /> Page Name Area
+                      </button>
+                      <button onClick={() => addPlaceholderText('sectionShortName')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Type size={14} /> Section Short Name Area
+                      </button>
+                      <button onClick={() => addPlaceholderText('pageNumber')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Type size={14} /> Page Number Area
+                      </button>
+                      <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
+                    </>
+                  )}
                   <button onClick={addText} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <Type size={14} /> Text
                   </button>
@@ -643,13 +837,25 @@ export default function BookOfDrawingsWorkspace() {
                     {isUploadingCad ? 'Importing...' : 'Import CAD'}
                   </button>
                   <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
-                  <button onClick={handleZoomIn} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Zoom In">
+                  <button 
+                    onClick={() => setIsPanMode(!isPanMode)} 
+                    className={`btn ${isPanMode ? 'btn-primary' : 'btn-secondary'}`} 
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} 
+                    title="Toggle Pan Mode"
+                  >
+                    <Hand size={16} />
+                  </button>
+                  <button onClick={handleZoomIn} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Zoom In (Internal)">
                     <ZoomIn size={16} />
                   </button>
-                  <button onClick={handleZoomOut} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Zoom Out">
+                  <button onClick={handleZoomOut} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Zoom Out (Internal)">
                     <ZoomOut size={16} />
                   </button>
-                  <button onClick={handleZoomReset} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Reset Zoom/Pan">
+                  <button onClick={() => { 
+                    handleZoomReset(); 
+                    fitCanvasToScreen(); 
+                    requestAnimationFrame(() => centerCanvas()); 
+                  }} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Reset Zoom/Pan">
                     <Maximize size={16} />
                   </button>
                 </div>
@@ -675,7 +881,7 @@ export default function BookOfDrawingsWorkspace() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {isCanvasOpen && selectedObject && (
                 <>
-                  {selectedObject.type === 'i-text' && (
+                  {(selectedObject.type === 'i-text' || selectedObject.type === 'textbox' || (selectedObject as any).placeholderType) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <select
                         title="Font Family"
@@ -683,7 +889,7 @@ export default function BookOfDrawingsWorkspace() {
                         onChange={(e) => {
                           selectedObject.set('fontFamily', e.target.value);
                           canvas?.renderAll();
-                          setSelectedObject({ ...selectedObject } as any); // Force React re-render
+                          setSelectionTick(t => t + 1); // Force React re-render without destroying obj
                         }}
                         className="form-input"
                         style={{ padding: '0.2rem 0.5rem', minWidth: '120px', fontSize: '0.875rem' }}
@@ -702,7 +908,7 @@ export default function BookOfDrawingsWorkspace() {
                         onChange={(e) => {
                           selectedObject.set('fontSize', parseInt(e.target.value, 10));
                           canvas?.renderAll();
-                          setSelectedObject({ ...selectedObject } as any);
+                          setSelectionTick(t => t + 1);
                         }}
                         className="form-input"
                         style={{ width: '60px', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
@@ -711,14 +917,37 @@ export default function BookOfDrawingsWorkspace() {
                       <input 
                         type="color" 
                         title="Text Color"
-                        value={(selectedObject as any).fill || '#000000'}
+                        value={(selectedObject as any).placeholderType ? (selectedObject as any).textFill || '#000000' : (selectedObject as any).fill || '#000000'}
                         onChange={(e) => {
-                          selectedObject.set('fill', e.target.value);
+                          if ((selectedObject as any).placeholderType) {
+                            selectedObject.set('textFill', e.target.value);
+                          } else {
+                            selectedObject.set('fill', e.target.value);
+                          }
                           canvas?.renderAll();
-                          setSelectedObject({ ...selectedObject } as any);
+                          setSelectionTick(t => t + 1);
                         }}
                         style={{ width: '30px', height: '30px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
                       />
+                      
+                      {(selectedObject as any).placeholderType && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.5rem', paddingLeft: '0.5rem', borderLeft: '1px solid #cbd5e1' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Max Rows:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={(selectedObject as any).maxRows || 1}
+                            onChange={(e) => {
+                              selectedObject.set('maxRows', parseInt(e.target.value, 10) || 1);
+                              canvas?.renderAll();
+                              setSelectedObject({ ...selectedObject } as any);
+                            }}
+                            className="form-input"
+                            style={{ width: '50px', padding: '0.1rem 0.25rem', fontSize: '0.75rem' }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                   <button onClick={handleDeleteObject} style={{ padding: '0.4rem', backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer' }} title="Delete Selected">
@@ -742,7 +971,84 @@ export default function BookOfDrawingsWorkspace() {
           </div>
 
           {/* Central Workspace Area */}
-          <div style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', padding: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div 
+            ref={outerWrapperRef}
+            style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', cursor: isPanMode ? 'grab' : 'default', border: isInternalFocus ? '2px solid #3b82f6' : '2px solid transparent' }}
+            onWheel={(e) => {
+              if (activeSection !== 'Final Book' && isCanvasOpen) {
+                // Adjust global zoom if not internally focused, or if explicitly scrolling on the background
+                if (!isInternalFocus || e.target === e.currentTarget) {
+                  setGlobalZoomMultiplier(prev => {
+                    let newZoom = prev * (0.999 ** e.deltaY);
+                    if (newZoom < 0.1) newZoom = 0.1;
+                    if (newZoom > 20) newZoom = 20; // Allow zooming up to 20x
+                    return newZoom;
+                  });
+                }
+              }
+            }}
+            onDoubleClick={(e) => {
+              // Return to global pan/zoom if double clicking anywhere outside the inner canvas area
+              if (isInternalFocus && !(e.target as HTMLElement).closest('.canvas-container')) {
+                setIsInternalFocus(false);
+              }
+            }}
+              onPointerDown={(e) => {
+                if (isPanMode && activeSection !== 'Final Book' && isCanvasOpen) {
+                  // Global pan applies everywhere if not internally focused, otherwise only on the background
+                  if (!isInternalFocus || e.target === e.currentTarget) {
+                    isOuterDraggingRef.current = true;
+                    lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
+                  }
+                }
+              }}
+              onPointerMove={(e) => {
+                if (isOuterDraggingRef.current && outerWrapperRef.current) {
+                  const dx = e.clientX - lastOuterPosRef.current.x;
+                  const dy = e.clientY - lastOuterPosRef.current.y;
+                  outerWrapperRef.current.scrollLeft -= dx;
+                  outerWrapperRef.current.scrollTop -= dy;
+                  lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
+                }
+              }}
+              onPointerUp={(e) => {
+                if (isOuterDraggingRef.current) {
+                  isOuterDraggingRef.current = false;
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                  if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = isPanMode ? 'grab' : 'default';
+                }
+              }}
+            >
+              {/* Infinite Area to allow robust panning */}
+              {activeSection !== 'Final Book' && isCanvasOpen && (
+                <div style={{
+                  width: 'max-content',
+                  minWidth: '100%',
+                  height: 'max-content',
+                  minHeight: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{ 
+                    padding: `${PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES].height * globalZoomMultiplier * 0.1}px ${PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES].width * globalZoomMultiplier * 0.1}px`, 
+                    flexShrink: 0
+                  }}>
+                    <DrawingCanvas 
+                      paperSize={PAPER_SIZES[paperSize]} 
+                      canvasRefCallback={setCanvas}
+                      onSelectionCreated={setSelectedObject}
+                      onSelectionCleared={() => setSelectedObject(null)}
+                      globalZoomMultiplier={globalZoomMultiplier}
+                      isPanMode={isPanMode}
+                      isInternalFocus={isInternalFocus}
+                      onFocusCanvas={() => setIsInternalFocus(true)}
+                    />
+                  </div>
+                </div>
+              )}
             
             {activeSection === 'Final Book' && (
               <div style={{ width: '100%', height: '100%', alignSelf: 'flex-start' }}>
@@ -1007,13 +1313,6 @@ export default function BookOfDrawingsWorkspace() {
                   </Reorder.Group>
                 )}
               </div>
-            ) : activeSection !== 'Final Book' && isCanvasOpen ? (
-              <DrawingCanvas 
-                paperSize={PAPER_SIZES[paperSize]} 
-                canvasRefCallback={setCanvas}
-                onSelectionCreated={setSelectedObject}
-                onSelectionCleared={() => setSelectedObject(null)}
-              />
             ) : null}
           </div>
 
