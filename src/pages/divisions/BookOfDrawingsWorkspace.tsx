@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutTemplate, Type, Image as ImageIcon, FileType2, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, ZoomIn, ZoomOut, Maximize, Edit2, Hand } from 'lucide-react';
+import { LayoutTemplate, Type, Image as ImageIcon, FileType2, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, ZoomIn, ZoomOut, Maximize, Edit2, Hand, Minus, Square, Circle } from 'lucide-react';
 import { DrawingCanvas } from '../../components/book-of-drawings/DrawingCanvas';
 import * as fabric from 'fabric';
 import jsPDF from 'jspdf';
@@ -10,7 +10,7 @@ import { Reorder } from 'framer-motion';
 // ISO Standard Paper Sizes (Landscape orientation dimensions in mm)
 export interface Overlay {
   id: string;
-  type: 'pageName' | 'sectionShortName' | 'pageNumber' | 'text' | 'image';
+  type: 'pageName' | 'sectionShortName' | 'pageNumber' | 'text' | 'image' | 'rect' | 'circle' | 'line';
   label: string; // Used for text content if type is text or placeholders
   src?: string;  // Used for base64 data url if type is image
   x: number;
@@ -20,6 +20,10 @@ export interface Overlay {
   fontSize: number;
   fontFamily: string;
   textFill: string;
+  strokeWidth?: number;
+  strokeColor?: string;
+  fillColor?: string;
+  maxRows?: number;
 }
 
 export const PAPER_SIZES = {
@@ -381,6 +385,26 @@ export default function BookOfDrawingsWorkspace() {
     }
   };
 
+  const addShape = (type: 'rect' | 'circle' | 'line') => {
+    const newOverlay: Overlay = {
+      id: Math.random().toString(36).substring(2, 9),
+      type,
+      label: '',
+      x: 100,
+      y: 100,
+      width: type === 'line' ? 200 : 100,
+      height: type === 'line' ? 4 : 100,
+      fontSize: 14,
+      fontFamily: 'Arial',
+      textFill: '#000000',
+      strokeWidth: type === 'line' ? 4 : 2,
+      strokeColor: '#000000',
+      fillColor: type === 'line' ? undefined : 'transparent'
+    };
+    setOverlays(prev => [...prev, newOverlay]);
+    setSelectedOverlayId(newOverlay.id);
+  };
+
   const addText = () => {
     const newOverlay: Overlay = {
       id: Math.random().toString(36).substring(2, 9),
@@ -638,6 +662,28 @@ export default function BookOfDrawingsWorkspace() {
 
         const renderOverlays = (overlaysToRender: Overlay[]) => {
           for (const p of overlaysToRender) {
+            // Draw shapes
+            if (p.type === 'rect' || p.type === 'circle' || p.type === 'line') {
+              if (p.strokeColor) pdf.setDrawColor(p.strokeColor);
+              if (p.fillColor && p.fillColor !== 'transparent') pdf.setFillColor(p.fillColor);
+              if (p.strokeWidth !== undefined) pdf.setLineWidth(p.strokeWidth * 0.264583); // ~ convert px to mm
+
+              let drawStyle = '';
+              if (p.fillColor && p.fillColor !== 'transparent') drawStyle += 'F';
+              if (p.strokeWidth !== undefined && p.strokeWidth > 0) drawStyle = drawStyle ? 'DF' : 'S';
+
+              if (p.type === 'rect' && drawStyle) {
+                pdf.rect(p.x, p.y, p.width, p.height, drawStyle);
+              } else if (p.type === 'circle' && drawStyle) {
+                const rx = p.width / 2;
+                const ry = p.height / 2;
+                pdf.ellipse(p.x + rx, p.y + ry, rx, ry, drawStyle);
+              } else if (p.type === 'line') {
+                pdf.line(p.x, p.y, p.x + p.width, p.y + p.height);
+              }
+              continue;
+            }
+
             // If it's an image overlay
             if (p.type === 'image' && p.src) {
               pdf.addImage(p.src, 'PNG', p.x, p.y, p.width, p.height);
@@ -660,7 +706,16 @@ export default function BookOfDrawingsWorkspace() {
             pdf.setFontSize(fontSizePt);
             pdf.setTextColor(p.textFill || '#000000');
             
-            pdf.text(textStr, cx, cy, { align: 'center', baseline: 'middle', maxWidth: p.width });
+            let finalLines: string | string[] = textStr;
+            let options: any = { align: 'center', baseline: 'middle', maxWidth: p.width };
+            
+            if (p.maxRows) {
+              const split = pdf.splitTextToSize(textStr, p.width);
+              finalLines = split.slice(0, p.maxRows);
+              delete options.maxWidth;
+            }
+            
+            pdf.text(finalLines, cx, cy, options);
           }
         };
 
@@ -879,6 +934,20 @@ export default function BookOfDrawingsWorkspace() {
                   <button onClick={() => alert("Drag and drop images directly onto the canvas.")} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <ImageIcon size={14} /> Image
                   </button>
+                  {activeSection === 'Page Layout' && (
+                    <>
+                      <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
+                      <button onClick={() => addShape('line')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Minus size={14} /> Line
+                      </button>
+                      <button onClick={() => addShape('rect')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Square size={14} /> Box
+                      </button>
+                      <button onClick={() => addShape('circle')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Circle size={14} /> Circle
+                      </button>
+                    </>
+                  )}
                   <input type="file" ref={fileInputRef} accept=".dwg,.dxf" onChange={handleCadUpload} style={{ display: 'none' }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingCad} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <FileType2 size={16} />
@@ -934,10 +1003,74 @@ export default function BookOfDrawingsWorkspace() {
                 const activeFontSize = isOverlay ? overlay?.fontSize : ((selectedObject as any)?.fontSize || 40);
                 const activeColor = isOverlay ? overlay?.textFill : ((selectedObject as any)?.fill || '#000000');
                 
-                const isText = isOverlay || (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'textbox' || (selectedObject as any).placeholderType));
+                const isText = isOverlay && overlay?.type !== 'image' && overlay?.type !== 'rect' && overlay?.type !== 'circle' && overlay?.type !== 'line';
+                const isShape = isOverlay && (overlay?.type === 'rect' || overlay?.type === 'circle' || overlay?.type === 'line');
+                const activeStrokeWidth = isShape ? overlay?.strokeWidth : undefined;
+                const activeStrokeColor = isShape ? overlay?.strokeColor : undefined;
+                const activeFillColor = isShape ? overlay?.fillColor : undefined;
+                const activeMaxRows = isText ? overlay?.maxRows : undefined;
                 
                 return (
                   <>
+                    {isShape && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem', borderRight: '1px solid #e2e8f0', paddingRight: '1rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Stroke Width:</span>
+                        <input
+                          type="number"
+                          title="Stroke Width"
+                          min="0"
+                          max="50"
+                          value={activeStrokeWidth ?? 2}
+                          onChange={(e) => {
+                            if (isOverlay) {
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, strokeWidth: parseInt(e.target.value, 10) } : o));
+                            }
+                          }}
+                          className="form-input"
+                          style={{ width: '50px', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Stroke:</span>
+                        <input 
+                          type="color" 
+                          title="Stroke Color"
+                          value={activeStrokeColor || '#000000'}
+                          onChange={(e) => {
+                            if (isOverlay) {
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, strokeColor: e.target.value } : o));
+                            }
+                          }}
+                          style={{ width: '24px', height: '24px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                        />
+                        {overlay?.type !== 'line' && (
+                          <>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Fill:</span>
+                            <input 
+                              type="color" 
+                              title="Fill Color"
+                              value={activeFillColor || '#ffffff'}
+                              onChange={(e) => {
+                                if (isOverlay) {
+                                  setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fillColor: e.target.value } : o));
+                                }
+                              }}
+                              style={{ width: '24px', height: '24px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                            />
+                            <button
+                              onClick={() => {
+                                if (isOverlay) {
+                                  setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fillColor: 'transparent' } : o));
+                                }
+                              }}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem' }}
+                              title="Clear Fill"
+                            >
+                              Clear
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                     {isText && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <select
@@ -963,14 +1096,19 @@ export default function BookOfDrawingsWorkspace() {
                         <input
                           type="number"
                           title="Font Size"
-                          min="8"
-                          max="200"
-                          value={activeFontSize || 40}
+                          min="4"
+                          max="48"
+                          value={activeFontSize || 14}
                           onChange={(e) => {
+                            let val = parseInt(e.target.value, 10);
+                            if (isNaN(val)) val = 14;
+                            if (val < 4) val = 4;
+                            if (val > 48) val = 48;
+                            
                             if (isOverlay) {
-                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fontSize: parseInt(e.target.value, 10) } : o));
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fontSize: val } : o));
                             } else if (selectedObject) {
-                              selectedObject.set('fontSize', parseInt(e.target.value, 10));
+                              selectedObject.set('fontSize', val);
                               canvas?.renderAll();
                               setSelectionTick(t => t + 1);
                             }
@@ -998,6 +1136,25 @@ export default function BookOfDrawingsWorkspace() {
                           }}
                           style={{ width: '30px', height: '30px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
                         />
+                        
+                        {isOverlay && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.5rem', paddingLeft: '0.5rem', borderLeft: '1px solid #cbd5e1' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }} title="Maximum number of rows to display">Max Rows:</span>
+                            <input
+                              type="number"
+                              title="Max Rows (leave empty for unlimited)"
+                              min="1"
+                              value={activeMaxRows || ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                                setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, maxRows: val } : o));
+                              }}
+                              placeholder="∞"
+                              className="form-input"
+                              style={{ width: '50px', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                     <button onClick={handleDeleteObject} style={{ padding: '0.4rem', backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer' }} title="Delete Selected">

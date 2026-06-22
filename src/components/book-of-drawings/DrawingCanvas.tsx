@@ -336,6 +336,19 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                     alt="overlay" 
                     style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} 
                   />
+                ) : overlay.type === 'rect' || overlay.type === 'circle' ? (
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    border: `${overlay.strokeWidth ?? 2}px solid ${overlay.strokeColor || '#000000'}`,
+                    backgroundColor: overlay.fillColor || 'transparent',
+                    borderRadius: overlay.type === 'circle' ? '50%' : '0%',
+                    pointerEvents: 'none'
+                  }} />
+                ) : overlay.type === 'line' ? (
+                  <svg width="100%" height="100%" style={{ pointerEvents: 'none', overflow: 'visible' }}>
+                    <line x1="0" y1="0" x2="100%" y2="100%" stroke={overlay.strokeColor || '#000000'} strokeWidth={overlay.strokeWidth ?? 2} />
+                  </svg>
                 ) : (
                   <div 
                     onDoubleClick={() => {
@@ -353,7 +366,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                       fontFamily: overlay.fontFamily || 'Arial',
                       textAlign: 'center',
                       width: '100%',
-                      userSelect: 'none'
+                      userSelect: 'none',
+                      ...(overlay.maxRows ? {
+                        display: '-webkit-box',
+                        WebkitLineClamp: overlay.maxRows,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      } : {})
                     }}
                   >
                     {overlay.type === 'text' ? (overlay.label || 'Double click to edit') : overlay.label}
