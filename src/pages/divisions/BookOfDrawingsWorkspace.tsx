@@ -536,13 +536,13 @@ export default function BookOfDrawingsWorkspace() {
   const compileFinalPDF = async () => {
     if (!project) return;
     
-    // Collect pages from Final Book sections
+    // Collect pages from Final Book sections, strictly in section order and sorted by pageNumber
     const pagesToCompile: any[] = [];
-    for (const sectionName of finalBookSections) {
-      const sectionPages = project.pages.filter((p: any) => p.section === sectionName && p.includeInFinal);
-      // Sort by page number
-      sectionPages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
-      pagesToCompile.push(...sectionPages);
+    for (const sec of finalBookSections) {
+      if (sec === 'Page Layout') continue;
+      const secPages = project.pages.filter((p: any) => p.section === sec && p.includeInFinal);
+      secPages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
+      pagesToCompile.push(...secPages);
     }
 
     if (pagesToCompile.length === 0) {
@@ -606,15 +606,6 @@ export default function BookOfDrawingsWorkspace() {
         headlessCanvas.dispose();
         return dataUrl;
       };
-
-      // Ensure pages are compiled strictly in section order and sorted by pageNumber within section
-      const pagesToCompile: any[] = [];
-      for (const sec of finalBookSections) {
-        if (sec === 'Page Layout') continue;
-        const secPages = project.pages.filter((p: any) => p.section === sec);
-        secPages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
-        pagesToCompile.push(...secPages);
-      }
 
       // Pre-render layout frame if available
       setCompileProgress('Preparing Layout Frame...');
