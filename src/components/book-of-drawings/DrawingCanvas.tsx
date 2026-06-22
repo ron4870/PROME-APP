@@ -11,6 +11,7 @@ interface DrawingCanvasProps {
   zoomLevel?: number;
   globalZoomMultiplier?: number;
   isPanMode?: boolean;
+  isInternalFocus?: boolean;
   onFocusCanvas?: () => void;
   overlays?: any[];
   onOverlaysChange?: (overlays: any[]) => void;
@@ -26,6 +27,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   zoomLevel = 1,
   globalZoomMultiplier = 1,
   isPanMode = false,
+  isInternalFocus = false,
   onFocusCanvas,
   overlays = [],
   onOverlaysChange,
@@ -37,25 +39,40 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const isPanModeRef = useRef(isPanMode);
   const isDraggingRef = useRef(false);
+  const isInternalFocusRef = useRef(isInternalFocus);
+  const onFocusCanvasRef = useRef(onFocusCanvas);
   const lastPosXRef = useRef(0);
   const lastPosYRef = useRef(0);
 
+  const overlaysRef = useRef(overlays);
+  const onOverlaysChangeRef = useRef(onOverlaysChange);
+  const onOverlaySelectRef = useRef(onOverlaySelect);
+
+  useEffect(() => {
+    overlaysRef.current = overlays;
+    onOverlaysChangeRef.current = onOverlaysChange;
+    onOverlaySelectRef.current = onOverlaySelect;
+  }, [overlays, onOverlaysChange, onOverlaySelect]);
+
   useEffect(() => {
     isPanModeRef.current = isPanMode;
+    isInternalFocusRef.current = isInternalFocus;
+    onFocusCanvasRef.current = onFocusCanvas;
     if (fabricCanvasRef.current) {
-      fabricCanvasRef.current.defaultCursor = isPanMode ? 'grab' : 'default';
-      fabricCanvasRef.current.selection = !isPanMode;
-      // Also update objects so they don't block drag when pan is on
+      fabricCanvasRef.current.defaultCursor = isPanMode && isInternalFocus ? 'grab' : 'default';
+      fabricCanvasRef.current.selection = !isPanMode && isInternalFocus;
+      // Also update objects so they don't block drag when pan is on, and block interaction if not focused
       fabricCanvasRef.current.getObjects().forEach(obj => {
-        obj.set('selectable', !isPanMode);
-        obj.set('evented', !isPanMode);
+        obj.set('selectable', !isPanMode && isInternalFocus);
+        obj.set('evented', !isPanMode && isInternalFocus);
       });
       fabricCanvasRef.current.renderAll();
     }
-  }, [isPanMode]);
+  }, [isPanMode, isInternalFocus, onFocusCanvas]);
 
   // We scale the canvas visually to fit the screen, but the internal logical size remains the paper size
   const displayScale = 1;
+  const finalDisplayScale = displayScale * globalZoomMultiplier;
 
   // Apply zoom level dynamically
   useEffect(() => {
@@ -72,48 +89,35 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const canvas = new fabric.Canvas(canvasElRef.current, {
       width: paperSize.width,
       height: paperSize.height,
-      backgroundColor: '#ffffff',
       preserveObjectStacking: true,
-      selection: true,
+      selection: !isPanModeRef.current && isInternalFocusRef.current,
+      defaultCursor: isPanModeRef.current && isInternalFocusRef.current ? 'grab' : 'default',
     });
 
     fabricCanvasRef.current = canvas;
-    canvas.setZoom(zoomLevel);
-    canvasRefCallback(canvas);
+    if (canvasRefCallback) canvasRefCallback(canvas);
 
     // Event Listeners for selection
-    canvas.on('selection:created', (e: any) => onSelectionCreated?.(e.selected?.[0]));
-    canvas.on('selection:updated', (e: any) => onSelectionCreated?.(e.selected?.[0]));
+    canvas.on('selection:created', (e: any) => onSelectionCreated?.(e.selected?.[0] || null));
+    canvas.on('selection:updated', (e: any) => onSelectionCreated?.(e.selected?.[0] || null));
     canvas.on('selection:cleared', () => onSelectionCleared?.());
 
     canvas.on('mouse:dblclick', function() {
-      if (onFocusCanvas) {
-        onFocusCanvas();
+      if (onFocusCanvasRef.current) {
+        onFocusCanvasRef.current();
       }
     });
 
     // Deselect overlay when clicking canvas
     canvas.on('mouse:down', function(opt) {
-      if (!opt.target && onOverlaySelect) {
-        onOverlaySelect(null);
+      if (onOverlaySelectRef.current) onOverlaySelectRef.current(null);
+      
+      // If we are not focused, a click should ideally request focus
+      if (!isInternalFocusRef.current) {
+        if (onFocusCanvasRef.current) onFocusCanvasRef.current();
+        return;
       }
-    });
 
-    // Mouse wheel zoom
-    canvas.on('mouse:wheel', function(opt) {
-      const e = opt.e as WheelEvent;
-      const delta = e.deltaY;
-      let zoom = canvas.getZoom();
-      zoom *= 0.999 ** delta;
-      if (zoom > 20) zoom = 20;
-      if (zoom < 0.1) zoom = 0.1;
-      canvas.zoomToPoint(new fabric.Point(e.offsetX, e.offsetY), zoom);
-      e.preventDefault();
-      e.stopPropagation();
-    });
-
-    // Panning with Alt + Drag or isPanMode
-    canvas.on('mouse:down', function(opt) {
       const evt = opt.e as MouseEvent;
       if (evt.altKey === true || isPanModeRef.current) {
         isDraggingRef.current = true;
@@ -122,6 +126,22 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         lastPosXRef.current = evt.clientX;
         lastPosYRef.current = evt.clientY;
       }
+    });
+
+    // Mouse wheel zoom
+    canvas.on('mouse:wheel', function(opt) {
+      if (!isInternalFocusRef.current) {
+        return;
+      }
+      const e = opt.e as WheelEvent;
+      const delta = e.deltaY;
+      let zoom = canvas.getZoom();
+      zoom *= 0.999 ** delta;
+      if (zoom > 20) zoom = 20;
+      if (zoom < 0.01) zoom = 0.01;
+      canvas.zoomToPoint(new fabric.Point(e.offsetX, e.offsetY), zoom);
+      e.preventDefault();
+      e.stopPropagation();
     });
 
     canvas.on('mouse:move', function(opt) {
@@ -138,15 +158,21 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
     });
 
-    canvas.on('mouse:up', function() {
+    canvas.on('mouse:up', function () {
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
         if (canvas.viewportTransform) {
           canvas.setViewportTransform(canvas.viewportTransform);
         }
-        canvas.defaultCursor = isPanModeRef.current ? 'grab' : 'default';
-        canvas.selection = !isPanModeRef.current;
       }
+      if (isPanModeRef.current && isInternalFocusRef.current) {
+        canvas.defaultCursor = 'grab';
+        canvas.selection = false;
+      } else {
+        canvas.defaultCursor = 'default';
+        canvas.selection = isInternalFocusRef.current && !isPanModeRef.current;
+      }
+      canvas.renderAll();
     });
 
     // Basic drag-and-drop support for images
@@ -166,20 +192,38 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         const reader = new FileReader();
         reader.onload = (f) => {
           const data = f.target?.result as string;
-          fabric.FabricImage.fromURL(data).then((img: any) => {
+          // Create image element to get natural dimensions
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
             // Scale down if image is too large
-            if (img.width! > paperSize.width * 0.8) {
-              img.scaleToWidth(paperSize.width * 0.8);
+            if (w > paperSize.width * 0.8) {
+              const ratio = (paperSize.width * 0.8) / w;
+              w *= ratio;
+              h *= ratio;
             }
-            // Position at center
-            img.set({
-              left: (paperSize.width - (img.width! * img.scaleX!)) / 2,
-              top: (paperSize.height - (img.height! * img.scaleY!)) / 2
-            });
-            canvas.add(img);
-            canvas.setActiveObject(img);
-            canvas.renderAll();
-          });
+            const newOverlay = {
+              id: Math.random().toString(36).substring(2, 9),
+              type: 'image' as const,
+              label: '',
+              src: data,
+              x: (paperSize.width - w) / 2,
+              y: (paperSize.height - h) / 2,
+              width: w,
+              height: h,
+              fontSize: 14,
+              fontFamily: 'Arial',
+              textFill: '#000000'
+            };
+            if (onOverlaysChangeRef.current) {
+              onOverlaysChangeRef.current([...overlaysRef.current, newOverlay]);
+            }
+            if (onOverlaySelectRef.current) {
+              onOverlaySelectRef.current(newOverlay.id);
+            }
+          };
+          img.src = data;
         };
         reader.readAsDataURL(file);
       }
@@ -195,9 +239,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       // Clean up parent reference to prevent using disposed canvas when remounting
       canvasRefCallback(null as any);
     };
-  }, [paperSize, canvasRefCallback]); // Re-init when paper size changes
+  }, [paperSize, onSelectionCreated, onSelectionCleared, canvasRefCallback]);
 
-  const finalDisplayScale = displayScale * globalZoomMultiplier;
   const previousGlobalZoomRef = useRef(finalDisplayScale);
 
   useEffect(() => {
@@ -287,16 +330,35 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                   pointerEvents: !isPanMode ? 'auto' : 'none'
                 }}
               >
-                <div style={{
-                  color: overlay.textFill || '#000000',
-                  fontSize: `${overlay.fontSize || 14}px`,
-                  fontFamily: overlay.fontFamily || 'Arial',
-                  textAlign: 'center',
-                  width: '100%',
-                  userSelect: 'none'
-                }}>
-                  {overlay.label}
-                </div>
+                {overlay.type === 'image' && overlay.src ? (
+                  <img 
+                    src={overlay.src} 
+                    alt="overlay" 
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} 
+                  />
+                ) : (
+                  <div 
+                    onDoubleClick={() => {
+                      if (overlay.type === 'text') {
+                        const newText = window.prompt("Edit text:", overlay.label);
+                        if (newText !== null && onOverlaysChange) {
+                          const updated = overlays.map(o => o.id === overlay.id ? { ...o, label: newText } : o);
+                          onOverlaysChange(updated);
+                        }
+                      }
+                    }}
+                    style={{
+                      color: overlay.textFill || '#000000',
+                      fontSize: `${overlay.fontSize || 14}px`,
+                      fontFamily: overlay.fontFamily || 'Arial',
+                      textAlign: 'center',
+                      width: '100%',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {overlay.type === 'text' ? (overlay.label || 'Double click to edit') : overlay.label}
+                  </div>
+                )}
               </Rnd>
             );
           })}

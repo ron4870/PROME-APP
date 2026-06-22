@@ -10,8 +10,9 @@ import { Reorder } from 'framer-motion';
 // ISO Standard Paper Sizes (Landscape orientation dimensions in mm)
 export interface Overlay {
   id: string;
-  type: 'pageName' | 'sectionShortName' | 'pageNumber';
-  label: string;
+  type: 'pageName' | 'sectionShortName' | 'pageNumber' | 'text' | 'image';
+  label: string; // Used for text content if type is text or placeholders
+  src?: string;  // Used for base64 data url if type is image
   x: number;
   y: number;
   width: number;
@@ -64,6 +65,7 @@ export default function BookOfDrawingsWorkspace() {
   const [compileProgress, setCompileProgress] = useState<string>('');
   const [globalZoomMultiplier, setGlobalZoomMultiplier] = useState(1);
   const [isPanMode, setIsPanMode] = useState(false);
+  const [isInternalFocus, setIsInternalFocus] = useState(false);
   const outerWrapperRef = useRef<HTMLDivElement>(null);
   const isOuterDraggingRef = useRef(false);
   const lastOuterPosRef = useRef({ x: 0, y: 0 });
@@ -380,17 +382,20 @@ export default function BookOfDrawingsWorkspace() {
   };
 
   const addText = () => {
-    if (!canvas) return;
-    const text = new fabric.IText('Double click to edit', {
-      left: 100,
-      top: 100,
-      fontFamily: 'Arial',
+    const newOverlay: Overlay = {
+      id: Math.random().toString(36).substring(2, 9),
+      type: 'text',
+      label: 'Double click to edit',
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 40,
       fontSize: 24,
-      fill: '#000000'
-    });
-    canvas.add(text);
-    canvas.setActiveObject(text);
-    canvas.renderAll();
+      fontFamily: 'Arial',
+      textFill: '#000000'
+    };
+    setOverlays([...overlays, newOverlay]);
+    setSelectedOverlayId(newOverlay.id);
   };
 
 
@@ -533,7 +538,19 @@ export default function BookOfDrawingsWorkspace() {
       const dim = PAPER_SIZES[paperSize];
       
       const layoutPage = project.pages.find((p: any) => p.section === 'Page Layout');
-      const layoutState = layoutPage?.canvasState ? (typeof layoutPage.canvasState === 'string' ? JSON.parse(layoutPage.canvasState) : layoutPage.canvasState) : null;
+      let layoutStateRaw = layoutPage?.canvasState ? (typeof layoutPage.canvasState === 'string' ? JSON.parse(layoutPage.canvasState) : layoutPage.canvasState) : null;
+      
+      let layoutFabricState = null;
+      let layoutOverlays: Overlay[] = [];
+      
+      if (layoutStateRaw) {
+        if (layoutStateRaw.fabricState) {
+          layoutFabricState = layoutStateRaw.fabricState;
+          layoutOverlays = layoutStateRaw.overlays || [];
+        } else {
+          layoutFabricState = layoutStateRaw;
+        }
+      }
 
       // Helper to render a canvas state to a data URL using a headless StaticCanvas
       const renderToDataURL = async (stateObj: any, transparent: boolean = false): Promise<string> => {
@@ -566,12 +583,6 @@ export default function BookOfDrawingsWorkspace() {
         return dataUrl;
       };
 
-      let dynamicPlaceholders: any[] = [];
-      if (layoutState && layoutState.objects) {
-        dynamicPlaceholders = layoutState.objects.filter((obj: any) => obj.placeholderType);
-        layoutState.objects = layoutState.objects.filter((obj: any) => !obj.placeholderType);
-      }
-
       // Ensure pages are compiled strictly in section order and sorted by pageNumber within section
       const pagesToCompile: any[] = [];
       for (const sec of finalBookSections) {
@@ -581,9 +592,9 @@ export default function BookOfDrawingsWorkspace() {
         pagesToCompile.push(...secPages);
       }
 
-      // Pre-render layout frame if available (without the placeholders)
+      // Pre-render layout frame if available
       setCompileProgress('Preparing Layout Frame...');
-      const layoutDataUrl = layoutState ? await renderToDataURL(layoutState) : '';
+      const layoutDataUrl = layoutFabricState ? await renderToDataURL(layoutFabricState) : '';
 
       const sectionPageCounters: Record<string, number> = {};
 
@@ -597,7 +608,18 @@ export default function BookOfDrawingsWorkspace() {
         
         if (i > 0) pdf.addPage();
 
-        const pageState = page.canvasState ? (typeof page.canvasState === 'string' ? JSON.parse(page.canvasState) : page.canvasState) : null;
+        let pageStateRaw = page.canvasState ? (typeof page.canvasState === 'string' ? JSON.parse(page.canvasState) : page.canvasState) : null;
+        let pageFabricState = null;
+        let pageOverlays: Overlay[] = [];
+
+        if (pageStateRaw) {
+          if (pageStateRaw.fabricState) {
+            pageFabricState = pageStateRaw.fabricState;
+            pageOverlays = pageStateRaw.overlays || [];
+          } else {
+            pageFabricState = pageStateRaw;
+          }
+        }
         
         // Draw layout background if requested and exists
         if (page.applyFrame && layoutDataUrl) {
@@ -609,33 +631,47 @@ export default function BookOfDrawingsWorkspace() {
         }
 
         // Render the actual page contents over it
-        if (pageState) {
-          const pageDataUrl = await renderToDataURL(pageState, true);
+        if (pageFabricState) {
+          const pageDataUrl = await renderToDataURL(pageFabricState, true);
           pdf.addImage(pageDataUrl, 'PNG', 0, 0, dim.width, dim.height);
         }
 
-        // Render dynamic page data if requested
-        if (page.insertPageData && dynamicPlaceholders.length > 0) {
-          for (const p of dynamicPlaceholders) {
-            let textStr = '';
-            if (p.placeholderType === 'pageName') textStr = page.name || '';
-            else if (p.placeholderType === 'sectionShortName') textStr = project.sectionShortNames?.[page.section] || '';
-            else if (p.placeholderType === 'pageNumber') textStr = sectionPageNum < 10 ? `0${sectionPageNum}` : `${sectionPageNum}`;
+        const renderOverlays = (overlaysToRender: Overlay[]) => {
+          for (const p of overlaysToRender) {
+            // If it's an image overlay
+            if (p.type === 'image' && p.src) {
+              pdf.addImage(p.src, 'PNG', p.x, p.y, p.width, p.height);
+              continue;
+            }
+
+            // Otherwise, it's text or a placeholder
+            let textStr = p.label || '';
+            if (p.type === 'pageName') textStr = page.name || '';
+            else if (p.type === 'sectionShortName') textStr = project.sectionShortNames?.[page.section] || '';
+            else if (p.type === 'pageNumber') textStr = sectionPageNum < 10 ? `0${sectionPageNum}` : `${sectionPageNum}`;
             
             // Calculate center coordinates of the placeholder bounding box
-            const w = p.width * (p.scaleX || 1);
-            const h = p.height * (p.scaleY || 1);
-            const cx = (p.left || 0) + w / 2;
-            const cy = (p.top || 0) + h / 2;
+            const cx = p.x + p.width / 2;
+            const cy = p.y + p.height / 2;
             
             // jsPDF font sizes are in points. Fabric canvas logical units match mm in jsPDF. 1 mm = 2.83465 pt.
             const fontSizePt = (p.fontSize || 14) * 2.83465;
             pdf.setFont(p.fontFamily || 'Arial');
             pdf.setFontSize(fontSizePt);
-            pdf.setTextColor(p.textFill || p.fill || '#000000');
+            pdf.setTextColor(p.textFill || '#000000');
             
-            pdf.text(textStr, cx, cy, { align: 'center', baseline: 'middle', maxWidth: w });
+            pdf.text(textStr, cx, cy, { align: 'center', baseline: 'middle', maxWidth: p.width });
           }
+        };
+
+        // Render page specific overlays
+        if (pageOverlays && pageOverlays.length > 0) {
+          renderOverlays(pageOverlays);
+        }
+
+        // Render layout overlays (placeholders) if requested
+        if (page.insertPageData && layoutOverlays && layoutOverlays.length > 0) {
+          renderOverlays(layoutOverlays);
         }
       }
 
@@ -988,13 +1024,11 @@ export default function BookOfDrawingsWorkspace() {
           {/* Central Workspace Area */}
           <div 
             ref={outerWrapperRef}
-            style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', cursor: isPanMode ? 'grab' : 'default', border: '2px solid transparent' }}
+            style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', cursor: isPanMode ? 'grab' : 'default', border: isInternalFocus ? '2px solid #3b82f6' : '2px solid transparent' }}
             onWheel={(e) => {
               if (activeSection !== 'Final Book' && isCanvasOpen) {
-                // Only allow outer zoom if dragging/zooming outside the canvas or if they explicitly do it.
-                // Actually, let DrawingCanvas handle its own zoom, we can just disable this global zoom on wheel,
-                // or let the global zoom happen when mouse is outside the inner canvas.
-                if (!(e.target as HTMLElement).closest('.canvas-container')) {
+                // Adjust global zoom if not internally focused, or if explicitly scrolling on the background
+                if (!isInternalFocus || e.target === e.currentTarget) {
                   setGlobalZoomMultiplier(prev => {
                     let newZoom = prev * (0.999 ** e.deltaY);
                     if (newZoom < 0.1) newZoom = 0.1;
@@ -1004,13 +1038,21 @@ export default function BookOfDrawingsWorkspace() {
                 }
               }
             }}
+            onDoubleClick={(e) => {
+              // Return to global pan/zoom if double clicking anywhere outside the inner canvas area
+              if (isInternalFocus && !(e.target as HTMLElement).closest('.canvas-container')) {
+                setIsInternalFocus(false);
+              }
+            }}
               onPointerDown={(e) => {
                 if (isPanMode && activeSection !== 'Final Book' && isCanvasOpen) {
-                  // Global pan applies everywhere
-                  isOuterDraggingRef.current = true;
-                  lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                  if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
+                  // Global pan applies everywhere if not internally focused, otherwise only on the background
+                  if (!isInternalFocus || e.target === e.currentTarget) {
+                    isOuterDraggingRef.current = true;
+                    lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
+                  }
                 }
               }}
               onPointerMove={(e) => {
@@ -1052,6 +1094,8 @@ export default function BookOfDrawingsWorkspace() {
                       onSelectionCleared={() => setSelectedObject(null)}
                       globalZoomMultiplier={globalZoomMultiplier}
                       isPanMode={isPanMode}
+                      isInternalFocus={isInternalFocus}
+                      onFocusCanvas={() => setIsInternalFocus(true)}
                       overlays={overlays}
                       onOverlaysChange={setOverlays}
                       selectedOverlayId={selectedOverlayId}
