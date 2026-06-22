@@ -474,8 +474,6 @@ export default function BookOfDrawingsWorkspace() {
       if (match) {
         const parts = match[1].trim().split(/\s+,?/);
         if (parts.length >= 4) {
-          const minX = parseFloat(parts[0]);
-          const minY = parseFloat(parts[1]);
           const w = parseFloat(parts[2]);
           const h = parseFloat(parts[3]);
           
@@ -633,6 +631,7 @@ export default function BookOfDrawingsWorkspace() {
         
         if (!sectionPageCounters[page.section]) sectionPageCounters[page.section] = 0;
         sectionPageCounters[page.section]++;
+        const sectionPageNum = sectionPageCounters[page.section];
         
         if (i > 0) pdf.addPage();
 
