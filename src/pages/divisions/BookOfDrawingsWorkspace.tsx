@@ -1198,16 +1198,13 @@ export default function BookOfDrawingsWorkspace() {
               {/* Infinite Area to allow robust panning */}
               {activeSection !== 'Final Book' && isCanvasOpen && (
                 <div style={{
-                  width: 'max-content',
+                  display: 'grid',
+                  placeItems: 'safe center',
                   minWidth: '100%',
-                  height: 'max-content',
                   minHeight: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
                 }}>
                   <div style={{ 
-                    padding: `${PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES].height * globalZoomMultiplier * 0.1}px ${PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES].width * globalZoomMultiplier * 0.1}px`, 
+                    padding: `${Math.max(50, PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES].height * globalZoomMultiplier * 0.1)}px ${Math.max(50, PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES].width * globalZoomMultiplier * 0.1)}px`, 
                     flexShrink: 0
                   }}>
                     <DrawingCanvas 
