@@ -11,7 +11,6 @@ interface DrawingCanvasProps {
   zoomLevel?: number;
   globalZoomMultiplier?: number;
   isPanMode?: boolean;
-  isInternalFocus?: boolean;
   onFocusCanvas?: () => void;
   overlays?: any[];
   onOverlaysChange?: (overlays: any[]) => void;
@@ -27,7 +26,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   zoomLevel = 1,
   globalZoomMultiplier = 1,
   isPanMode = false,
-  isInternalFocus = false,
   onFocusCanvas,
   overlays = [],
   onOverlaysChange,
@@ -38,24 +36,23 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const isPanModeRef = useRef(isPanMode);
-  const isInternalFocusRef = useRef(isInternalFocus);
-  const onFocusCanvasRef = useRef(onFocusCanvas);
+  const isDraggingRef = useRef(false);
+  const lastPosXRef = useRef(0);
+  const lastPosYRef = useRef(0);
 
   useEffect(() => {
     isPanModeRef.current = isPanMode;
-    isInternalFocusRef.current = isInternalFocus;
-    onFocusCanvasRef.current = onFocusCanvas;
     if (fabricCanvasRef.current) {
-      fabricCanvasRef.current.defaultCursor = isPanMode && isInternalFocus ? 'grab' : 'default';
-      fabricCanvasRef.current.selection = !isPanMode && isInternalFocus;
-      // Also update objects so they don't block drag when pan is on, and block interaction if not focused
+      fabricCanvasRef.current.defaultCursor = isPanMode ? 'grab' : 'default';
+      fabricCanvasRef.current.selection = !isPanMode;
+      // Also update objects so they don't block drag when pan is on
       fabricCanvasRef.current.getObjects().forEach(obj => {
-        obj.set('selectable', !isPanMode && isInternalFocus);
-        obj.set('evented', !isPanMode && isInternalFocus);
+        obj.set('selectable', !isPanMode);
+        obj.set('evented', !isPanMode);
       });
       fabricCanvasRef.current.renderAll();
     }
-  }, [isPanMode, isInternalFocus, onFocusCanvas]);
+  }, [isPanMode]);
 
   // We scale the canvas visually to fit the screen, but the internal logical size remains the paper size
   const displayScale = 1;
@@ -90,8 +87,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     canvas.on('selection:cleared', () => onSelectionCleared?.());
 
     canvas.on('mouse:dblclick', function() {
-      if (onFocusCanvasRef.current) {
-        onFocusCanvasRef.current();
+      if (onFocusCanvas) {
+        onFocusCanvas();
       }
     });
 
@@ -104,10 +101,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
     // Mouse wheel zoom
     canvas.on('mouse:wheel', function(opt) {
-      if (!isInternalFocusRef.current) {
-        // If not focused, ignore and let the event bubble up to trigger global zoom
-        return;
-      }
       const e = opt.e as WheelEvent;
       const delta = e.deltaY;
       let zoom = canvas.getZoom();
@@ -119,43 +112,40 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       e.stopPropagation();
     });
 
-    // Panning with Alt + Drag or isPanMode (only if internally focused)
+    // Panning with Alt + Drag or isPanMode
     canvas.on('mouse:down', function(opt) {
       const evt = opt.e as MouseEvent;
-      if (isInternalFocusRef.current && (evt.altKey === true || isPanModeRef.current)) {
-        (canvas as any).isDragging = true;
+      if (evt.altKey === true || isPanModeRef.current) {
+        isDraggingRef.current = true;
         canvas.selection = false;
         canvas.defaultCursor = 'grabbing';
-        (canvas as any).lastPosX = evt.clientX;
-        (canvas as any).lastPosY = evt.clientY;
+        lastPosXRef.current = evt.clientX;
+        lastPosYRef.current = evt.clientY;
       }
     });
 
     canvas.on('mouse:move', function(opt) {
-      if ((canvas as any).isDragging) {
+      if (isDraggingRef.current) {
         const e = opt.e as MouseEvent;
         const vpt = canvas.viewportTransform;
         if (vpt) {
-          vpt[4] += e.clientX - (canvas as any).lastPosX;
-          vpt[5] += e.clientY - (canvas as any).lastPosY;
+          vpt[4] += e.clientX - lastPosXRef.current;
+          vpt[5] += e.clientY - lastPosYRef.current;
           canvas.requestRenderAll();
         }
-        (canvas as any).lastPosX = e.clientX;
-        (canvas as any).lastPosY = e.clientY;
+        lastPosXRef.current = e.clientX;
+        lastPosYRef.current = e.clientY;
       }
     });
 
     canvas.on('mouse:up', function() {
-      if (canvas.viewportTransform) {
-        canvas.setViewportTransform(canvas.viewportTransform);
-      }
-      (canvas as any).isDragging = false;
-      if (isPanModeRef.current && isInternalFocusRef.current) {
-        canvas.defaultCursor = 'grab';
-        canvas.selection = false;
-      } else {
-        canvas.defaultCursor = 'default';
-        canvas.selection = isInternalFocusRef.current && !isPanModeRef.current;
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        if (canvas.viewportTransform) {
+          canvas.setViewportTransform(canvas.viewportTransform);
+        }
+        canvas.defaultCursor = isPanModeRef.current ? 'grab' : 'default';
+        canvas.selection = !isPanModeRef.current;
       }
     });
 
@@ -294,7 +284,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                   backgroundColor: 'rgba(59, 130, 246, 0.1)',
                   border: isSelected ? '2px solid #3b82f6' : '2px dashed #3b82f6',
                   cursor: isSelected ? 'move' : 'pointer',
-                  pointerEvents: (!isPanMode && isInternalFocus) ? 'auto' : 'none'
+                  pointerEvents: !isPanMode ? 'auto' : 'none'
                 }}
               >
                 <div style={{

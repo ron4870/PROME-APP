@@ -64,7 +64,6 @@ export default function BookOfDrawingsWorkspace() {
   const [compileProgress, setCompileProgress] = useState<string>('');
   const [globalZoomMultiplier, setGlobalZoomMultiplier] = useState(1);
   const [isPanMode, setIsPanMode] = useState(false);
-  const [isInternalFocus, setIsInternalFocus] = useState(false);
   const outerWrapperRef = useRef<HTMLDivElement>(null);
   const isOuterDraggingRef = useRef(false);
   const lastOuterPosRef = useRef({ x: 0, y: 0 });
@@ -989,11 +988,13 @@ export default function BookOfDrawingsWorkspace() {
           {/* Central Workspace Area */}
           <div 
             ref={outerWrapperRef}
-            style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', cursor: isPanMode ? 'grab' : 'default', border: isInternalFocus ? '2px solid #3b82f6' : '2px solid transparent' }}
+            style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', cursor: isPanMode ? 'grab' : 'default', border: '2px solid transparent' }}
             onWheel={(e) => {
               if (activeSection !== 'Final Book' && isCanvasOpen) {
-                // Adjust global zoom if not internally focused, or if explicitly scrolling on the background
-                if (!isInternalFocus || e.target === e.currentTarget) {
+                // Only allow outer zoom if dragging/zooming outside the canvas or if they explicitly do it.
+                // Actually, let DrawingCanvas handle its own zoom, we can just disable this global zoom on wheel,
+                // or let the global zoom happen when mouse is outside the inner canvas.
+                if (!(e.target as HTMLElement).closest('.canvas-container')) {
                   setGlobalZoomMultiplier(prev => {
                     let newZoom = prev * (0.999 ** e.deltaY);
                     if (newZoom < 0.1) newZoom = 0.1;
@@ -1003,21 +1004,13 @@ export default function BookOfDrawingsWorkspace() {
                 }
               }
             }}
-            onDoubleClick={(e) => {
-              // Return to global pan/zoom if double clicking anywhere outside the inner canvas area
-              if (isInternalFocus && !(e.target as HTMLElement).closest('.canvas-container')) {
-                setIsInternalFocus(false);
-              }
-            }}
               onPointerDown={(e) => {
                 if (isPanMode && activeSection !== 'Final Book' && isCanvasOpen) {
-                  // Global pan applies everywhere if not internally focused, otherwise only on the background
-                  if (!isInternalFocus || e.target === e.currentTarget) {
-                    isOuterDraggingRef.current = true;
-                    lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
-                  }
+                  // Global pan applies everywhere
+                  isOuterDraggingRef.current = true;
+                  lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
                 }
               }}
               onPointerMove={(e) => {
@@ -1059,8 +1052,6 @@ export default function BookOfDrawingsWorkspace() {
                       onSelectionCleared={() => setSelectedObject(null)}
                       globalZoomMultiplier={globalZoomMultiplier}
                       isPanMode={isPanMode}
-                      isInternalFocus={isInternalFocus}
-                      onFocusCanvas={() => setIsInternalFocus(true)}
                       overlays={overlays}
                       onOverlaysChange={setOverlays}
                       selectedOverlayId={selectedOverlayId}
