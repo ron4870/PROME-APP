@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import * as fabric from 'fabric';
 
+import { Rnd } from 'react-rnd';
+
 interface DrawingCanvasProps {
   paperSize: { width: number; height: number };
   onSelectionCreated?: (obj: any) => void;
@@ -11,6 +13,10 @@ interface DrawingCanvasProps {
   isPanMode?: boolean;
   isInternalFocus?: boolean;
   onFocusCanvas?: () => void;
+  overlays?: any[];
+  onOverlaysChange?: (overlays: any[]) => void;
+  selectedOverlayId?: string | null;
+  onOverlaySelect?: (id: string | null) => void;
 }
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
@@ -22,7 +28,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   globalZoomMultiplier = 1,
   isPanMode = false,
   isInternalFocus = false,
-  onFocusCanvas
+  onFocusCanvas,
+  overlays = [],
+  onOverlaysChange,
+  selectedOverlayId,
+  onOverlaySelect
 }) => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const canvasElRef = useRef<HTMLCanvasElement>(null);
@@ -82,6 +92,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     canvas.on('mouse:dblclick', function() {
       if (onFocusCanvasRef.current) {
         onFocusCanvasRef.current();
+      }
+    });
+
+    // Deselect overlay when clicking canvas
+    canvas.on('mouse:down', function(opt) {
+      if (!opt.target && onOverlaySelect) {
+        onOverlaySelect(null);
       }
     });
 
@@ -227,8 +244,72 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         margin: 'auto'
       }}
     >
-      <div style={{ width: '100%', height: '100%' }}>
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
         <canvas ref={canvasElRef} />
+        
+        {/* Overlays Layer */}
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: 0, left: 0, 
+            width: paperSize.width, 
+            height: paperSize.height,
+            transform: `scale(${finalDisplayScale})`,
+            transformOrigin: 'top left',
+            pointerEvents: (!isPanMode && isInternalFocus) ? 'auto' : 'none'
+          }}
+        >
+          {overlays.map(overlay => {
+            const isSelected = overlay.id === selectedOverlayId;
+            return (
+              <Rnd
+                key={overlay.id}
+                size={{ width: overlay.width, height: overlay.height }}
+                position={{ x: overlay.x, y: overlay.y }}
+                scale={finalDisplayScale}
+                onDragStop={(_e, d) => {
+                  const updated = overlays.map(o => o.id === overlay.id ? { ...o, x: d.x, y: d.y } : o);
+                  if (onOverlaysChange) onOverlaysChange(updated);
+                }}
+                onResizeStop={(_e, _direction, ref, _delta, position) => {
+                  const updated = overlays.map(o => o.id === overlay.id ? {
+                    ...o,
+                    width: parseInt(ref.style.width, 10),
+                    height: parseInt(ref.style.height, 10),
+                    x: position.x,
+                    y: position.y
+                  } : o);
+                  if (onOverlaysChange) onOverlaysChange(updated);
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (onOverlaySelect) onOverlaySelect(overlay.id);
+                  if (fabricCanvasRef.current) fabricCanvasRef.current.discardActiveObject();
+                }}
+                bounds="parent"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  border: isSelected ? '2px solid #3b82f6' : '2px dashed #3b82f6',
+                  cursor: isSelected ? 'move' : 'pointer'
+                }}
+              >
+                <div style={{
+                  color: overlay.textFill || '#000000',
+                  fontSize: `${overlay.fontSize || 14}px`,
+                  fontFamily: overlay.fontFamily || 'Arial',
+                  textAlign: 'center',
+                  width: '100%',
+                  userSelect: 'none'
+                }}>
+                  {overlay.label}
+                </div>
+              </Rnd>
+            );
+          })}
+        </div>
       </div>
       <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.5)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', pointerEvents: 'none' }}>
         Hold Alt + Drag to Pan. Use Scroll to Zoom.

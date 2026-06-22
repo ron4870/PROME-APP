@@ -8,7 +8,20 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Reorder } from 'framer-motion';
 
 // ISO Standard Paper Sizes (Landscape orientation dimensions in mm)
-const PAPER_SIZES = {
+export interface Overlay {
+  id: string;
+  type: 'pageName' | 'sectionShortName' | 'pageNumber';
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize: number;
+  fontFamily: string;
+  textFill: string;
+}
+
+export const PAPER_SIZES = {
   A0: { width: 1189, height: 841 },
   A1: { width: 841, height: 594 }, // Default
   A2: { width: 594, height: 420 },
@@ -43,6 +56,9 @@ export default function BookOfDrawingsWorkspace() {
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
   const [_selectionTick, setSelectionTick] = useState(0);
   
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
+
   const [isUploadingCad, setIsUploadingCad] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileProgress, setCompileProgress] = useState<string>('');
@@ -159,12 +175,41 @@ export default function BookOfDrawingsWorkspace() {
       canvas.backgroundColor = '#ffffff';
       try {
         const state = typeof page.canvasState === 'string' ? JSON.parse(page.canvasState) : page.canvasState;
-        canvas.loadFromJSON(state).then(() => {
+        
+        let fabricState = state;
+        let loadedOverlays: Overlay[] = [];
+        
+        if (state && state.fabricState) {
+          fabricState = state.fabricState;
+          loadedOverlays = state.overlays || [];
+        }
+
+        canvas.loadFromJSON(fabricState).then(() => {
+          const objectsToRemove: any[] = [];
           canvas.getObjects().forEach(obj => {
             if ((obj as any).placeholderType) {
-              applyPlaceholderRenderOverride(obj);
+              const rectObj = obj as any;
+              loadedOverlays.push({
+                id: Math.random().toString(36).substring(2, 9),
+                type: rectObj.placeholderType,
+                label: rectObj.label || '',
+                x: rectObj.left || 0,
+                y: rectObj.top || 0,
+                width: rectObj.width * (rectObj.scaleX || 1),
+                height: rectObj.height * (rectObj.scaleY || 1),
+                fontSize: rectObj.fontSize || 14,
+                fontFamily: rectObj.fontFamily || 'Arial',
+                textFill: rectObj.textFill || '#000000'
+              });
+              objectsToRemove.push(obj);
             }
           });
+          
+          if (objectsToRemove.length > 0) {
+            objectsToRemove.forEach(obj => canvas.remove(obj));
+          }
+          
+          setOverlays(loadedOverlays);
           canvas.renderAll();
         });
       } catch (e) {
@@ -174,6 +219,7 @@ export default function BookOfDrawingsWorkspace() {
       canvas.clear();
       canvas.backgroundColor = '#ffffff';
       canvas.renderAll();
+      setOverlays([]);
     }
   }, [activePageId, canvas, project, isCanvasOpen]);
 
@@ -226,24 +272,13 @@ export default function BookOfDrawingsWorkspace() {
   const saveCanvas = async () => {
     if (!canvas || !activePageId) return;
     
-    const jsonStateObj = (canvas as any).toJSON(['placeholderType', 'maxRows', 'fontSize', 'fontFamily', 'textFill', 'label']);
+    const jsonStateObj = (canvas as any).toJSON();
+    const finalPayload = {
+      fabricState: jsonStateObj,
+      overlays: overlays
+    };
     
-    // Fabric 7 workaround: manually ensure custom properties are persisted
-    if (jsonStateObj && jsonStateObj.objects) {
-      jsonStateObj.objects.forEach((obj: any, i: number) => {
-        const canvasObj = canvas.getObjects()[i];
-        if (canvasObj && (canvasObj as any).placeholderType) {
-          obj.placeholderType = (canvasObj as any).placeholderType;
-          obj.maxRows = (canvasObj as any).maxRows;
-          obj.fontSize = (canvasObj as any).fontSize;
-          obj.fontFamily = (canvasObj as any).fontFamily;
-          obj.textFill = (canvasObj as any).textFill;
-          obj.label = (canvasObj as any).label;
-        }
-      });
-    }
-
-    const jsonState = JSON.stringify(jsonStateObj);
+    const jsonState = JSON.stringify(finalPayload);
     try {
       const res = await fetch(`/api/book-of-drawings/${id}/pages/${activePageId}`, {
         method: 'PUT',
@@ -359,56 +394,29 @@ export default function BookOfDrawingsWorkspace() {
     canvas.renderAll();
   };
 
-  const applyPlaceholderRenderOverride = (obj: any) => {
-    if (obj.placeholderType && !obj._originalRenderSaved) {
-      obj._originalRenderSaved = obj._render.bind(obj);
-      obj._render = function(ctx: CanvasRenderingContext2D) {
-        this._originalRenderSaved(ctx);
-        ctx.save();
-        // Reverse the scale so the text doesn't stretch when the rect is resized
-        ctx.scale(1 / (this.scaleX || 1), 1 / (this.scaleY || 1));
-        
-        ctx.fillStyle = this.textFill || '#000000';
-        ctx.font = `${this.fontSize || 14}px ${this.fontFamily || 'Arial'}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        const maxWidth = (this.width * (this.scaleX || 1)) - 10;
-        ctx.fillText(this.label || '', 0, 0, maxWidth);
-        
-        ctx.restore();
-      };
-    }
-  };
 
   const addPlaceholderText = (type: 'pageName' | 'sectionShortName' | 'pageNumber') => {
-    if (!canvas) return;
     let textStr = '';
     if (type === 'pageName') textStr = 'PAGE NAME AREA';
     if (type === 'sectionShortName') textStr = 'SECTION SHORT NAME AREA';
     if (type === 'pageNumber') textStr = 'PAGE NUMBER AREA';
 
-    const rect = new fabric.Rect({
-      width: 300, height: 60,
-      fill: 'rgba(59, 130, 246, 0.1)',
-      stroke: '#3b82f6', strokeWidth: 2, strokeDashArray: [5, 5],
-      originX: 'center', originY: 'center',
-      left: 100, top: 100
-    } as any);
+    const newOverlay: Overlay = {
+      id: Math.random().toString(36).substring(2, 9),
+      type,
+      label: textStr,
+      x: 100,
+      y: 100,
+      width: 300,
+      height: 60,
+      fontSize: 14,
+      fontFamily: 'Arial',
+      textFill: '#000000'
+    };
     
-    // Explicitly assign custom properties
-    (rect as any).placeholderType = type;
-    (rect as any).label = textStr;
-    (rect as any).maxRows = 1;
-    (rect as any).fontSize = 14; // default font size as requested
-    (rect as any).fontFamily = 'Arial';
-    (rect as any).textFill = '#000000';
-    
-    applyPlaceholderRenderOverride(rect);
-    
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
-    canvas.renderAll();
+    setOverlays(prev => [...prev, newOverlay]);
+    setSelectedOverlayId(newOverlay.id);
+    if (canvas) canvas.discardActiveObject();
   };
 
   const handleCadUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -645,6 +653,11 @@ export default function BookOfDrawingsWorkspace() {
   };
 
   const handleDeleteObject = () => {
+    if (selectedOverlayId) {
+      setOverlays(prev => prev.filter(o => o.id !== selectedOverlayId));
+      setSelectedOverlayId(null);
+      return;
+    }
     if (!canvas || !selectedObject) return;
     canvas.remove(selectedObject);
     setSelectedObject(null);
@@ -879,83 +892,86 @@ export default function BookOfDrawingsWorkspace() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {isCanvasOpen && selectedObject && (
-                <>
-                  {(selectedObject.type === 'i-text' || selectedObject.type === 'textbox' || (selectedObject as any).placeholderType) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <select
-                        title="Font Family"
-                        value={(selectedObject as any).fontFamily || 'Arial'}
-                        onChange={(e) => {
-                          selectedObject.set('fontFamily', e.target.value);
-                          canvas?.renderAll();
-                          setSelectionTick(t => t + 1); // Force React re-render without destroying obj
-                        }}
-                        className="form-input"
-                        style={{ padding: '0.2rem 0.5rem', minWidth: '120px', fontSize: '0.875rem' }}
-                      >
-                        {['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Tahoma'].map(font => (
-                          <option key={font} value={font}>{font}</option>
-                        ))}
-                      </select>
-                      
-                      <input
-                        type="number"
-                        title="Font Size"
-                        min="8"
-                        max="200"
-                        value={(selectedObject as any).fontSize || 40}
-                        onChange={(e) => {
-                          selectedObject.set('fontSize', parseInt(e.target.value, 10));
-                          canvas?.renderAll();
-                          setSelectionTick(t => t + 1);
-                        }}
-                        className="form-input"
-                        style={{ width: '60px', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
-                      />
-
-                      <input 
-                        type="color" 
-                        title="Text Color"
-                        value={(selectedObject as any).placeholderType ? (selectedObject as any).textFill || '#000000' : (selectedObject as any).fill || '#000000'}
-                        onChange={(e) => {
-                          if ((selectedObject as any).placeholderType) {
-                            selectedObject.set('textFill', e.target.value);
-                          } else {
-                            selectedObject.set('fill', e.target.value);
-                          }
-                          canvas?.renderAll();
-                          setSelectionTick(t => t + 1);
-                        }}
-                        style={{ width: '30px', height: '30px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
-                      />
-                      
-                      {(selectedObject as any).placeholderType && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.5rem', paddingLeft: '0.5rem', borderLeft: '1px solid #cbd5e1' }}>
-                          <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Max Rows:</span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            value={(selectedObject as any).maxRows || 1}
-                            onChange={(e) => {
-                              selectedObject.set('maxRows', parseInt(e.target.value, 10) || 1);
+              {isCanvasOpen && (selectedObject || selectedOverlayId) && (() => {
+                const isOverlay = !!selectedOverlayId;
+                const overlay = isOverlay ? overlays.find(o => o.id === selectedOverlayId) : null;
+                const activeFontFamily = isOverlay ? overlay?.fontFamily : ((selectedObject as any)?.fontFamily || 'Arial');
+                const activeFontSize = isOverlay ? overlay?.fontSize : ((selectedObject as any)?.fontSize || 40);
+                const activeColor = isOverlay ? overlay?.textFill : ((selectedObject as any)?.fill || '#000000');
+                
+                const isText = isOverlay || (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'textbox' || (selectedObject as any).placeholderType));
+                
+                return (
+                  <>
+                    {isText && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <select
+                          title="Font Family"
+                          value={activeFontFamily || 'Arial'}
+                          onChange={(e) => {
+                            if (isOverlay) {
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fontFamily: e.target.value } : o));
+                            } else if (selectedObject) {
+                              selectedObject.set('fontFamily', e.target.value);
                               canvas?.renderAll();
-                              setSelectedObject({ ...selectedObject } as any);
-                            }}
-                            className="form-input"
-                            style={{ width: '50px', padding: '0.1rem 0.25rem', fontSize: '0.75rem' }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <button onClick={handleDeleteObject} style={{ padding: '0.4rem', backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer' }} title="Delete Selected">
-                    <Trash2 size={16} />
-                  </button>
-                  <div style={{ width: '1px', height: '24px', backgroundColor: '#cbd5e1', margin: '0 0.5rem' }}></div>
-                </>
-              )}
+                              setSelectionTick(t => t + 1);
+                            }
+                          }}
+                          className="form-input"
+                          style={{ padding: '0.2rem 0.5rem', minWidth: '120px', fontSize: '0.875rem' }}
+                        >
+                          {['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Tahoma'].map(font => (
+                            <option key={font} value={font}>{font}</option>
+                          ))}
+                        </select>
+                        
+                        <input
+                          type="number"
+                          title="Font Size"
+                          min="8"
+                          max="200"
+                          value={activeFontSize || 40}
+                          onChange={(e) => {
+                            if (isOverlay) {
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fontSize: parseInt(e.target.value, 10) } : o));
+                            } else if (selectedObject) {
+                              selectedObject.set('fontSize', parseInt(e.target.value, 10));
+                              canvas?.renderAll();
+                              setSelectionTick(t => t + 1);
+                            }
+                          }}
+                          className="form-input"
+                          style={{ width: '60px', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
+                        />
+
+                        <input 
+                          type="color" 
+                          title="Text Color"
+                          value={activeColor || '#000000'}
+                          onChange={(e) => {
+                            if (isOverlay) {
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, textFill: e.target.value } : o));
+                            } else if (selectedObject) {
+                              if ((selectedObject as any).placeholderType) {
+                                selectedObject.set('textFill', e.target.value);
+                              } else {
+                                selectedObject.set('fill', e.target.value);
+                              }
+                              canvas?.renderAll();
+                              setSelectionTick(t => t + 1);
+                            }
+                          }}
+                          style={{ width: '30px', height: '30px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                        />
+                      </div>
+                    )}
+                    <button onClick={handleDeleteObject} style={{ padding: '0.4rem', backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer' }} title="Delete Selected">
+                      <Trash2 size={16} />
+                    </button>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: '#cbd5e1', margin: '0 0.5rem' }}></div>
+                  </>
+                );
+              })()}
 
               {isCanvasOpen && (
                 <>
@@ -1037,7 +1053,7 @@ export default function BookOfDrawingsWorkspace() {
                     flexShrink: 0
                   }}>
                     <DrawingCanvas 
-                      paperSize={PAPER_SIZES[paperSize]} 
+                      paperSize={PAPER_SIZES[paperSize as keyof typeof PAPER_SIZES]} 
                       canvasRefCallback={setCanvas}
                       onSelectionCreated={setSelectedObject}
                       onSelectionCleared={() => setSelectedObject(null)}
@@ -1045,6 +1061,10 @@ export default function BookOfDrawingsWorkspace() {
                       isPanMode={isPanMode}
                       isInternalFocus={isInternalFocus}
                       onFocusCanvas={() => setIsInternalFocus(true)}
+                      overlays={overlays}
+                      onOverlaysChange={setOverlays}
+                      selectedOverlayId={selectedOverlayId}
+                      onOverlaySelect={setSelectedOverlayId}
                     />
                   </div>
                 </div>
