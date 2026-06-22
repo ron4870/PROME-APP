@@ -415,7 +415,36 @@ router.post('/:id/pages/:pageId/import-cad', authenticate, upload.single('file')
     // Parse DXF and convert to SVG
     const Helper = dxf.Helper;
     const helper = new Helper(dxfContent);
-    const svgString = helper.toSVG();
+    let svgString = helper.toSVG();
+
+    // Inject text entities since dxf module ignores them
+    if (helper.parsed && helper.parsed.entities) {
+      let textNodes = '';
+      helper.parsed.entities.forEach((entity: any) => {
+        if (entity.type === 'TEXT' || entity.type === 'MTEXT') {
+          let textStr = entity.string || '';
+          
+          // Clean MTEXT formatting codes (e.g. \fArial|b0|i0|c0|p34;, \A1;, \P, etc)
+          textStr = textStr.replace(/\\[A-Za-z0-9|,-]+;/g, '');
+          textStr = textStr.replace(/\\P/g, ' '); // Replace newlines with spaces for now
+          textStr = textStr.replace(/[{}]/g, '');
+          
+          if (!textStr.trim()) return;
+
+          const x = entity.x || 0;
+          const y = entity.y || 0;
+          const height = entity.textHeight || entity.nominalTextHeight || 12;
+          
+          // Use scale(1, -1) to counter the parent <g> flipping the Y-axis
+          // so the text renders upright.
+          textNodes += `<text transform="translate(${x}, ${y}) scale(1, -1)" fill="black" font-size="${height}" font-family="Arial">${textStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>\n  `;
+        }
+      });
+      
+      if (textNodes) {
+        svgString = svgString.replace('</g>\n</svg>', `  ${textNodes}</g>\n</svg>`);
+      }
+    }
 
     res.json({ svg: svgString });
   } catch (error: any) {
