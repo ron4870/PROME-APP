@@ -468,17 +468,32 @@ export default function BookOfDrawingsWorkspace() {
       }
 
       // Ensure the SVG has explicit width and height attributes matching the viewBox
-      // This prevents browsers from clamping large SVGs to 300x150 default sizes
+      // This prevents browsers from clamping large SVGs to 300x150 default sizes, and prevents blurriness on tiny SVGs
       let svgData = resData.svg;
       const match = svgData.match(/viewBox="([^"]+)"/i);
       if (match) {
         const parts = match[1].trim().split(/\s+,?/);
         if (parts.length >= 4) {
-          const w = parts[2];
-          const h = parts[3];
+          const minX = parseFloat(parts[0]);
+          const minY = parseFloat(parts[1]);
+          const w = parseFloat(parts[2]);
+          const h = parseFloat(parts[3]);
+          
+          let renderW = 4000;
+          let renderH = 4000;
+
+          if (w > 0 && h > 0) {
+            const scaleFactor = 4000 / Math.max(w, h);
+            renderW = Math.round(w * scaleFactor);
+            renderH = Math.round(h * scaleFactor);
+          } else {
+            // Fallback for empty or invalid viewBox
+            svgData = svgData.replace(/viewBox="[^"]*"/i, 'viewBox="-2000 -2000 4000 4000"');
+          }
+
           svgData = svgData.replace(/\s+width="[^"]*"/i, '');
           svgData = svgData.replace(/\s+height="[^"]*"/i, '');
-          svgData = svgData.replace(/<svg\s+/i, `<svg width="${w}" height="${h}" `);
+          svgData = svgData.replace(/<svg\s+/i, `<svg width="${renderW}" height="${renderH}" `);
         }
       }
 
@@ -491,10 +506,9 @@ export default function BookOfDrawingsWorkspace() {
         const canvasHeight = canvas.getHeight();
         
         if (img.width && img.height) {
+          // Scale it to fit 80% of the canvas, scaling both UP and DOWN as necessary
           const scale = Math.min((canvasWidth * 0.8) / img.width, (canvasHeight * 0.8) / img.height);
-          if (scale < 1) {
-            img.scale(scale);
-          }
+          img.scale(scale);
         }
         
         img.set({
@@ -599,7 +613,7 @@ export default function BookOfDrawingsWorkspace() {
         
         const dataUrl = headlessCanvas.toDataURL({ 
           format: transparent ? 'png' : 'jpeg', 
-          quality: 1, 
+          quality: transparent ? 1 : 0.85, 
           multiplier: 6 
         });
         
@@ -609,7 +623,7 @@ export default function BookOfDrawingsWorkspace() {
 
       // Pre-render layout frame if available
       setCompileProgress('Preparing Layout Frame...');
-      const layoutDataUrl = layoutFabricState ? await renderToDataURL(layoutFabricState) : '';
+      const layoutDataUrl = layoutFabricState ? await renderToDataURL(layoutFabricState, false) : '';
 
       const sectionPageCounters: Record<string, number> = {};
 
@@ -619,7 +633,6 @@ export default function BookOfDrawingsWorkspace() {
         
         if (!sectionPageCounters[page.section]) sectionPageCounters[page.section] = 0;
         sectionPageCounters[page.section]++;
-        const sectionPageNum = sectionPageCounters[page.section];
         
         if (i > 0) pdf.addPage();
 
@@ -636,19 +649,48 @@ export default function BookOfDrawingsWorkspace() {
           }
         }
         
-        // Draw layout background if requested and exists
-        if (page.applyFrame && layoutDataUrl) {
-          pdf.addImage(layoutDataUrl, 'JPEG', 0, 0, dim.width, dim.height);
-        } else {
-          // Fill background with white if no layout
-          pdf.setFillColor(255, 255, 255);
-          pdf.rect(0, 0, dim.width, dim.height, 'F');
+        let finalJpegUrl = '';
+
+        if (page.applyFrame && layoutDataUrl && pageFabricState) {
+          // Both Layout and Page exist - combine them into a single JPEG off-screen to avoid massive PNGs in PDF
+          const pageDataUrl = await renderToDataURL(pageFabricState, true);
+          
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = dim.width * 6;
+          tempCanvas.height = dim.height * 6;
+          const ctx = tempCanvas.getContext('2d');
+          
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            const loadImg = (src: string) => new Promise<HTMLImageElement>((resolve) => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.src = src;
+            });
+            
+            const layoutImg = await loadImg(layoutDataUrl);
+            ctx.drawImage(layoutImg, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            const pageImg = await loadImg(pageDataUrl);
+            ctx.drawImage(pageImg, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            finalJpegUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+          }
+        } else if (page.applyFrame && layoutDataUrl) {
+          // Only layout exists
+          finalJpegUrl = layoutDataUrl;
+        } else if (pageFabricState) {
+          // Only page exists
+          finalJpegUrl = await renderToDataURL(pageFabricState, false);
         }
 
-        // Render the actual page contents over it
-        if (pageFabricState) {
-          const pageDataUrl = await renderToDataURL(pageFabricState, true);
-          pdf.addImage(pageDataUrl, 'PNG', 0, 0, dim.width, dim.height);
+        if (finalJpegUrl) {
+          pdf.addImage(finalJpegUrl, 'JPEG', 0, 0, dim.width, dim.height, undefined, 'FAST');
+        } else {
+          pdf.setFillColor(255, 255, 255);
+          pdf.rect(0, 0, dim.width, dim.height, 'F');
         }
 
         const renderOverlays = (overlaysToRender: Overlay[]) => {
