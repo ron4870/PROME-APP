@@ -38,15 +38,12 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const isPanModeRef = useRef(isPanMode);
-  const isDraggingRef = useRef(false);
-  const isInternalFocusRef = useRef(isInternalFocus);
-  const onFocusCanvasRef = useRef(onFocusCanvas);
-  const lastPosXRef = useRef(0);
-  const lastPosYRef = useRef(0);
+  const isInternalFocusRef = useRef(false);
 
   const overlaysRef = useRef(overlays);
   const onOverlaysChangeRef = useRef(onOverlaysChange);
   const onOverlaySelectRef = useRef(onOverlaySelect);
+  const onFocusCanvasRef = useRef(onFocusCanvas);
 
   useEffect(() => {
     overlaysRef.current = overlays;
@@ -109,7 +106,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     });
 
     // Deselect overlay when clicking canvas
-    canvas.on('mouse:down', function(opt) {
+    canvas.on('mouse:down', function() {
       if (onOverlaySelectRef.current) onOverlaySelectRef.current(null);
       
       // If we are not focused, a click should ideally request focus
@@ -118,16 +115,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
         return;
       }
 
-      const evt = opt.e as MouseEvent;
       // Removed internal panning logic to prevent sync issues with Rnd overlays.
       // All panning and zooming should now be handled by the outer container.
     });
 
     // Removed internal mouse:wheel zoom logic to ensure CAD and Rnd overlays always scale together via global zoom.
-
-    canvas.on('mouse:move', function(opt) {
-      // Removed internal panning logic
-    });
 
     canvas.on('mouse:up', function () {
       if (isPanModeRef.current && isInternalFocusRef.current) {
