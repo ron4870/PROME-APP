@@ -256,7 +256,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             height: paperSize.height,
             transform: `scale(${finalDisplayScale})`,
             transformOrigin: 'top left',
-            pointerEvents: (!isPanMode && isInternalFocus) ? 'auto' : 'none'
+            pointerEvents: 'none'
           }}
         >
           {overlays.map(overlay => {
@@ -293,7 +293,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                   justifyContent: 'center',
                   backgroundColor: 'rgba(59, 130, 246, 0.1)',
                   border: isSelected ? '2px solid #3b82f6' : '2px dashed #3b82f6',
-                  cursor: isSelected ? 'move' : 'pointer'
+                  cursor: isSelected ? 'move' : 'pointer',
+                  pointerEvents: (!isPanMode && isInternalFocus) ? 'auto' : 'none'
                 }}
               >
                 <div style={{
