@@ -513,7 +513,8 @@ export default function BookOfDrawingsWorkspace() {
           left: canvasWidth / 2,
           top: canvasHeight / 2,
           originX: 'center',
-          originY: 'center'
+          originY: 'center',
+          objectCaching: false // CRITICAL: forces native vector redrawing at any zoom, keeping tiny text infinitely crisp!
         });
         
         canvas.add(img);
