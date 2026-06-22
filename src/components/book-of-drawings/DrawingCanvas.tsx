@@ -237,9 +237,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       container.removeEventListener('drop', handleDrop);
       canvas.dispose();
       // Clean up parent reference to prevent using disposed canvas when remounting
-      canvasRefCallback(null as any);
+      if (canvasRefCallback) canvasRefCallback(null as any);
     };
-  }, [paperSize, onSelectionCreated, onSelectionCleared, canvasRefCallback]);
+  }, [paperSize, canvasRefCallback]);
 
   const previousGlobalZoomRef = useRef(finalDisplayScale);
 
