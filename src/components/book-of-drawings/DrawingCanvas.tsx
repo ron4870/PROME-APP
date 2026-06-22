@@ -119,52 +119,17 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       }
 
       const evt = opt.e as MouseEvent;
-      if (evt.altKey === true || isPanModeRef.current) {
-        isDraggingRef.current = true;
-        canvas.selection = false;
-        canvas.defaultCursor = 'grabbing';
-        lastPosXRef.current = evt.clientX;
-        lastPosYRef.current = evt.clientY;
-      }
+      // Removed internal panning logic to prevent sync issues with Rnd overlays.
+      // All panning and zooming should now be handled by the outer container.
     });
 
-    // Mouse wheel zoom
-    canvas.on('mouse:wheel', function(opt) {
-      if (!isInternalFocusRef.current) {
-        return;
-      }
-      const e = opt.e as WheelEvent;
-      const delta = e.deltaY;
-      let zoom = canvas.getZoom();
-      zoom *= 0.999 ** delta;
-      if (zoom > 20) zoom = 20;
-      if (zoom < 0.01) zoom = 0.01;
-      canvas.zoomToPoint(new fabric.Point(e.offsetX, e.offsetY), zoom);
-      e.preventDefault();
-      e.stopPropagation();
-    });
+    // Removed internal mouse:wheel zoom logic to ensure CAD and Rnd overlays always scale together via global zoom.
 
     canvas.on('mouse:move', function(opt) {
-      if (isDraggingRef.current) {
-        const e = opt.e as MouseEvent;
-        const vpt = canvas.viewportTransform;
-        if (vpt) {
-          vpt[4] += e.clientX - lastPosXRef.current;
-          vpt[5] += e.clientY - lastPosYRef.current;
-          canvas.requestRenderAll();
-        }
-        lastPosXRef.current = e.clientX;
-        lastPosYRef.current = e.clientY;
-      }
+      // Removed internal panning logic
     });
 
     canvas.on('mouse:up', function () {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        if (canvas.viewportTransform) {
-          canvas.setViewportTransform(canvas.viewportTransform);
-        }
-      }
       if (isPanModeRef.current && isInternalFocusRef.current) {
         canvas.defaultCursor = 'grab';
         canvas.selection = false;

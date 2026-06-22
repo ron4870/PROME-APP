@@ -753,21 +753,7 @@ export default function BookOfDrawingsWorkspace() {
     setSelectedObject(null);
   };
 
-  const handleZoomIn = () => {
-    if (!canvas) return;
-    canvas.setZoom(canvas.getZoom() * 1.2);
-  };
-
-  const handleZoomOut = () => {
-    if (!canvas) return;
-    canvas.setZoom(canvas.getZoom() / 1.2);
-  };
-
-  const handleZoomReset = () => {
-    if (!canvas) return;
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    canvas.setZoom(1);
-  };
+  // Removed internal zoom functions
 
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Loading Workspace...</div>;
   if (!project) return null;
@@ -962,14 +948,7 @@ export default function BookOfDrawingsWorkspace() {
                   >
                     <Hand size={16} />
                   </button>
-                  <button onClick={handleZoomIn} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Zoom In (Internal)">
-                    <ZoomIn size={16} />
-                  </button>
-                  <button onClick={handleZoomOut} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Zoom Out (Internal)">
-                    <ZoomOut size={16} />
-                  </button>
                   <button onClick={() => { 
-                    handleZoomReset(); 
                     fitCanvasToScreen(); 
                     requestAnimationFrame(() => centerCanvas()); 
                   }} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Reset Zoom/Pan">
@@ -1184,15 +1163,13 @@ export default function BookOfDrawingsWorkspace() {
             style={{ flex: 1, backgroundColor: '#e2e8f0', position: 'relative', overflow: 'auto', cursor: isPanMode ? 'grab' : 'default', border: isInternalFocus ? '2px solid #3b82f6' : '2px solid transparent' }}
             onWheel={(e) => {
               if (activeSection !== 'Final Book' && isCanvasOpen) {
-                // Adjust global zoom if not internally focused, or if explicitly scrolling on the background
-                if (!isInternalFocus || e.target === e.currentTarget) {
-                  setGlobalZoomMultiplier(prev => {
-                    let newZoom = prev * (0.999 ** e.deltaY);
-                    if (newZoom < 0.1) newZoom = 0.1;
-                    if (newZoom > 20) newZoom = 20; // Allow zooming up to 20x
-                    return newZoom;
-                  });
-                }
+                // Adjust global zoom consistently
+                setGlobalZoomMultiplier(prev => {
+                  let newZoom = prev * (0.999 ** e.deltaY);
+                  if (newZoom < 0.1) newZoom = 0.1;
+                  if (newZoom > 20) newZoom = 20; // Allow zooming up to 20x
+                  return newZoom;
+                });
               }
             }}
             onDoubleClick={(e) => {
@@ -1203,13 +1180,11 @@ export default function BookOfDrawingsWorkspace() {
             }}
               onPointerDown={(e) => {
                 if (isPanMode && activeSection !== 'Final Book' && isCanvasOpen) {
-                  // Global pan applies everywhere if not internally focused, otherwise only on the background
-                  if (!isInternalFocus || e.target === e.currentTarget) {
-                    isOuterDraggingRef.current = true;
-                    lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
-                  }
+                  // Global pan applies consistently when pan mode is enabled
+                  isOuterDraggingRef.current = true;
+                  lastOuterPosRef.current = { x: e.clientX, y: e.clientY };
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  if (outerWrapperRef.current) outerWrapperRef.current.style.cursor = 'grabbing';
                 }
               }}
               onPointerMove={(e) => {
