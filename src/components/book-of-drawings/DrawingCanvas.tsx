@@ -307,32 +307,55 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                     <line x1="0" y1="0" x2="100%" y2="100%" stroke={overlay.strokeColor || '#000000'} strokeWidth={overlay.strokeWidth ?? 2} />
                   </svg>
                 ) : (
-                  <div 
-                    onDoubleClick={() => {
-                      if (overlay.type === 'text') {
-                        const newText = window.prompt("Edit text:", overlay.label);
-                        if (newText !== null && onOverlaysChange) {
-                          const updated = overlays.map(o => o.id === overlay.id ? { ...o, label: newText } : o);
-                          onOverlaysChange(updated);
-                        }
-                      }
-                    }}
-                    style={{
-                      color: overlay.textFill || '#000000',
-                      fontSize: `${overlay.fontSize || 14}px`,
-                      fontFamily: overlay.fontFamily || 'Arial',
-                      textAlign: 'center',
-                      width: '100%',
-                      userSelect: 'none',
-                      ...(overlay.maxRows ? {
-                        display: '-webkit-box',
-                        WebkitLineClamp: overlay.maxRows,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      } : {})
-                    }}
-                  >
-                    {overlay.type === 'text' ? (overlay.label || 'Double click to edit') : overlay.label}
+                  <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    {isSelected && overlay.type === 'text' ? (
+                      <textarea
+                        value={overlay.label || ''}
+                        onChange={(e) => {
+                          if (onOverlaysChange) {
+                            const updated = overlays.map(o => o.id === overlay.id ? { ...o, label: e.target.value } : o);
+                            onOverlaysChange(updated);
+                          }
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()} // Allow clicking inside to select text and edit
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          color: overlay.textFill || '#000000',
+                          fontSize: `${overlay.fontSize || 14}px`,
+                          fontFamily: overlay.fontFamily || 'Arial',
+                          textAlign: 'center',
+                          background: 'transparent',
+                          border: 'none',
+                          outline: 'none',
+                          resize: 'none',
+                          overflow: 'hidden'
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        style={{
+                          color: overlay.textFill || '#000000',
+                          fontSize: `${overlay.fontSize || 14}px`,
+                          fontFamily: overlay.fontFamily || 'Arial',
+                          textAlign: 'center',
+                          width: '100%',
+                          height: '100%',
+                          userSelect: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          ...(overlay.maxRows ? {
+                            display: '-webkit-box',
+                            WebkitLineClamp: overlay.maxRows,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          } : {})
+                        }}
+                      >
+                        {overlay.type === 'text' ? (overlay.label || 'Double click to edit') : overlay.label}
+                      </div>
+                    )}
                   </div>
                 )}
               </Rnd>

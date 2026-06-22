@@ -1083,7 +1083,19 @@ export default function BookOfDrawingsWorkspace() {
                       </div>
                     )}
                     {isText && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {isOverlay && overlay?.type === 'text' && (
+                          <input
+                            type="text"
+                            value={overlay.label || ''}
+                            onChange={(e) => {
+                              setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, label: e.target.value } : o));
+                            }}
+                            className="form-input"
+                            placeholder="Text content..."
+                            style={{ padding: '0.2rem 0.5rem', minWidth: '150px', fontSize: '0.875rem' }}
+                          />
+                        )}
                         <select
                           title="Font Family"
                           value={activeFontFamily || 'Arial'}
