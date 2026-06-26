@@ -2020,16 +2020,51 @@ window.selectTableRow = function(dataIndex) {
   let contentHtml = '';
   
   contentHtml += `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
       <span style="color:#94a3b8; font-size:0.8rem;">Segment type:</span>
-      <span style="background:#334155; padding:4px 8px; border-radius:4px; font-weight:600; font-size:0.8rem;">${row.type}</span>
+      <select style="background:#1a1e23; color:#e2e8f0; border:1px solid #334155; padding:4px 8px; border-radius:4px; font-weight:600; font-size:0.8rem; width:120px;" disabled>
+        <option>${row.type}</option>
+      </select>
     </div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <span style="color:#94a3b8; font-size:0.8rem;">Length:</span>
-      <span style="color:#10b981; font-weight:600; font-size:0.9rem;">${row.length.toFixed(2)} m</span>
+    
+    <div style="margin-bottom:15px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+        <span style="color:#94a3b8; font-size:0.8rem;">Length:</span>
+        <span style="color:#10b981; font-weight:600; font-size:0.9rem;">${row.length.toFixed(2)} m</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <input type="range" min="0" max="${Math.max(row.length * 2, 100)}" step="0.1" value="${row.length}" style="flex-grow:1; accent-color:#10b981;" oninput="this.nextElementSibling.value = this.value" onchange="updateAlignmentProperty(${dataIndex}, 'length', this.value)">
+        <input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" onchange="this.previousElementSibling.value = this.value; updateAlignmentProperty(${dataIndex}, 'length', this.value)">
+      </div>
     </div>
   `;
   
+  if (row.type === 'Circular Curve') {
+    contentHtml += `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+          <span style="color:#94a3b8; font-size:0.8rem;">Radius:</span>
+          <span style="color:#38bdf8; font-weight:600; font-size:0.9rem;">${row.radius} m</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="range" min="50" max="3000" step="1" value="${row.radius}" style="flex-grow:1; accent-color:#38bdf8;" oninput="this.nextElementSibling.value = this.value" onchange="updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
+          <input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" onchange="this.previousElementSibling.value = this.value; updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  contentHtml += `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; margin-top:20px;">
+      <span style="color:#94a3b8; font-size:0.8rem;">Start station:</span>
+      <span style="color:#e2e8f0; font-size:0.8rem;">${formatStation(row.startStation)}</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <span style="color:#94a3b8; font-size:0.8rem;">End station:</span>
+      <span style="color:#e2e8f0; font-size:0.8rem;">${formatStation(row.endStation)}</span>
+    </div>
+  `;
+
   contentHtml += `<div class="compliance-box"><div class="compliance-title">Uganda MoW Standard Criteria <span class="compliance-badge ${getOverallCompliance(row) ? 'pass' : 'fail'}">${getOverallCompliance(row) ? '✔ COMPLIANT' : '✖ NON-COMPLIANT'}</span></div>`;
   contentHtml += `<div style="font-size:0.75rem; color:#94a3b8; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #1e293b;">Speed: <span style="color:#cbd5e1; font-weight:bold;">${state.designSpeed} km/h</span> &nbsp;|&nbsp; e-Max: <span style="color:#cbd5e1; font-weight:bold;">${state.eMax*100}%</span></div>`;
 
