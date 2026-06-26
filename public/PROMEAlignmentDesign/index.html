@@ -136,7 +136,7 @@
 
     /* Alignment Table Styles */
     #table-container {
-      height: 280px;
+      height: 560px;
       background-color: #1a1e23;
       border-top: 2px solid var(--border-color);
       display: flex;
@@ -506,9 +506,9 @@
         <div class="form-group">
           <label>Design Standard</label>
           <select id="design-standard">
-            <option value="aashto" selected>AASHTO Design Standards</option>
+            <option value="aashto">AASHTO Design Standards</option>
             <option value="ukdmrb">UK DMRB (CD 109)</option>
-            <option value="ugandamow">Uganda MoW Design Standards</option>
+            <option value="ugandamow" selected>Uganda MoW Design Standards</option>
           </select>
         </div>
 
@@ -516,7 +516,7 @@
 
         <div style="height: 1px; background: var(--border-color); margin: 10px 0;"></div>
 
-        <div id="fields-aashto" class="standard-group">
+        <div id="fields-aashto" class="standard-group" style="display: none;">
           <div class="form-group">
             <label>AASHTO Road Type</label>
             <select id="road-type">
@@ -594,7 +594,7 @@
           </div>
         </div>
 
-        <div id="fields-ugandamow" class="standard-group" style="display: none;">
+        <div id="fields-ugandamow" class="standard-group">
           <div class="form-group">
             <label>Functional Class</label>
             <select id="ugandamow-func-class">

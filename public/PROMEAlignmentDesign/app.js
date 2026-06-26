@@ -516,7 +516,7 @@ function calculateGeometry() {
     }
     
     // Tangent Line
-    elements.push({ type: 'Tangent', length: length, az: azimuth });
+    elements.push({ type: 'Tangent', length: length, az: azimuth, piIndex: i });
     
     if (i < state.pis.length - 2) {
       const pi3 = state.pis[i+2];
@@ -1931,6 +1931,13 @@ function renderAlignmentTable(elements) {
     const e2 = endCoord ? endCoord.x.toFixed(1) : '-';
     const n2 = endCoord ? endCoord.y.toFixed(1) : '-';
 
+    const lengthInput = `<input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'length', this.value)" onclick="event.stopPropagation()">`;
+    
+    let radiusContent = row.radius;
+    if (row.type === 'Circular Curve') {
+      radiusContent = `<input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'radius', this.value)" onclick="event.stopPropagation()">`;
+    }
+
     html += `
       <tr data-rowid="${row.id}" onclick="selectTableRow(${i})">
         <td style="color:#f59e0b; font-weight:bold;">${row.id}</td>
@@ -1941,8 +1948,8 @@ function renderAlignmentTable(elements) {
         <td>${n1}</td>
         <td>${e2}</td>
         <td>${n2}</td>
-        <td style="color:#10b981;">${row.length.toFixed(1)}</td>
-        <td style="color:#38bdf8;">${row.radius}</td>
+        <td>${lengthInput}</td>
+        <td>${radiusContent}</td>
         <td>${row.clockwise}</td>
       </tr>
     `;
@@ -1951,6 +1958,51 @@ function renderAlignmentTable(elements) {
   tbody.innerHTML = html;
   window.currentTableData = tableData;
 }
+
+window.updateAlignmentProperty = function(dataIndex, field, value) {
+  const row = window.currentTableData[dataIndex];
+  if (!row) return;
+  const val = parseFloat(value);
+  if (isNaN(val) || val < 0) return;
+
+  const elements = calculateGeometry(); // recalculate to get fresh elements just in case
+  const el = elements[row.index];
+  if (!el || el.piIndex === undefined) return;
+  
+  if (field === 'length') {
+    if (row.type === 'Straight') {
+      // Shift all PIs from piIndex+1 onwards by the delta length
+      const delta = val - el.length;
+      if (delta === 0) return;
+      const az = el.az;
+      const dx = delta * Math.sin(az);
+      const dy = delta * Math.cos(az);
+      
+      for (let j = el.piIndex + 1; j < state.pis.length; j++) {
+        state.pis[j].x += dx;
+        state.pis[j].y += dy;
+      }
+    } else if (row.type === 'Clothoid (In)') {
+      state.pis[el.piIndex].lsIn = val;
+    } else if (row.type === 'Clothoid (Out)') {
+      state.pis[el.piIndex].lsOut = val;
+    } else if (row.type === 'Circular Curve') {
+      if (el.radius > 0 && el.length > 0) {
+        const delta = el.length / el.radius;
+        state.pis[el.piIndex].r = val / delta;
+      }
+    }
+  } else if (field === 'radius') {
+    if (row.type === 'Circular Curve') {
+      state.pis[el.piIndex].r = val;
+    }
+  }
+
+  // Save state and re-render
+  saveHistory();
+  updateDataPanel();
+  draw();
+};
 
 window.selectTableRow = function(dataIndex) {
   const tableData = window.currentTableData;
