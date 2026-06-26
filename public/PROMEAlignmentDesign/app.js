@@ -1935,11 +1935,11 @@ function renderAlignmentTable(elements) {
     const e2 = endCoord ? endCoord.x.toFixed(1) : '-';
     const n2 = endCoord ? endCoord.y.toFixed(1) : '-';
 
-    const lengthInput = `<input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'length', this.value)" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" onmouseup="event.stopPropagation()" onfocus="this.select()">`;
+    const lengthInput = `<span style="color:#10b981; font-weight:600;">${row.length.toFixed(2)}</span>`;
     
     let radiusContent = row.radius;
     if (row.type === 'Circular Curve') {
-      radiusContent = `<input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'radius', this.value)" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" onmouseup="event.stopPropagation()" onfocus="this.select()">`;
+      radiusContent = `<span style="color:#eab308; font-weight:600;">${row.radius}</span>`;
     }
 
     html += `
@@ -2082,29 +2082,17 @@ window.selectTableRow = function(dataIndex) {
       </select>
     </div>
     
-    <div style="margin-bottom:15px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-        <span style="color:#94a3b8; font-size:0.8rem;">Length:</span>
-        <span style="color:#10b981; font-weight:600; font-size:0.9rem;">${row.length.toFixed(2)} m</span>
-      </div>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <input type="range" min="0" max="${Math.max(row.length * 2, 100)}" step="0.1" value="${row.length}" style="flex-grow:1; accent-color:#10b981;" oninput="this.nextElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'length', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'length', this.value)">
-        <input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" oninput="this.previousElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'length', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'length', this.value)">
-      </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="color:#94a3b8; font-size:0.8rem;">Length:</span>
+      <span style="color:#10b981; font-weight:600; font-size:0.9rem;">${row.length.toFixed(2)} m</span>
     </div>
   `;
   
   if (row.type === 'Circular Curve') {
     contentHtml += `
-      <div style="margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-          <span style="color:#94a3b8; font-size:0.8rem;">Radius:</span>
-          <span style="color:#38bdf8; font-weight:600; font-size:0.9rem;">${row.radius} m</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="range" min="50" max="3000" step="1" value="${row.radius}" style="flex-grow:1; accent-color:#38bdf8;" oninput="this.nextElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'radius', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
-          <input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" oninput="this.previousElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'radius', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
-        </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <span style="color:#94a3b8; font-size:0.8rem;">Radius:</span>
+        <span style="color:#eab308; font-weight:600; font-size:0.9rem;">${row.radius} m</span>
       </div>
     `;
   }
