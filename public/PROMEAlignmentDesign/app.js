@@ -20,7 +20,7 @@ const state = {
   roadType: 'arterial',
   ukdmrbRelaxation: 0,
   designSpeed: 80,
-  eMax: 0.08,
+  eMax: 0.07,
   rMin: 252,
   
   mode: 'draw', // 'draw' or 'select'
@@ -1931,11 +1931,11 @@ function renderAlignmentTable(elements) {
     const e2 = endCoord ? endCoord.x.toFixed(1) : '-';
     const n2 = endCoord ? endCoord.y.toFixed(1) : '-';
 
-    const lengthInput = `<input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'length', this.value)" onclick="event.stopPropagation()">`;
+    const lengthInput = `<input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'length', this.value)" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" onmouseup="event.stopPropagation()" onfocus="this.select()">`;
     
     let radiusContent = row.radius;
     if (row.type === 'Circular Curve') {
-      radiusContent = `<input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'radius', this.value)" onclick="event.stopPropagation()">`;
+      radiusContent = `<input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:2px; border-radius:3px;" onchange="updateAlignmentProperty(${i}, 'radius', this.value)" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" onmouseup="event.stopPropagation()" onfocus="this.select()">`;
     }
 
     html += `
@@ -1972,7 +1972,7 @@ window.updateAlignmentProperty = function(dataIndex, field, value) {
   if (field === 'length') {
     if (row.type === 'Straight') {
       // Shift all PIs from piIndex+1 onwards by the delta length
-      const delta = val - el.length;
+      const delta = val - el.actualLength;
       if (delta === 0) return;
       const az = el.az;
       const dx = delta * Math.sin(az);
