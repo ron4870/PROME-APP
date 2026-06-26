@@ -1585,15 +1585,13 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
         });
       }
 
-} catch(err) {
+    } catch(err) {
       alert("Error parsing LandXML: " + err);
       e.target.value = '';
     }
   };
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
-}
-document.getElementById('export-btn').addEventListener('click', exportLandXML);
+  reader.readAsText(file);
+});
 
 document.getElementById('export-pdf-btn').addEventListener('click', async () => {
   if (state.pis.length < 2) {
