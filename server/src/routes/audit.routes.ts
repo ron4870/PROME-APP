@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const audits = await prisma.audit.findMany({
       include: {
         auditor: { select: { id: true, name: true } },
-        auditee: { select: { id: true, name: true } },
+        auditees: { select: { id: true, name: true } },
         _count: { select: { findings: true } }
       },
       orderBy: { plannedDate: 'desc' }
@@ -30,7 +30,7 @@ router.get('/:id', async (req, res) => {
       where: { id: parseInt(id) },
       include: {
         auditor: { select: { id: true, name: true } },
-        auditee: { select: { id: true, name: true } },
+        auditees: { select: { id: true, name: true } },
         findings: {
           include: {
             // capaReport: { select: { id: true, reportNumber: true, status: true } }
@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
 // Create new audit
 router.post('/', async (req, res) => {
   try {
-    const { title, type, scope, plannedDate, auditorId, auditeeId } = req.body;
+    const { title, type, scope, plannedDate, auditorId, auditeeIds } = req.body;
     
     // Generate Report Number PROME-AUD-YYYY-XXX
     const year = new Date().getFullYear();
@@ -75,7 +75,9 @@ router.post('/', async (req, res) => {
         scope,
         plannedDate: new Date(plannedDate),
         auditorId: auditorId ? parseInt(auditorId) : null,
-        auditeeId: auditeeId ? parseInt(auditeeId) : null,
+        auditees: auditeeIds && auditeeIds.length > 0 ? {
+          connect: auditeeIds.map((id: any) => ({ id: parseInt(id) }))
+        } : undefined,
       }
     });
     
@@ -90,12 +92,16 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, auditorId, auditeeId, executionDate } = req.body;
+    const { status, auditorId, auditeeIds, executionDate } = req.body;
 
     const data: any = {};
     if (status !== undefined) data.status = status;
     if (auditorId !== undefined) data.auditorId = auditorId ? parseInt(auditorId) : null;
-    if (auditeeId !== undefined) data.auditeeId = auditeeId ? parseInt(auditeeId) : null;
+    if (auditeeIds !== undefined) {
+      data.auditees = {
+        set: auditeeIds.map((aid: any) => ({ id: parseInt(aid) }))
+      };
+    }
     if (executionDate !== undefined) data.executionDate = executionDate ? new Date(executionDate) : null;
 
     const updatedAudit = await prisma.audit.update({

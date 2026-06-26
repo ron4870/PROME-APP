@@ -642,6 +642,10 @@ function calculateGeometry() {
       let t_out_prev = prevCurve ? prevCurve.tLengthOut : 0;
       let straightLen = prevTangent.length - t_out_prev - el.tLengthIn;
       
+      prevTangent.actualLength = straightLen;
+      prevTangent.startStation = currentStation;
+      prevTangent.endStation = currentStation + straightLen;
+      
       currentStation += straightLen;
       el.station_pc = currentStation;
       
@@ -662,6 +666,11 @@ function calculateGeometry() {
       const prevCurve = elements[i-2] && elements[i-2].type === 'Curve' ? elements[i-2] : null;
       let t_out_prev = prevCurve ? prevCurve.tLengthOut : 0;
       let straightLen = prevTangent.length - t_out_prev;
+      
+      prevTangent.actualLength = straightLen;
+      prevTangent.startStation = currentStation;
+      prevTangent.endStation = currentStation + straightLen;
+      
       currentStation += straightLen;
       el.station = currentStation;
     }
@@ -1162,6 +1171,9 @@ function drawMapTiles() {
 
 // Data Panel Logic
 function updateDataPanel() {
+  const elements = calculateGeometry();
+  renderAlignmentTable(elements);
+
   if (state.pis.length === 0) {
     dataContainer.innerHTML = '<div class="empty-state">No alignment defined.<br><br>Click on the map to start placing Points of Intersection (PIs).</div>';
     return;
@@ -1190,7 +1202,6 @@ function updateDataPanel() {
     dataContainer.innerHTML = html;
   } else if (state.activeTab === 'curves') {
     let html = '';
-    const elements = calculateGeometry();
     const curves = elements.filter(e => e.type === 'Curve');
     
     if (curves.length === 0) {
@@ -1574,13 +1585,438 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
         });
       }
 
-    } catch(err) {
+} catch(err) {
       alert("Error parsing LandXML: " + err);
       e.target.value = '';
     }
   };
-  reader.readAsText(file);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+}
+document.getElementById('export-btn').addEventListener('click', exportLandXML);
+
+document.getElementById('export-pdf-btn').addEventListener('click', async () => {
+  if (state.pis.length < 2) {
+    alert("Not enough points to export a report.");
+    return;
+  }
+  
+  const type = document.getElementById('export-pdf-type').value;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Load Logo
+  let logoData = null;
+  try {
+    const response = await fetch('/prome.png');
+    const blob = await response.blob();
+    const reader = new FileReader();
+    logoData = await new Promise((resolve) => {
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("Could not load logo", e);
+  }
+
+  const addHeader = (title) => {
+    if (logoData) {
+      doc.addImage(logoData, 'PNG', 14, 10, 40, 15);
+    }
+    doc.setFontSize(16);
+    doc.text(title, 14, 35);
+    doc.setFontSize(10);
+    doc.text(`Design Standard: ${document.getElementById('design-standard').options[document.getElementById('design-standard').selectedIndex].text}`, 14, 42);
+    doc.text(`Design Speed: ${state.designSpeed} km/h | e-Max: ${state.eMax*100}%`, 14, 47);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 52);
+  };
+
+  const elements = calculateGeometry();
+
+  if (type === 'schedule') {
+    addHeader('Horizontal Alignment Schedule Report');
+    const tableBody = [];
+    window.currentTableData.forEach(row => {
+      const startCoord = getCoordinateAtStation(elements, row.startStation);
+      const endCoord = getCoordinateAtStation(elements, row.endStation);
+      tableBody.push([
+        row.id, 
+        row.type, 
+        formatStation(row.startStation), 
+        formatStation(row.endStation),
+        startCoord ? startCoord.x.toFixed(3) : '-',
+        startCoord ? startCoord.y.toFixed(3) : '-',
+        row.length.toFixed(3),
+        row.radius,
+        row.startAngle || '-'
+      ]);
+    });
+    
+    doc.autoTable({
+      startY: 58,
+      head: [['No.', 'Element', 'Start Station', 'End Station', 'Easting', 'Northing', 'Length (m)', 'Radius (m)', 'Direction']],
+      body: tableBody,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [15, 76, 129] }
+    });
+    doc.save('Horizontal_Schedule_Report.pdf');
+
+  } else if (type === 'stakeout') {
+    addHeader('Stakeout Coordinates Report');
+    const tableBody = [];
+    let currentSt = 0;
+    const maxSt = elements[elements.length-1].station || elements[elements.length-1].endStation;
+    
+    // Generate stakeout points every 20m and at key geometric points
+    const stations = new Set();
+    while (currentSt <= maxSt) {
+      stations.add(Math.round(currentSt * 1000) / 1000);
+      currentSt += 20;
+    }
+    window.currentTableData.forEach(row => {
+      stations.add(Math.round(row.startStation * 1000) / 1000);
+      stations.add(Math.round(row.endStation * 1000) / 1000);
+    });
+    
+    const sortedStations = Array.from(stations).sort((a,b) => a - b);
+    
+    sortedStations.forEach(st => {
+      const coord = getCoordinateAtStation(elements, st);
+      if (coord) {
+        tableBody.push([
+          formatStation(st),
+          coord.x.toFixed(3),
+          coord.y.toFixed(3),
+          coord.azimuth ? (coord.azimuth * 180 / Math.PI).toFixed(4) + '°' : '-'
+        ]);
+      }
+    });
+
+    doc.autoTable({
+      startY: 58,
+      head: [['Station', 'Easting (X)', 'Northing (Y)', 'Tangent Azimuth']],
+      body: tableBody,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [15, 76, 129] }
+    });
+    doc.save('Stakeout_Coordinates_Report.pdf');
+
+  } else if (type === 'audit') {
+    addHeader('Geometric Audit Report');
+    const tableBody = [];
+    
+    window.currentTableData.forEach(row => {
+      let status = getOverallCompliance(row) ? 'PASS' : 'FAIL';
+      let details = '';
+      const c = row.compliance;
+      if (row.type === 'Straight') {
+        details = `Req. Transition: ${c.reqStraight}m | Provided: ${row.length.toFixed(1)}m`;
+      } else if (row.type === 'Circular Curve') {
+        details = `Rmin: ${c.rMin}m | R: ${row.radius} | MinLen: ${c.minCurveLen}m`;
+      } else if (row.type.includes('Clothoid')) {
+        details = `L_comfort: ${c.lComfort}m | L_runoff: ${c.lRunoff}m | L_provided: ${row.length.toFixed(1)}m`;
+      }
+      
+      tableBody.push([
+        row.id,
+        row.type,
+        formatStation(row.startStation),
+        row.length.toFixed(2),
+        details,
+        status
+      ]);
+    });
+
+    doc.autoTable({
+      startY: 58,
+      head: [['No.', 'Element', 'Start Station', 'Length (m)', 'Compliance Details', 'Status']],
+      body: tableBody,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [15, 76, 129] },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 5) {
+          if (data.cell.raw === 'PASS') data.cell.styles.textColor = [16, 185, 129];
+          if (data.cell.raw === 'FAIL') data.cell.styles.textColor = [239, 68, 68];
+        }
+      }
+    });
+    doc.save('Geometric_Audit_Report.pdf');
+  }
 });
+
+
+// --- INTERACTIVE ALIGNMENT TABLE AND COMPLIANCE CHECKS ---
+
+function formatStation(st) {
+  if (st === undefined || st === null) return '-';
+  const km = Math.floor(st / 1000);
+  const m = st % 1000;
+  return `${km}+${m.toFixed(3).padStart(7, '0')}`;
+}
+
+function renderAlignmentTable(elements) {
+  const tbody = document.getElementById('alignment-table-body');
+  if (!tbody) return;
+  
+  if (!elements || elements.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 20px;">No alignment generated. Draw PIs to generate alignment table.</td></tr>';
+    document.getElementById('inspector-content').innerHTML = '<div style="text-align:center; color:#64748b; margin-top:20px;">Select an element from the table to view details.</div>';
+    document.getElementById('inspector-element-id').textContent = '';
+    return;
+  }
+
+  let html = '';
+  let rowId = 1;
+  const tableData = [];
+
+  elements.forEach((el, index) => {
+    if (el.type === 'Point' && el.name === 'POB') return; // Skip POB as its own row
+    if (el.type === 'Point' && el.name === 'POE') return; // Skip POE
+
+    if (el.type === 'Tangent') {
+      const length = el.actualLength || 0;
+      if (length <= 0 && index > 1 && index < elements.length - 2) return; // skip 0-length internal tangents
+      
+      const prevCurve = index > 1 && elements[index-1].type === 'Curve' ? elements[index-1] : null;
+      const nextCurve = index < elements.length - 1 && elements[index+1].type === 'Curve' ? elements[index+1] : null;
+      
+      // Calculate required straight length for runout/runoff
+      const v = state.designSpeed;
+      const dClass = document.getElementById('ugandamow-design-class')?.value || 'II';
+      const w = UGANDA_MOW_LANE_WIDTH[dClass] || 3.5;
+      const g = UGANDA_MOW_MAX_REL_GRADIENT[v] || 0.005;
+      const eMax = state.eMax;
+      const normalCrown = 0.025; // 2.5% normal crossfall
+      
+      let reqStraight = 0;
+      let lRunoff = (w * eMax) / g;
+      let lRunout = (w * normalCrown) / g;
+      
+      // If previous curve had no spiral out, 2/3 runoff + runout falls on this straight
+      if (prevCurve && prevCurve.lsOut === 0) {
+        reqStraight += (0.67 * lRunoff) + lRunout;
+      }
+      // If next curve has no spiral in, 2/3 runoff + runout falls on this straight
+      if (nextCurve && nextCurve.lsIn === 0) {
+        reqStraight += (0.67 * lRunoff) + lRunout;
+      }
+      
+      const isCompliant = length >= reqStraight;
+      
+      tableData.push({
+        id: rowId,
+        type: 'Straight',
+        startStation: el.startStation,
+        endStation: el.endStation,
+        length: length,
+        radius: '-',
+        clockwise: '-',
+        startAngle: (el.az * 180 / Math.PI).toFixed(2) + '°',
+        compliance: {
+          reqStraight: reqStraight.toFixed(1),
+          lRunoff: lRunoff.toFixed(1),
+          lRunout: lRunout.toFixed(1),
+          isCompliant: isCompliant
+        },
+        index: index
+      });
+      rowId++;
+    } 
+    else if (el.type === 'Curve') {
+      const v = state.designSpeed;
+      const r = el.radius !== undefined ? el.radius : state.rMin;
+      const dClass = document.getElementById('ugandamow-design-class')?.value || 'II';
+      const w = UGANDA_MOW_LANE_WIDTH[dClass] || 3.5;
+      const g = UGANDA_MOW_MAX_REL_GRADIENT[v] || 0.005;
+      
+      // Circular Curve properties
+      const isRadiusCompliant = r >= state.rMin;
+      const reqSpiralRadius = (v * v * v) / 432;
+      const spiralRequired = r <= reqSpiralRadius;
+      const hasSpirals = el.lsIn > 0 || el.lsOut > 0;
+      const isSpiralCompliant = !spiralRequired || hasSpirals;
+      const minCurveLen = 3 * v;
+      const isLengthCompliant = el.length >= minCurveLen;
+      
+      // Clothoid properties
+      const lComfort = (v * v * v) / (46.7 * r);
+      const lRunoff = (w * state.eMax) / g;
+      const lAashtoMax = Math.sqrt(24 * 1.0 * r); // p=1.0m
+      const lDesirable = Math.max(lComfort, lRunoff, v / 1.8);
+      
+      if (el.lsIn > 0) {
+        const isComfortCompliantIn = el.lsIn >= lComfort;
+        const isRunoffCompliantIn = el.lsIn >= lRunoff;
+        const isMaxCompliantIn = el.lsIn <= lAashtoMax;
+        
+        tableData.push({
+          id: rowId,
+          type: 'Clothoid (In)',
+          startStation: el.station_pc,
+          endStation: el.station_sc,
+          length: el.lsIn,
+          radius: '∞ \u2192 ' + r,
+          clockwise: el.rot.toUpperCase(),
+          startAngle: '-',
+          compliance: {
+            lComfort: lComfort.toFixed(1),
+            lRunoff: lRunoff.toFixed(1),
+            lAashtoMax: lAashtoMax.toFixed(1),
+            lDesirable: lDesirable.toFixed(1),
+            isComfortCompliant: isComfortCompliantIn,
+            isRunoffCompliant: isRunoffCompliantIn,
+            isMaxCompliant: isMaxCompliantIn
+          },
+          index: index
+        });
+        rowId++;
+      }
+      
+      tableData.push({
+        id: rowId,
+        type: 'Circular Curve',
+        startStation: el.lsIn > 0 ? el.station_sc : el.station_pc,
+        endStation: el.lsOut > 0 ? el.station_cs : (el.lsIn > 0 ? el.station_cs : el.station_pt),
+        length: el.length,
+        radius: r,
+        clockwise: el.rot.toUpperCase(),
+        startAngle: '-',
+        compliance: {
+          rMin: state.rMin.toFixed(1),
+          isRadiusCompliant: isRadiusCompliant,
+          reqSpiralRadius: reqSpiralRadius.toFixed(1),
+          spiralRequired: spiralRequired,
+          isSpiralCompliant: isSpiralCompliant,
+          minCurveLen: minCurveLen.toFixed(1),
+          isLengthCompliant: isLengthCompliant
+        },
+        index: index
+      });
+      rowId++;
+      
+      if (el.lsOut > 0) {
+        const isComfortCompliantOut = el.lsOut >= lComfort;
+        const isRunoffCompliantOut = el.lsOut >= lRunoff;
+        const isMaxCompliantOut = el.lsOut <= lAashtoMax;
+        
+        tableData.push({
+          id: rowId,
+          type: 'Clothoid (Out)',
+          startStation: el.station_cs,
+          endStation: el.station_pt,
+          length: el.lsOut,
+          radius: r + ' \u2192 ∞',
+          clockwise: el.rot.toUpperCase(),
+          startAngle: '-',
+          compliance: {
+            lComfort: lComfort.toFixed(1),
+            lRunoff: lRunoff.toFixed(1),
+            lAashtoMax: lAashtoMax.toFixed(1),
+            lDesirable: lDesirable.toFixed(1),
+            isComfortCompliant: isComfortCompliantOut,
+            isRunoffCompliant: isRunoffCompliantOut,
+            isMaxCompliant: isMaxCompliantOut
+          },
+          index: index
+        });
+        rowId++;
+      }
+    }
+  });
+
+  tableData.forEach((row, i) => {
+    const startCoord = getCoordinateAtStation(elements, row.startStation);
+    const endCoord = getCoordinateAtStation(elements, row.endStation);
+    
+    const e1 = startCoord ? startCoord.x.toFixed(1) : '-';
+    const n1 = startCoord ? startCoord.y.toFixed(1) : '-';
+    const e2 = endCoord ? endCoord.x.toFixed(1) : '-';
+    const n2 = endCoord ? endCoord.y.toFixed(1) : '-';
+
+    html += `
+      <tr data-rowid="${row.id}" onclick="selectTableRow(${i})">
+        <td style="color:#f59e0b; font-weight:bold;">${row.id}</td>
+        <td>${row.type}</td>
+        <td>${formatStation(row.startStation)}</td>
+        <td>${formatStation(row.endStation)}</td>
+        <td>${e1}</td>
+        <td>${n1}</td>
+        <td>${e2}</td>
+        <td>${n2}</td>
+        <td style="color:#10b981;">${row.length.toFixed(1)}</td>
+        <td style="color:#38bdf8;">${row.radius}</td>
+        <td>${row.clockwise}</td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+  window.currentTableData = tableData;
+}
+
+window.selectTableRow = function(dataIndex) {
+  const tableData = window.currentTableData;
+  if (!tableData || !tableData[dataIndex]) return;
+  
+  // Highlight row
+  const rows = document.getElementById('alignment-table-body').querySelectorAll('tr');
+  rows.forEach(r => r.classList.remove('active'));
+  if (rows[dataIndex]) rows[dataIndex].classList.add('active');
+  
+  const row = tableData[dataIndex];
+  document.getElementById('inspector-element-id').textContent = `Row #${row.id} Parameters`;
+  
+  const inspector = document.getElementById('inspector-content');
+  let contentHtml = '';
+  
+  contentHtml += `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="color:#94a3b8; font-size:0.8rem;">Segment type:</span>
+      <span style="background:#334155; padding:4px 8px; border-radius:4px; font-weight:600; font-size:0.8rem;">${row.type}</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="color:#94a3b8; font-size:0.8rem;">Length:</span>
+      <span style="color:#10b981; font-weight:600; font-size:0.9rem;">${row.length.toFixed(2)} m</span>
+    </div>
+  `;
+  
+  contentHtml += `<div class="compliance-box"><div class="compliance-title">Uganda MoW Standard Criteria <span class="compliance-badge ${getOverallCompliance(row) ? 'pass' : 'fail'}">${getOverallCompliance(row) ? '✔ COMPLIANT' : '✖ NON-COMPLIANT'}</span></div>`;
+  contentHtml += `<div style="font-size:0.75rem; color:#94a3b8; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #1e293b;">Speed: <span style="color:#cbd5e1; font-weight:bold;">${state.designSpeed} km/h</span> &nbsp;|&nbsp; e-Max: <span style="color:#cbd5e1; font-weight:bold;">${state.eMax*100}%</span></div>`;
+
+  if (row.type === 'Straight') {
+    const c = row.compliance;
+    contentHtml += `
+      <div class="compliance-row"><span>Required Tangent for Transition:</span> <span class="${c.isCompliant ? 'val-pass' : 'val-fail'}">${c.reqStraight} m</span></div>
+      <div class="compliance-row"><span>Runoff Length (Lr):</span> <span>${c.lRunoff} m</span></div>
+      <div class="compliance-row"><span>Runout Length (Lt):</span> <span>${c.lRunout} m</span></div>
+    `;
+  } else if (row.type === 'Circular Curve') {
+    const c = row.compliance;
+    contentHtml += `
+      <div class="compliance-row"><span>Min. Radius (Rmin):</span> <span class="${c.isRadiusCompliant ? 'val-pass' : 'val-fail'}">${c.rMin} m</span></div>
+      <div class="compliance-row"><span>Radius Requires Spiral (R < ${c.reqSpiralRadius}m):</span> <span class="${c.isSpiralCompliant ? 'val-pass' : 'val-fail'}">${c.spiralRequired ? 'Yes' : 'No'}</span></div>
+      <div class="compliance-row"><span>Min. Curve Length (3 x V):</span> <span class="${c.isLengthCompliant ? 'val-pass' : 'val-fail'}">${c.minCurveLen} m</span></div>
+    `;
+  } else if (row.type.includes('Clothoid')) {
+    const c = row.compliance;
+    contentHtml += `
+      <div class="compliance-row"><span>Min. Comfort Length:</span> <span class="${c.isComfortCompliant ? 'val-pass' : 'val-fail'}">${c.lComfort} m</span></div>
+      <div class="compliance-row"><span>Min. Superelevation Runoff:</span> <span class="${c.isRunoffCompliant ? 'val-pass' : 'val-fail'}">${c.lRunoff} m</span></div>
+      <div class="compliance-row"><span>AASHTO Max Length:</span> <span class="${c.isMaxCompliant ? 'val-pass' : 'val-fail'}">${c.lAashtoMax} m</span></div>
+      <div class="compliance-row"><span>Desirable Length:</span> <span>${c.lDesirable} m</span></div>
+    `;
+  }
+  contentHtml += `</div>`;
+  
+  inspector.innerHTML = contentHtml;
+};
+
+function getOverallCompliance(row) {
+  if (row.type === 'Straight') return row.compliance.isCompliant;
+  if (row.type === 'Circular Curve') return row.compliance.isRadiusCompliant && row.compliance.isSpiralCompliant && row.compliance.isLengthCompliant;
+  if (row.type.includes('Clothoid')) return row.compliance.isComfortCompliant && row.compliance.isRunoffCompliant && row.compliance.isMaxCompliant;
+  return true;
+}
 
 document.getElementById('export-btn').addEventListener('click', async () => {
   if (state.pis.length < 2) {

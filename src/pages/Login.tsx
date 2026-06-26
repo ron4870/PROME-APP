@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, KeyRound } from 'lucide-react';
@@ -23,6 +23,17 @@ export default function Login() {
 
   const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirectUrl = params.get('redirect');
+    const token = localStorage.getItem('token') || localStorage.getItem('jwtToken');
+    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+    if (redirectUrl && isAuthenticated && token) {
+      const separator = redirectUrl.includes('?') ? '&' : '?';
+      window.location.href = `${redirectUrl}${separator}token=${encodeURIComponent(token)}`;
+    }
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -42,7 +53,14 @@ export default function Login() {
           setNeedsChange(true);
         } else {
           setAuth(data.user, data.token);
-          navigate('/dashboard');
+          const params = new URLSearchParams(window.location.search);
+          const redirectUrl = params.get('redirect');
+          if (redirectUrl) {
+            const separator = redirectUrl.includes('?') ? '&' : '?';
+            window.location.href = `${redirectUrl}${separator}token=${encodeURIComponent(data.token)}`;
+          } else {
+            navigate('/dashboard');
+          }
         }
       } else {
         setError(data.error || 'Invalid email or password');
@@ -85,7 +103,14 @@ export default function Login() {
         
         if (loginRes.ok) {
           setAuth(loginData.user, loginData.token);
-          navigate('/dashboard');
+          const params = new URLSearchParams(window.location.search);
+          const redirectUrl = params.get('redirect');
+          if (redirectUrl) {
+            const separator = redirectUrl.includes('?') ? '&' : '?';
+            window.location.href = `${redirectUrl}${separator}token=${encodeURIComponent(loginData.token)}`;
+          } else {
+            navigate('/dashboard');
+          }
         }
       } else {
         setError(data.error || 'Failed to change password');

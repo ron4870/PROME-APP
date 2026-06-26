@@ -84,41 +84,41 @@ model User {
   complianceEvals   ComplianceEvaluation[]  @relation("ComplianceEvaluator")
 
   // Org Context Relations
-  orgIssues                   OrganizationIssue[]          @relation("IssueOwner")
-  interestedParties           InterestedParty[]            @relation("PartyOwner")
+  orgIssues                   OrganizationIssue[]           @relation("IssueOwner")
+  interestedParties           InterestedParty[]             @relation("PartyOwner")
   // HSE Relations
-  reportedIncidents           HseIncident[]                @relation("IncidentReporter")
-  conductedDrills             EmergencyDrill[]             @relation("DrillConductor")
+  reportedIncidents           HseIncident[]                 @relation("IncidentReporter")
+  conductedDrills             EmergencyDrill[]              @relation("DrillConductor")
   // NCR Relations
-  reportedNcrs                NonConformityReport[]        @relation("NcrReporter")
-  assignedNcrs                NonConformityReport[]        @relation("NcrAssignee")
+  reportedNcrs                NonConformityReport[]         @relation("NcrReporter")
+  assignedNcrs                NonConformityReport[]         @relation("NcrAssignee")
   // Project Relations
   projectMemberships          ProjectMember[]
   bookOfDrawingsMemberships   BookOfDrawingsProjectMember[]
   // Project Module Relations
-  assignedProjectTasks        ProjectTask[]                @relation("TaskAssignee")
-  loggedFinancials            ProjectFinancial[]           @relation("FinancialLogger")
-  resourceAllocations         ProjectResource[]            @relation("ResourcePersonnel")
-  uploadedProjectDocs         ProjectDocument[]            @relation("ProjectDocumentUploader")
-  uploadedPaymentInvoices     ProjectPaymentInvoice[]      @relation("ProjectPaymentInvoiceUploader")
+  assignedProjectTasks        ProjectTask[]                 @relation("TaskAssignee")
+  loggedFinancials            ProjectFinancial[]            @relation("FinancialLogger")
+  resourceAllocations         ProjectResource[]             @relation("ResourcePersonnel")
+  uploadedProjectDocs         ProjectDocument[]             @relation("ProjectDocumentUploader")
+  uploadedPaymentInvoices     ProjectPaymentInvoice[]       @relation("ProjectPaymentInvoiceUploader")
   // Advanced Project Module Relations
-  projectMaterialRequisitions ProjectMaterialRequisition[] @relation("ProjectRequisitioner")
-  projectDailyReports         ProjectDailyReport[]         @relation("ProjectReportAuthor")
-  projectSnagsReported        ProjectSnag[]                @relation("ProjectSnagReporter")
-  projectSnagsAssigned        ProjectSnag[]                @relation("ProjectSnagAssignee")
+  projectMaterialRequisitions ProjectMaterialRequisition[]  @relation("ProjectRequisitioner")
+  projectDailyReports         ProjectDailyReport[]          @relation("ProjectReportAuthor")
+  projectSnagsReported        ProjectSnag[]                 @relation("ProjectSnagReporter")
+  projectSnagsAssigned        ProjectSnag[]                 @relation("ProjectSnagAssignee")
   // MOC Relations
-  requestedChanges            ChangeRequest[]              @relation("MocRequester")
-  reviewedChanges             ChangeRequest[]              @relation("MocReviewer")
-  approvedChanges             ChangeRequest[]              @relation("MocApprover")
+  requestedChanges            ChangeRequest[]               @relation("MocRequester")
+  reviewedChanges             ChangeRequest[]               @relation("MocReviewer")
+  approvedChanges             ChangeRequest[]               @relation("MocApprover")
   // Noticeboard Relations
-  notices                     Notice[]                     @relation("NoticeAuthor")
+  notices                     Notice[]                      @relation("NoticeAuthor")
   // Workflow Relations
-  workflowsInitiated          WorkflowInstance[]           @relation("WorkflowInitiator")
-  workflowStepsAssigned       WorkflowStep[]               @relation("WorkflowAssignee")
+  workflowsInitiated          WorkflowInstance[]            @relation("WorkflowInitiator")
+  workflowStepsAssigned       WorkflowStep[]                @relation("WorkflowAssignee")
   // Form Relations
-  formSubmissions             FormSubmission[]             @relation("UserFormSubmissions")
+  formSubmissions             FormSubmission[]              @relation("UserFormSubmissions")
 
-  uploadedManuals Manual[]
+  uploadedManuals      Manual[]
   uploadedLibraryItems LibraryItem[]
 
   // Custom Wiki Relations
@@ -127,7 +127,7 @@ model User {
   createdWikiTemplates WikiTemplate[] @relation("WikiTemplateCreator")
 
   assignedBidSections BidSection[] @relation("BidSectionAssignee")
-  
+
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   ProjectUserPermission ProjectUserPermission[]
@@ -150,13 +150,13 @@ model LibraryItem {
   id          Int      @id @default(autoincrement())
   title       String
   description String?
-  category    String   // e.g., STANDARD, MANUAL, JOURNAL, PROJECT_REPORT, TEMPLATE
-  discipline  String?  // e.g., Structural, Highway, Water, Electrical, General
-  fileUrl     String?  // Link to the uploaded file
+  category    String // e.g., STANDARD, MANUAL, JOURNAL, PROJECT_REPORT, TEMPLATE
+  discipline  String? // e.g., Structural, Highway, Water, Electrical, General
+  fileUrl     String? // Link to the uploaded file
   version     String   @default("1.0")
   uploaderId  Int
   uploader    User     @relation(fields: [uploaderId], references: [id])
-  tags        String?  // Comma-separated tags for search
+  tags        String? // Comma-separated tags for search
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -335,8 +335,7 @@ model Audit {
   auditorId Int?
   auditor   User? @relation("AuditsConducted", fields: [auditorId], references: [id])
 
-  auditeeId Int?
-  auditee   User? @relation("AuditsReceived", fields: [auditeeId], references: [id])
+  auditees User[] @relation("AuditsReceived")
 
   findings AuditFinding[]
 
@@ -827,14 +826,14 @@ model NonConformityReport {
 }
 
 model Project {
-  id          Int       @id @default(autoincrement())
-  name        String
-  client      String
-  description String?   @db.Text
-  status      String    @default("Planning") // Planning, Active, Completed, Suspended
-  startDate   DateTime
-  endDate     DateTime?
-  budget      Float?
+  id            Int       @id @default(autoincrement())
+  name          String
+  client        String
+  description   String?   @db.Text
+  status        String    @default("Planning") // Planning, Active, Completed, Suspended
+  startDate     DateTime
+  endDate       DateTime?
+  budget        Float?
   driveFolderId String?
 
   members ProjectMember[]
@@ -904,11 +903,11 @@ model ProjectTask {
   projectId Int
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  title       String
-  description String? @db.Text
-  status      String  @default("Not Started") // "Not Started", "In Progress", "In Review", "Completed"
-  priority    String  @default("Medium") // "Low", "Medium", "High", "Critical"
-  progress    Int     @default(0) // 0 to 100 percentage
+  title                    String
+  description              String? @db.Text
+  status                   String  @default("Not Started") // "Not Started", "In Progress", "In Review", "Completed"
+  priority                 String  @default("Medium") // "Low", "Medium", "High", "Critical"
+  progress                 Int     @default(0) // 0 to 100 percentage
   isOverallProgressTracker Boolean @default(false)
 
   assignedToId Int?
@@ -932,67 +931,67 @@ model ProjectTask {
 }
 
 model Notification {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  message     String   @db.Text
-  type        String   @default("System")
-  isRead      Boolean  @default(false)
-  link        String?
-  
-  projectId   Int?
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id      Int     @id @default(autoincrement())
+  userId  Int
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title   String
+  message String  @db.Text
+  type    String  @default("System")
+  isRead  Boolean @default(false)
+  link    String?
 
-  createdAt   DateTime @default(now())
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
 
 model ProjectMilestone {
-  id          Int      @id @default(autoincrement())
-  projectId   Int
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   title       String
   description String?  @db.Text
   targetDate  DateTime
   status      String   @default("Pending") // "Pending", "Reached", "Delayed"
-  
-  tasks       ProjectTask[] // Tasks linked to this milestone
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  tasks ProjectTask[] // Tasks linked to this milestone
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TaskDependency {
   id            Int         @id @default(autoincrement())
   predecessorId Int
   predecessor   ProjectTask @relation("PredecessorTask", fields: [predecessorId], references: [id], onDelete: Cascade)
-  
-  successorId   Int
-  successor     ProjectTask @relation("SuccessorTask", fields: [successorId], references: [id], onDelete: Cascade)
-  
-  type          String      @default("Finish-To-Start") // "Finish-To-Start", "Start-To-Start", etc.
-  
-  createdAt     DateTime    @default(now())
+
+  successorId Int
+  successor   ProjectTask @relation("SuccessorTask", fields: [successorId], references: [id], onDelete: Cascade)
+
+  type String @default("Finish-To-Start") // "Finish-To-Start", "Start-To-Start", etc.
+
+  createdAt DateTime @default(now())
 
   @@unique([predecessorId, successorId])
 }
 
 model ProjectMeeting {
-  id              Int      @id @default(autoincrement())
-  projectId       Int
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  title           String
-  description     String?  @db.Text
-  date            DateTime
-  time            String
-  locationOrLink  String
-  attendees       String   @db.Text
-  status          String   @default("Scheduled") // "Scheduled", "Completed", "Cancelled"
+  title          String
+  description    String?  @db.Text
+  date           DateTime
+  time           String
+  locationOrLink String
+  attendees      String   @db.Text
+  status         String   @default("Scheduled") // "Scheduled", "Completed", "Cancelled"
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectFinancial {
@@ -1074,7 +1073,7 @@ model ProjectPaymentInvoice {
   revision       String @default("0")
   status         String @default("Draft") // "Draft", "Submitted", "Approved", "Paid", "Rejected"
 
-  fileUrl   String?            @db.Text
+  fileUrl String? @db.Text
 
   uploadedById Int
   uploadedBy   User @relation("ProjectPaymentInvoiceUploader", fields: [uploadedById], references: [id])
@@ -1143,8 +1142,8 @@ model ProjectDailyReport {
   activities     String  @db.Text
   issuesOrDelays String? @db.Text
 
-  location       String?
-  fileUrl        String? @db.Text
+  location String?
+  fileUrl  String? @db.Text
 
   reportedById Int
   reportedBy   User @relation("ProjectReportAuthor", fields: [reportedById], references: [id])
@@ -1163,7 +1162,7 @@ model ProjectVariationOrder {
 
   referenceNumber String
   title           String
-  description     String @db.Text
+  description     String   @db.Text
   date            DateTime @default(now())
 
   costImpact     Float?
@@ -1246,11 +1245,11 @@ model ProjectInspection {
   projectId Int
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  date      DateTime
-  type      String   // "Concrete Pour", "Rebar", "Soil Compaction", "Welding", "Safety", "General"
-  location  String
-  result    String   // "Passed", "Failed", "Passed with Comments"
-  comments  String?  @db.Text
+  date     DateTime
+  type     String // "Concrete Pour", "Rebar", "Soil Compaction", "Welding", "Safety", "General"
+  location String
+  result   String // "Passed", "Failed", "Passed with Comments"
+  comments String?  @db.Text
 
   inspectorId Int
   inspector   User @relation("ProjectInspector", fields: [inspectorId], references: [id])
@@ -1376,66 +1375,66 @@ model FormSubmission {
 // ==========================================
 
 model WikiFolder {
-  id          Int          @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   name        String
-  description String?      @db.Text
-  
-  parentId    Int?
-  parent      WikiFolder?  @relation("SubFolders", fields: [parentId], references: [id], onDelete: Cascade)
-  subFolders  WikiFolder[] @relation("SubFolders")
+  description String? @db.Text
 
-  pages       WikiPage[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  parentId   Int?
+  parent     WikiFolder?  @relation("SubFolders", fields: [parentId], references: [id], onDelete: Cascade)
+  subFolders WikiFolder[] @relation("SubFolders")
+
+  pages     WikiPage[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@unique([name, parentId])
 }
 
 model WikiPage {
-  id          Int        @id @default(autoincrement())
-  title       String
-  content     String     @db.Text
-  status      String     @default("Draft") // "Draft", "Review", "Approved"
-  version     String     @default("1.0")
-  
-  folderId    Int
-  folder      WikiFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  
-  authorId    Int
-  author      User       @relation("WikiAuthor", fields: [authorId], references: [id])
-  
+  id      Int    @id @default(autoincrement())
+  title   String
+  content String @db.Text
+  status  String @default("Draft") // "Draft", "Review", "Approved"
+  version String @default("1.0")
+
+  folderId Int
+  folder   WikiFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  authorId Int
+  author   User @relation("WikiAuthor", fields: [authorId], references: [id])
+
   approvedById Int?
-  approvedBy   User?     @relation("WikiApprover", fields: [approvedById], references: [id])
+  approvedBy   User? @relation("WikiApprover", fields: [approvedById], references: [id])
 
   // Inter-page linking
   outgoingLinks WikiPageLink[] @relation("SourceWikiLink")
   incomingLinks WikiPageLink[] @relation("TargetWikiLink")
-  
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model WikiPageLink {
-  id          Int      @id @default(autoincrement())
-  sourceId    Int
-  targetId    Int
-  
-  sourcePage  WikiPage @relation("SourceWikiLink", fields: [sourceId], references: [id], onDelete: Cascade)
-  targetPage  WikiPage @relation("TargetWikiLink", fields: [targetId], references: [id], onDelete: Cascade)
+  id       Int @id @default(autoincrement())
+  sourceId Int
+  targetId Int
 
-  createdAt   DateTime @default(now())
+  sourcePage WikiPage @relation("SourceWikiLink", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetPage WikiPage @relation("TargetWikiLink", fields: [targetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 
   @@unique([sourceId, targetId])
 }
 
 model WikiTemplate {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  content     String   @db.Text
-  creatorId   Int
-  creator     User     @relation("WikiTemplateCreator", fields: [creatorId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  content   String   @db.Text
+  creatorId Int
+  creator   User     @relation("WikiTemplateCreator", fields: [creatorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ==========================================
@@ -1456,7 +1455,7 @@ model AiChatMessage {
   id        Int           @id @default(autoincrement())
   sessionId Int
   session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      String        // 'user' or 'model'
+  role      String // 'user' or 'model'
   content   String        @db.Text // The text content of the message
   createdAt DateTime      @default(now())
 }
@@ -1466,102 +1465,102 @@ model AiChatMessage {
 // ==========================================
 
 model BidOpportunity {
-  id              Int      @id @default(autoincrement())
-  title           String
-  description     String?  @db.Text
-  client          String?
-  country         String?
-  source          String?  // "Newspaper", "Email", "Website", "Manual"
-  type            String   @default("RFP") // "EOI", "RFP", "DP"
-  deadline        DateTime?
-  status          String   @default("Identified") // "Identified", "Bid Solo", "Partner", "No-Go"
-  aiRecommendation String? @db.Text
-  aiScore         Float?   // AI Confidence score (0-100)
+  id               Int       @id @default(autoincrement())
+  title            String
+  description      String?   @db.Text
+  client           String?
+  country          String?
+  source           String? // "Newspaper", "Email", "Website", "Manual"
+  type             String    @default("RFP") // "EOI", "RFP", "DP"
+  deadline         DateTime?
+  status           String    @default("Identified") // "Identified", "Bid Solo", "Partner", "No-Go"
+  aiRecommendation String?   @db.Text
+  aiScore          Float? // AI Confidence score (0-100)
 
-  bids            Bid[]
+  bids Bid[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Bid {
-  id              Int      @id @default(autoincrement())
-  opportunityId   Int
-  opportunity     BidOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  
-  status          String   @default("Preparation") // "Preparation", "Submitted", "Won", "Lost", "Cancelled"
-  
+  id            Int            @id @default(autoincrement())
+  opportunityId Int
+  opportunity   BidOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  status String @default("Preparation") // "Preparation", "Submitted", "Won", "Lost", "Cancelled"
+
   finalDocumentUrl String? @db.Text // URL to uploaded stamped/scanned bid
   driveFolderId    String? // ID of the generated Google Drive Folder for the workspace
 
-  partners        BidPartner[]
-  sections        BidSection[]
-  results         BidResult?
-  retrospective   BidRetrospective?
+  partners      BidPartner[]
+  sections      BidSection[]
+  results       BidResult?
+  retrospective BidRetrospective?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BidPartner {
-  id              Int      @id @default(autoincrement())
-  bidId           Int
-  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
-  companyName     String
-  role            String?  // "Lead", "JV Partner", "Sub-consultant"
-  contactPerson   String?
-  contactEmail    String?
+  id            Int     @id @default(autoincrement())
+  bidId         Int
+  bid           Bid     @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  companyName   String
+  role          String? // "Lead", "JV Partner", "Sub-consultant"
+  contactPerson String?
+  contactEmail  String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BidSection {
-  id              Int      @id @default(autoincrement())
-  bidId           Int
-  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
-  
-  name            String   // e.g. "Methodology", "Financial Proposal", "Company Experience"
-  status          String   @default("Pending") // "Pending", "In Progress", "Completed"
-  content         String?  @db.Text
-  documentUrl     String?  @db.Text // Draft file URL
-  references      Json?    @default("[]") // For uploaded/linked files
-  data            Json?    @default("[]") // For structured data like Gantt charts
+  id    Int @id @default(autoincrement())
+  bidId Int
+  bid   Bid @relation(fields: [bidId], references: [id], onDelete: Cascade)
 
-  assigneeId      Int?
-  assignee        User?    @relation("BidSectionAssignee", fields: [assigneeId], references: [id])
+  name        String // e.g. "Methodology", "Financial Proposal", "Company Experience"
+  status      String  @default("Pending") // "Pending", "In Progress", "Completed"
+  content     String? @db.Text
+  documentUrl String? @db.Text // Draft file URL
+  references  Json?   @default("[]") // For uploaded/linked files
+  data        Json?   @default("[]") // For structured data like Gantt charts
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  assigneeId Int?
+  assignee   User? @relation("BidSectionAssignee", fields: [assigneeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BidResult {
-  id              Int      @id @default(autoincrement())
-  bidId           Int      @unique
-  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  id    Int @id @default(autoincrement())
+  bidId Int @unique
+  bid   Bid @relation(fields: [bidId], references: [id], onDelete: Cascade)
 
-  technicalScore  Float?
-  financialScore  Float?
-  combinedScore   Float?
-  ranking         Int?     // e.g., 1st, 2nd
+  technicalScore Float?
+  financialScore Float?
+  combinedScore  Float?
+  ranking        Int? // e.g., 1st, 2nd
 
-  competitorData  Json?    // Array of objects storing competitor names and scores
+  competitorData Json? // Array of objects storing competitor names and scores
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BidRetrospective {
-  id              Int      @id @default(autoincrement())
-  bidId           Int      @unique
-  bid             Bid      @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  id    Int @id @default(autoincrement())
+  bidId Int @unique
+  bid   Bid @relation(fields: [bidId], references: [id], onDelete: Cascade)
 
-  userFeedback    String?  @db.Text
-  aiAdvice        String?  @db.Text
-  winLossReason   String?  @db.Text
+  userFeedback  String? @db.Text
+  aiAdvice      String? @db.Text
+  winLossReason String? @db.Text
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ==========================================
@@ -1581,8 +1580,8 @@ model BookOfDrawingsProject {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  members     BookOfDrawingsProjectMember[]
-  pages       BookOfDrawingsPage[]
+  members BookOfDrawingsProjectMember[]
+  pages   BookOfDrawingsPage[]
 }
 
 model BookOfDrawingsProjectMember {
@@ -1591,8 +1590,8 @@ model BookOfDrawingsProjectMember {
   userId    Int
   role      String // e.g., Editor, Viewer
 
-  project   BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
 }
@@ -1600,15 +1599,15 @@ model BookOfDrawingsProjectMember {
 model BookOfDrawingsPage {
   id             Int      @id @default(autoincrement())
   projectId      Int
-  section        String   
-  pageNumber     Int      
+  section        String
+  pageNumber     Int
   name           String   @default("Unnamed Page")
   applyFrame     Boolean  @default(false)
   includeInFinal Boolean  @default(true)
   canvasState    String?  @db.Text
   insertPageData Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  project     BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

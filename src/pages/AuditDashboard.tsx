@@ -10,7 +10,7 @@ interface Audit {
   status: string;
   plannedDate: string;
   auditor: { name: string } | null;
-  auditee: { name: string } | null;
+  auditees: { name: string }[];
   _count: { findings: number };
 }
 
@@ -30,13 +30,14 @@ const AuditDashboard: React.FC = () => {
   
   // New Audit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuditeeDropdownOpen, setIsAuditeeDropdownOpen] = useState(false);
   const [newAudit, setNewAudit] = useState({
     title: '',
     type: 'Internal',
     scope: '',
     plannedDate: '',
     auditorId: '',
-    auditeeId: ''
+    auditeeIds: [] as string[]
   });
 
   useEffect(() => {
@@ -77,8 +78,8 @@ const AuditDashboard: React.FC = () => {
         body: JSON.stringify(newAudit)
       });
       if (res.ok) {
+        setNewAudit({ title: '', type: 'Internal', scope: '', plannedDate: '', auditorId: '', auditeeIds: [] });
         setIsModalOpen(false);
-        setNewAudit({ title: '', type: 'Internal', scope: '', plannedDate: '', auditorId: '', auditeeId: '' });
         fetchAudits();
       }
     } catch (error) {
@@ -189,7 +190,7 @@ const AuditDashboard: React.FC = () => {
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Planned Date</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditor</th>
-                  <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditee (Dept)</th>
+                  <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditee(s)</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Findings</th>
                 </tr>
               </thead>
@@ -211,7 +212,7 @@ const AuditDashboard: React.FC = () => {
                       <td style={{ padding: '1rem 1.5rem' }}><span className={getStatusBadgeClass(audit.status)}>{audit.status}</span></td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{new Date(audit.plannedDate).toLocaleDateString()}</td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{audit.auditor?.name || 'TBA'}</td>
-                      <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{audit.auditee?.name || 'TBA'}</td>
+                      <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{audit.auditees?.length > 0 ? audit.auditees.map(a => a.name).join(', ') : 'TBA'}</td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontWeight: 600 }}>
                         {audit._count.findings}
                       </td>
@@ -303,12 +304,41 @@ const AuditDashboard: React.FC = () => {
                     {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Auditee (Dept Rep)</label>
-                  <select className="form-input" style={{ width: '100%' }} value={newAudit.auditeeId} onChange={e => setNewAudit({...newAudit, auditeeId: e.target.value})}>
-                    <option value="">-- TBA --</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                <div style={{ position: 'relative' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Auditee(s) (Dept Reps)</label>
+                  <div 
+                    className="form-input" 
+                    style={{ width: '100%', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '42px' }} 
+                    onClick={() => setIsAuditeeDropdownOpen(!isAuditeeDropdownOpen)}
+                  >
+                    <span style={{ color: newAudit.auditeeIds.length ? 'inherit' : '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {newAudit.auditeeIds.length > 0 
+                        ? newAudit.auditeeIds.map(id => users.find(u => u.id.toString() === id)?.name).join(', ')
+                        : '-- Select Auditees --'}
+                    </span>
+                    <span style={{ fontSize: '0.8rem' }}>▼</span>
+                  </div>
+                  {isAuditeeDropdownOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '0.375rem', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                      {users.map(u => (
+                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={newAudit.auditeeIds.includes(u.id.toString())}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewAudit({...newAudit, auditeeIds: [...newAudit.auditeeIds, u.id.toString()]});
+                              } else {
+                                setNewAudit({...newAudit, auditeeIds: newAudit.auditeeIds.filter(id => id !== u.id.toString())});
+                              }
+                            }}
+                            style={{ marginRight: '0.75rem', width: '16px', height: '16px', cursor: 'pointer' }}
+                          />
+                          {u.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               

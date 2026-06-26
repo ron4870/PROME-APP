@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutTemplate, Type, Image as ImageIcon, FileType2, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, Maximize, Edit2, Hand, Minus, Square, Circle } from 'lucide-react';
+import { LayoutTemplate, Type, Image as ImageIcon, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, Maximize, Edit2, Hand, Minus, Square, Circle } from 'lucide-react';
 import { DrawingCanvas } from '../../components/book-of-drawings/DrawingCanvas';
 import * as fabric from 'fabric';
 import jsPDF from 'jspdf';
@@ -74,6 +74,8 @@ export default function BookOfDrawingsWorkspace() {
   const isOuterDraggingRef = useRef(false);
   const lastOuterPosRef = useRef({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
 
   const centerCanvas = () => {
     if (outerWrapperRef.current) {
@@ -533,6 +535,56 @@ export default function BookOfDrawingsWorkspace() {
     }
   };
 
+  const handlePdfOverlayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePageId) return;
+
+    setIsUploadingPdf(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch(`/api/book-of-drawings/${id}/pages/${activePageId}/import-overlay-pdf`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.message || 'Failed to convert PDF');
+      }
+
+      const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(resData.svg);
+      
+      const newOverlay: Overlay = {
+        id: Math.random().toString(36).substring(2, 9),
+        type: 'image', // Handle it exactly like an image so it works with <Rnd> perfectly
+        label: 'PDF Overlay',
+        src: svgDataUrl,
+        x: 100,
+        y: 100,
+        width: 800,
+        height: 600,
+        fontSize: 14,
+        fontFamily: 'Arial',
+        textFill: '#000000'
+      };
+      
+      setOverlays(prev => [...prev, newOverlay]);
+      setSelectedOverlayId(newOverlay.id);
+
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to import PDF: ${err.message}`);
+    } finally {
+      setIsUploadingPdf(false);
+      if (pdfInputRef.current) {
+        pdfInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleExportPDF = () => {
     if (!canvas) return;
     const dataUrl = canvas.toDataURL({ format: 'jpeg', quality: 1, multiplier: 1 });
@@ -693,7 +745,27 @@ export default function BookOfDrawingsWorkspace() {
           pdf.rect(0, 0, dim.width, dim.height, 'F');
         }
 
-        const renderOverlays = (overlaysToRender: Overlay[]) => {
+        const svgToPng = (svgSrc: string, width: number, height: number): Promise<string> => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = width * 4; // High res multiplier for crisp PDFs
+              canvas.height = height * 4;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/png', 1.0));
+              } else {
+                resolve('');
+              }
+            };
+            img.onerror = () => resolve('');
+            img.src = svgSrc;
+          });
+        };
+
+        const renderOverlays = async (overlaysToRender: Overlay[]) => {
           for (const p of overlaysToRender) {
             // Draw shapes
             if (p.type === 'rect' || p.type === 'circle' || p.type === 'line') {
@@ -719,7 +791,12 @@ export default function BookOfDrawingsWorkspace() {
 
             // If it's an image overlay
             if (p.type === 'image' && p.src) {
-              pdf.addImage(p.src, 'PNG', p.x, p.y, p.width, p.height);
+              if (p.src.startsWith('data:image/svg')) {
+                const highResPng = await svgToPng(p.src, p.width, p.height);
+                if (highResPng) pdf.addImage(highResPng, 'PNG', p.x, p.y, p.width, p.height);
+              } else {
+                pdf.addImage(p.src, 'PNG', p.x, p.y, p.width, p.height);
+              }
               continue;
             }
 
@@ -754,12 +831,12 @@ export default function BookOfDrawingsWorkspace() {
 
         // Render page specific overlays
         if (pageOverlays && pageOverlays.length > 0) {
-          renderOverlays(pageOverlays);
+          await renderOverlays(pageOverlays);
         }
 
         // Render layout overlays (placeholders) if requested
         if (page.insertPageData && layoutOverlays && layoutOverlays.length > 0) {
-          renderOverlays(layoutOverlays);
+          await renderOverlays(layoutOverlays);
         }
       }
 
@@ -969,8 +1046,11 @@ export default function BookOfDrawingsWorkspace() {
                   )}
                   <input type="file" ref={fileInputRef} accept=".dwg,.dxf" onChange={handleCadUpload} style={{ display: 'none' }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingCad} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <FileType2 size={16} />
-                    {isUploadingCad ? 'Importing...' : 'Import CAD'}
+                    {isUploadingCad ? <span className="spinner-small" /> : <Plus size={14} />} Import CAD
+                  </button>
+                  <input type="file" ref={pdfInputRef} accept=".pdf" onChange={handlePdfOverlayUpload} style={{ display: 'none' }} />
+                  <button onClick={() => pdfInputRef.current?.click()} disabled={isUploadingPdf} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {isUploadingPdf ? <span className="spinner-small" /> : <FileText size={14} />} Import PDF
                   </button>
                   <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
                   <button 

@@ -111,13 +111,6 @@ export default function PEDRoadsHighways() {
             transition={{ delay: 0.1 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
           >
-            <AppButton 
-              title="Route Optimizer" 
-              description="Generate optimal road alignments based on surface topography." 
-              icon={<Map size={24} />} 
-              onClick={() => navigate('/division/ped/route-optimizer')} 
-              colorStart="#2563eb" colorEnd="#1e3a8a" shadowColor="#172554"
-            />
 
             <AppButton 
               title="Alignment Designer" 

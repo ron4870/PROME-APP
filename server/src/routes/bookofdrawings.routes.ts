@@ -453,4 +453,49 @@ router.post('/:id/pages/:pageId/import-cad', authenticate, upload.single('file')
   }
 });
 
+// Import a PDF overlay and convert to high-quality SVG using pdftocairo
+router.post('/:id/pages/:pageId/import-overlay-pdf', authenticate, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (ext !== '.pdf') {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'File must be a PDF' });
+    }
+
+    const filePath = req.file.path;
+    const outPrefix = `${filePath}_out`;
+    
+    // pdftocairo generates outPrefix.svg or outPrefix-1.svg depending on pages
+    // we use -f 1 -l 1 to only extract the first page
+    try {
+      execSync(`pdftocairo -svg -f 1 -l 1 "${filePath}" "${outPrefix}.svg"`);
+      
+      const outSvgPath = `${outPrefix}.svg`;
+      if (!fs.existsSync(outSvgPath)) {
+        throw new Error('pdftocairo failed to generate SVG');
+      }
+
+      const svgContent = fs.readFileSync(outSvgPath, 'utf-8');
+      
+      // cleanup
+      fs.unlinkSync(filePath);
+      fs.unlinkSync(outSvgPath);
+
+      res.json({ svg: svgContent });
+    } catch (err: any) {
+      console.error('pdftocairo error:', err);
+      // clean up if exists
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(500).json({ message: 'Failed to convert PDF to SVG' });
+    }
+  } catch (error: any) {
+    console.error('Error importing PDF overlay:', error);
+    res.status(500).json({ message: 'Server error processing PDF file', error: error?.message || String(error) });
+  }
+});
+
 export default router;

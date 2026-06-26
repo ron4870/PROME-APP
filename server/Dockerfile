@@ -1,6 +1,6 @@
 FROM node:20-slim
 RUN apt-get update && apt-get install -y \
-    openssl build-essential automake libtool git libpcre2-dev python3 texinfo \
+    openssl build-essential automake libtool git libpcre2-dev python3 texinfo poppler-utils \
     && git clone git://git.sv.gnu.org/libredwg.git \
     && cd libredwg \
     && sh autogen.sh \

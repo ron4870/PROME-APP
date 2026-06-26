@@ -21,9 +21,8 @@ interface Audit {
   plannedDate: string;
   executionDate: string | null;
   auditorId: number | null;
-  auditeeId: number | null;
   auditor: { name: string } | null;
-  auditee: { name: string } | null;
+  auditees: { id: number; name: string }[];
   findings: AuditFinding[];
 }
 const AuditDetails: React.FC = () => {
@@ -271,8 +270,8 @@ const AuditDetails: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                 <User size={16} color="#64748b" style={{ marginTop: '2px' }} />
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Auditee (Dept)</div>
-                  <div style={{ fontWeight: 500, color: '#0f172a' }}>{audit.auditee?.name || 'TBA'}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Auditee(s)</div>
+                  <div style={{ fontWeight: 500, color: '#0f172a' }}>{audit.auditees?.length > 0 ? audit.auditees.map(a => a.name).join(', ') : 'TBA'}</div>
                 </div>
               </div>
             </div>

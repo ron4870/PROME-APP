@@ -12,6 +12,11 @@
   
   <!-- Proj4 for Coordinate Transformations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+  
+  <!-- jsPDF for PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 
   <style>
     :root {
@@ -113,7 +118,7 @@
       flex-shrink: 0;
     }
 
-    /* Center Panel: Map/Canvas */
+    /* Center Panel: Map/Canvas and Table */
     .panel-center {
       flex-grow: 1;
       position: relative;
@@ -122,6 +127,134 @@
       display: flex;
       flex-direction: column;
     }
+    
+    #canvas-container {
+      flex-grow: 1;
+      position: relative;
+      min-height: 200px;
+    }
+
+    /* Alignment Table Styles */
+    #table-container {
+      height: 280px;
+      background-color: #1a1e23;
+      border-top: 2px solid var(--border-color);
+      display: flex;
+      flex-direction: row;
+      color: #e2e8f0;
+      font-size: 0.8rem;
+    }
+    
+    .table-section {
+      flex-grow: 1;
+      overflow: auto;
+      border-right: 1px solid #334155;
+    }
+    
+    .alignment-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    
+    .alignment-table th {
+      background-color: #272c33;
+      color: #94a3b8;
+      padding: 8px 12px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    
+    .alignment-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #2d3748;
+      cursor: pointer;
+    }
+    
+    .alignment-table tr:hover {
+      background-color: #2d3748;
+    }
+    
+    .alignment-table tr.active {
+      background-color: #1e3a8a;
+    }
+    
+    .inspector-section {
+      width: 400px;
+      flex-shrink: 0;
+      background-color: #1a1e23;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    .inspector-header {
+      background-color: #272c33;
+      color: #cbd5e1;
+      padding: 8px 12px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      border-bottom: 1px solid #334155;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .inspector-content {
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .compliance-box {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 12px;
+      background-color: #0f172a;
+    }
+    
+    .compliance-title {
+      color: #38bdf8;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .compliance-badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+    .compliance-badge.pass { background-color: #059669; color: white; }
+    .compliance-badge.fail { background-color: #dc2626; color: white; }
+    
+    .compliance-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .compliance-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .val-pass { color: #10b981; }
+    .val-fail { color: #ef4444; }
 
     /* Right Panel: Element Data */
     .panel-right {
@@ -338,6 +471,12 @@
       <input type="file" id="import-xml" accept=".xml" style="display: none;">
       <button class="btn" onclick="document.getElementById('import-xml').click()">Import LandXML</button>
       <button class="btn" id="clear-btn">Clear All</button>
+      <select id="export-pdf-type" style="width:auto; height:35px; border-radius:6px; border:1px solid var(--border-color); font-size:0.875rem; padding: 0 10px;">
+        <option value="schedule">Horizontal Schedule Report</option>
+        <option value="stakeout">Stakeout Coordinates Report</option>
+        <option value="audit">Geometric Audit Report</option>
+      </select>
+      <button class="btn primary" id="export-pdf-btn">Export PDF</button>
       <button class="btn primary" id="export-btn">Export LandXML</button>
     </div>
   </header>
@@ -526,49 +665,86 @@
       </div>
     </div>
 
-    <!-- Center Panel: Canvas Viewer -->
-    <div class="panel-center" id="canvas-container">
-      <canvas id="alignment-canvas"></canvas>
-      
-      <div class="map-controls">
-        <select id="active-alignment" style="margin-bottom: 10px; width: 100%; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; display: none;">
-        </select>
-        <select id="map-source" style="margin-bottom: 10px; width: 100%; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px;">
-          <option value="none">No Background</option>
-          <option value="google" selected>Google Maps (Satellite)</option>
-          <option value="bing">Bing Maps (Satellite)</option>
-          <option value="esri">Esri World Imagery</option>
-          <option value="osm">OpenStreetMap</option>
-          <option value="carto">Carto Light</option>
-        </select>
+    <!-- Center Panel: Canvas Viewer and Table -->
+    <div class="panel-center">
+      <div id="canvas-container">
+        <canvas id="alignment-canvas"></canvas>
         
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-          <div class="map-control-btn" id="tool-draw" title="Draw/Add PI" style="background: var(--secondary-color); border-color: var(--primary-color);">
-            <!-- Pen icon -->
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+        <div class="map-controls">
+          <select id="active-alignment" style="margin-bottom: 10px; width: 100%; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; display: none;">
+          </select>
+          <select id="map-source" style="margin-bottom: 10px; width: 100%; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px;">
+            <option value="none">No Background</option>
+            <option value="google" selected>Google Maps (Satellite)</option>
+            <option value="bing">Bing Maps (Satellite)</option>
+            <option value="esri">Esri World Imagery</option>
+            <option value="osm">OpenStreetMap</option>
+            <option value="carto">Carto Light</option>
+          </select>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <div class="map-control-btn" id="tool-draw" title="Draw/Add PI" style="background: var(--secondary-color); border-color: var(--primary-color);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+            </div>
+            <div class="map-control-btn" id="tool-select" title="Select/Move PI">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path><path d="M13 13l6 6"></path></svg>
+            </div>
           </div>
-          <div class="map-control-btn" id="tool-select" title="Select/Move PI">
-            <!-- Pointer icon -->
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path><path d="M13 13l6 6"></path></svg>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px;">
+            <div class="map-control-btn" id="zoom-in" title="Zoom In">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </div>
+            <div class="map-control-btn" id="zoom-out" title="Zoom Out">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </div>
+            <div class="map-control-btn" id="zoom-fit" title="Fit to Screen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v6h2V6h4V4H4zm14 0h-4v2h4v4h2V4h-2zM4 20h4v-2H6v-4H4v6zm14-6v4h-4v2h6v-6h-2z"></path></svg>
+            </div>
           </div>
         </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px;">
-          <div class="map-control-btn" id="zoom-in" title="Zoom In">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </div>
-          <div class="map-control-btn" id="zoom-out" title="Zoom Out">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </div>
-          <div class="map-control-btn" id="zoom-fit" title="Fit to Screen">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v6h2V6h4V4H4zm14 0h-4v2h4v4h2V4h-2zM4 20h4v-2H6v-4H4v6zm14-6v4h-4v2h6v-6h-2z"></path></svg>
-          </div>
+
+        <div class="status-bar">
+          <span id="coord-display">E: 0.00, N: 0.00</span>
+          <span id="scale-display">Zoom: 1.0x</span>
         </div>
       </div>
-
-      <div class="status-bar">
-        <span id="coord-display">E: 0.00, N: 0.00</span>
-        <span id="scale-display">Zoom: 1.0x</span>
+      
+      <!-- Interactive Alignment Table below Map -->
+      <div id="table-container">
+        <div class="table-section">
+          <table class="alignment-table" id="alignment-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Element</th>
+                <th>Start Station</th>
+                <th>End Station</th>
+                <th>E1</th>
+                <th>N1</th>
+                <th>E2</th>
+                <th>N2</th>
+                <th>Length</th>
+                <th>Radius</th>
+                <th>Clockwise</th>
+              </tr>
+            </thead>
+            <tbody id="alignment-table-body">
+              <tr>
+                <td colspan="11" style="text-align:center; padding: 20px;">No alignment generated. Draw PIs to generate alignment table.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="inspector-section" id="segment-inspector">
+          <div class="inspector-header">
+            <span>Segment Inspector</span>
+            <span id="inspector-element-id" style="color: #f59e0b;"></span>
+          </div>
+          <div class="inspector-content" id="inspector-content">
+            <div style="text-align:center; color:#64748b; margin-top:20px;">Select an element from the table to view details.</div>
+          </div>
+        </div>
       </div>
     </div>
 

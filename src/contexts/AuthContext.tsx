@@ -77,6 +77,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setToken(newToken);
     localStorage.setItem('jwtToken', newToken);
     localStorage.setItem('token', newToken);
+    localStorage.setItem('isAuthenticated', 'true');
   };
 
   const logout = () => {
@@ -84,6 +85,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setToken(null);
     localStorage.removeItem('jwtToken');
     localStorage.removeItem('token');
+    localStorage.removeItem('isAuthenticated');
   };
 
   const hasPermission = (key: string) => {
