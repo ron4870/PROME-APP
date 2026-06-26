@@ -1173,6 +1173,10 @@ function drawMapTiles() {
 function updateDataPanel() {
   const elements = calculateGeometry();
   renderAlignmentTable(elements);
+  
+  if (window.activeInspectorRow !== undefined && window.currentTableData && window.currentTableData[window.activeInspectorRow]) {
+    window.selectTableRow(window.activeInspectorRow);
+  }
 
   if (state.pis.length === 0) {
     dataContainer.innerHTML = '<div class="empty-state">No alignment defined.<br><br>Click on the map to start placing Points of Intersection (PIs).</div>';
@@ -1959,24 +1963,73 @@ function renderAlignmentTable(elements) {
   window.currentTableData = tableData;
 }
 
-window.updateAlignmentProperty = function(dataIndex, field, value) {
-  const row = window.currentTableData[dataIndex];
-  if (!row) return;
-  const val = parseFloat(value);
-  if (isNaN(val) || val < 0) return;
+let dragBaseState = null;
 
-  const elements = calculateGeometry(); // recalculate to get fresh elements just in case
-  const el = elements[row.index];
-  if (!el || el.piIndex === undefined) return;
+window.previewAlignmentProperty = function(dataIndex, field, value) {
+  const tableData = window.currentTableData;
+  if (!tableData || !tableData[dataIndex]) return;
   
+  if (!dragBaseState) {
+    dragBaseState = JSON.stringify(state.pis);
+  }
+  state.pis = JSON.parse(dragBaseState);
+  
+  const row = tableData[dataIndex];
+  // Calculate geometry again for the preview elements, since we just mutated state.pis
+  const elements = calculateGeometry(); 
+  const el = elements[row.index];
+  const val = parseFloat(value);
+  
+  if (isNaN(val) || !el || el.piIndex === undefined) return;
+
   if (field === 'length') {
     if (row.type === 'Straight') {
-      // Shift all PIs from piIndex+1 onwards by the delta length
-      const delta = val - el.actualLength;
-      if (delta === 0) return;
-      const az = el.az;
-      const dx = delta * Math.sin(az);
-      const dy = delta * Math.cos(az);
+      const dx = (val - el.actualLength) * Math.cos(el.startAngle);
+      const dy = (val - el.actualLength) * Math.sin(el.startAngle);
+      
+      for (let j = el.piIndex + 1; j < state.pis.length; j++) {
+        state.pis[j].x += dx;
+        state.pis[j].y += dy;
+      }
+    } else if (row.type === 'Clothoid (In)') {
+      state.pis[el.piIndex].lsIn = val;
+    } else if (row.type === 'Clothoid (Out)') {
+      state.pis[el.piIndex].lsOut = val;
+    } else if (row.type === 'Circular Curve') {
+      if (el.radius > 0 && el.length > 0) {
+        const delta = el.length / el.radius;
+        state.pis[el.piIndex].r = val / delta;
+      }
+    }
+  } else if (field === 'radius') {
+    if (row.type === 'Circular Curve') {
+      state.pis[el.piIndex].r = val;
+    }
+  }
+
+  draw();
+};
+
+window.updateAlignmentProperty = function(dataIndex, field, value) {
+  const tableData = window.currentTableData;
+  if (!tableData || !tableData[dataIndex]) return;
+  
+  if (dragBaseState) {
+    state.pis = JSON.parse(dragBaseState);
+    dragBaseState = null;
+  }
+  
+  const row = tableData[dataIndex];
+  const elements = calculateGeometry();
+  const el = elements[row.index];
+  const val = parseFloat(value);
+  
+  if (isNaN(val) || !el || el.piIndex === undefined) return;
+
+  if (field === 'length') {
+    if (row.type === 'Straight') {
+      const dx = (val - el.actualLength) * Math.cos(el.startAngle);
+      const dy = (val - el.actualLength) * Math.sin(el.startAngle);
       
       for (let j = el.piIndex + 1; j < state.pis.length; j++) {
         state.pis[j].x += dx;
@@ -2008,6 +2061,8 @@ window.selectTableRow = function(dataIndex) {
   const tableData = window.currentTableData;
   if (!tableData || !tableData[dataIndex]) return;
   
+  window.activeInspectorRow = dataIndex;
+  
   // Highlight row
   const rows = document.getElementById('alignment-table-body').querySelectorAll('tr');
   rows.forEach(r => r.classList.remove('active'));
@@ -2033,8 +2088,8 @@ window.selectTableRow = function(dataIndex) {
         <span style="color:#10b981; font-weight:600; font-size:0.9rem;">${row.length.toFixed(2)} m</span>
       </div>
       <div style="display:flex; align-items:center; gap:10px;">
-        <input type="range" min="0" max="${Math.max(row.length * 2, 100)}" step="0.1" value="${row.length}" style="flex-grow:1; accent-color:#10b981;" oninput="this.nextElementSibling.value = this.value" onchange="updateAlignmentProperty(${dataIndex}, 'length', this.value)">
-        <input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" onchange="this.previousElementSibling.value = this.value; updateAlignmentProperty(${dataIndex}, 'length', this.value)">
+        <input type="range" min="0" max="${Math.max(row.length * 2, 100)}" step="0.1" value="${row.length}" style="flex-grow:1; accent-color:#10b981;" oninput="this.nextElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'length', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'length', this.value)">
+        <input type="number" step="0.1" value="${row.length.toFixed(2)}" style="width:70px; background:#1e293b; color:#10b981; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" oninput="this.previousElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'length', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'length', this.value)">
       </div>
     </div>
   `;
@@ -2047,8 +2102,8 @@ window.selectTableRow = function(dataIndex) {
           <span style="color:#38bdf8; font-weight:600; font-size:0.9rem;">${row.radius} m</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
-          <input type="range" min="50" max="3000" step="1" value="${row.radius}" style="flex-grow:1; accent-color:#38bdf8;" oninput="this.nextElementSibling.value = this.value" onchange="updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
-          <input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" onchange="this.previousElementSibling.value = this.value; updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
+          <input type="range" min="50" max="3000" step="1" value="${row.radius}" style="flex-grow:1; accent-color:#38bdf8;" oninput="this.nextElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'radius', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
+          <input type="number" step="1" value="${row.radius}" style="width:70px; background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:4px; border-radius:4px; text-align:right;" oninput="this.previousElementSibling.value = this.value; previewAlignmentProperty(${dataIndex}, 'radius', this.value)" onchange="updateAlignmentProperty(${dataIndex}, 'radius', this.value)">
         </div>
       </div>
     `;
