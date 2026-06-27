@@ -60,6 +60,7 @@ import PEDWaterSanitation from './pages/divisions/PEDWaterSanitation';
 import PEDEnergyMinerals from './pages/divisions/PEDEnergyMinerals';
 import PEDTransportationStudies from './pages/divisions/PEDTransportationStudies';
 import PEDHydrology from './pages/divisions/PEDHydrology';
+import PDMDConstructionManagement from './pages/divisions/PDMDConstructionManagement';
 import PEDAlignmentDesign from './pages/divisions/PEDAlignmentDesign';
 import PEDRouteOptimizer from './pages/divisions/PEDRouteOptimizer';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -182,6 +183,7 @@ function App() {
         <Route path="/book-of-drawings" element={<ProtectedRoute><BookOfDrawingsDashboard /></ProtectedRoute>} />
         <Route path="/book-of-drawings/:id" element={<ProtectedRoute><BookOfDrawingsWorkspace /></ProtectedRoute>} />
         <Route path="/division/pdmd" element={<ProtectedRoute><PDMD /></ProtectedRoute>} />
+        <Route path="/division/pdmd/construction-management" element={<ProtectedRoute><PDMDConstructionManagement /></ProtectedRoute>} />
         <Route path="/division/hrad" element={<ProtectedRoute><HRAD /></ProtectedRoute>} />
         <Route path="/division/fd" element={<ProtectedRoute><FD /></ProtectedRoute>} />
         <Route path="/division/fd/invoices" element={<ProtectedRoute><FDInvoices /></ProtectedRoute>} />

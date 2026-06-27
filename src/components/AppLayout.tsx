@@ -103,7 +103,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     ];
   } else if (location.pathname.startsWith('/division/pdmd')) {
     navLinks = [
-      { label: 'Construction Management', path: '#' },
+      { label: 'Construction Management', path: '/division/pdmd/construction-management' },
       { label: 'Site QA & QC', path: '#' },
       { label: 'Correspondence', path: '#' }
     ];
