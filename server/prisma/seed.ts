@@ -31,13 +31,15 @@ async function main() {
   const adminRole = await prisma.role.findUnique({ where: { name: 'Administrator' } });
   if (adminRole) {
     await prisma.user.upsert({
-      where: { email: 'admin@promeconsult.com' },
+      where: {
+        email: "admin@promeconsult.com"
+      },
       update: {},
       create: {
-        email: 'admin@promeconsult.com',
-        name: 'System Admin',
-        roleId: adminRole.id,
-      },
+        email: "admin@promeconsult.com",
+        name: "System Admin",
+        roles: { connect: [{ id: adminRole.id }] },
+      }
     });
   }
 
