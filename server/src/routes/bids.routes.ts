@@ -308,6 +308,28 @@ router.put('/opportunities/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete opportunity
+router.delete('/opportunities/:id', authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: (req as any).userId },
+      include: { roles: true }
+    });
+    
+    const roleNames = user?.roles?.map(r => r.name) || [];
+    if (!roleNames.includes('Administrator') && !roleNames.includes('Managing Director') && !roleNames.includes('Head of Division')) {
+      return res.status(403).json({ error: 'Unauthorized to delete opportunities' });
+    }
+
+    const { id } = req.params;
+    await prisma.bidOpportunity.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Opportunity deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting opportunity:', error);
+    res.status(500).json({ error: 'Failed to delete opportunity' });
+  }
+});
+
 // ==========================================
 // BIDS & PREPARATION
 // ==========================================

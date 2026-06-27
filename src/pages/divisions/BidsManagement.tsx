@@ -78,6 +78,17 @@ export default function BidsManagement() {
     }
   };
 
+  const handleDeleteOpportunity = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this opportunity? This will also delete any associated bids, sections, and results.')) return;
+    try {
+      await fetchWithAuth(`${API_BASE}/bids/opportunities/${id}`, { method: 'DELETE' });
+      alert('Opportunity deleted successfully');
+      fetchData();
+    } catch (error) {
+      alert('Failed to delete opportunity or you do not have permission.');
+    }
+  };
+
   const handleCreateOpportunity = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -265,7 +276,10 @@ export default function BidsManagement() {
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                    <button className="secondary-button" style={{ color: '#ef4444', borderColor: '#ef4444' }}>
+                    <button onClick={() => handleDeleteOpportunity(opp.id)} className="secondary-button" style={{ color: '#ef4444', borderColor: '#ef4444', marginRight: 'auto' }}>
+                      Delete
+                    </button>
+                    <button className="secondary-button" style={{ color: '#64748b', borderColor: '#cbd5e1' }}>
                       Mark No-Go
                     </button>
                     <button onClick={() => handleCreateBid(opp.id)} className="primary-button">
