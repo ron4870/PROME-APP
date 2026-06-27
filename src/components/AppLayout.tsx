@@ -13,6 +13,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isRightDrawerOpen, setIsRightDrawerOpen] = React.useState(false);
   const [isImsMenuOpen, setIsImsMenuOpen] = React.useState(false);
+  const [isDivisionsOpen, setIsDivisionsOpen] = React.useState(false);
   const [notificationCount, setNotificationCount] = React.useState(0);
   
   // Support Modal State
@@ -139,44 +140,44 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <Home size={16} />
               </a>
               <div className="utility-dropdown-wrapper">
-                <span className="utility-link" style={{ cursor: 'pointer' }}>
+                <span className="utility-link" style={{ cursor: 'pointer' }} onClick={() => setIsDivisionsOpen(!isDivisionsOpen)}>
                   Divisions
                   <ChevronDown size={14} style={{ marginLeft: '4px' }} />
                 </span>
-                <div className="utility-dropdown-menu" style={{ padding: 0, minWidth: '400px' }}>
+                <div className="utility-dropdown-menu" style={{ padding: 0, minWidth: '400px', display: isDivisionsOpen ? 'flex' : 'none' }}>
                   <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
                     {hasPermission('pmbdd') && (
-                      <Link to="/division/pmbdd" title="Project Management & Business Development Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <Link to="/division/pmbdd" onClick={() => setIsDivisionsOpen(false)} title="Project Management & Business Development Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <Briefcase size={28} color="#bb0a0a" strokeWidth={1.5} />
                         <span style={{ fontWeight: 500 }}>PMBDD</span>
                       </Link>
                     )}
                     {hasPermission('cpsd') && (
-                      <Link to="/division/cpsd" title="Corporate Planning & Strategy Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <Link to="/division/cpsd" onClick={() => setIsDivisionsOpen(false)} title="Corporate Planning & Strategy Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <Target size={28} color="#bb0a0a" strokeWidth={1.5} />
                         <span style={{ fontWeight: 500 }}>CP&SD</span>
                       </Link>
                     )}
                     {hasPermission('ped') && (
-                      <Link to="/division/ped" title="Planning & Engineering Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <Link to="/division/ped" onClick={() => setIsDivisionsOpen(false)} title="Planning & Engineering Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <PenTool size={28} color="#bb0a0a" strokeWidth={1.5} />
                         <span style={{ fontWeight: 500 }}>PED</span>
                       </Link>
                     )}
                     {hasPermission('pdmd') && (
-                      <Link to="/division/pdmd" title="Project Delivery Management Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <Link to="/division/pdmd" onClick={() => setIsDivisionsOpen(false)} title="Project Delivery Management Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <Activity size={28} color="#bb0a0a" strokeWidth={1.5} />
                         <span style={{ fontWeight: 500 }}>PDMD</span>
                       </Link>
                     )}
                     {hasPermission('hrad') && (
-                      <Link to="/division/hrad" title="Human Resource & Administration Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <Link to="/division/hrad" onClick={() => setIsDivisionsOpen(false)} title="Human Resource & Administration Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <Users size={28} color="#bb0a0a" strokeWidth={1.5} />
                         <span style={{ fontWeight: 500 }}>HR&AD</span>
                       </Link>
                     )}
                     {hasPermission('fd') && (
-                      <Link to="/division/fd" title="Finance Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <Link to="/division/fd" onClick={() => setIsDivisionsOpen(false)} title="Finance Division" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                         <Wallet size={28} color="#bb0a0a" strokeWidth={1.5} />
                         <span style={{ fontWeight: 500 }}>Finance</span>
                       </Link>
