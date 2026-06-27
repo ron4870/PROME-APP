@@ -76,7 +76,7 @@ const IsoDocumentViewer: React.FC = () => {
   if (loading) return <div>Loading...</div>;
   if (!doc) return <div>Document not found</div>;
 
-  const isApprover = user?.role?.name === 'Administrator' || user?.role?.name === 'Super Admin' || user?.id === doc.approverId;
+  const isApprover = user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Super Admin') || user?.id === doc.approverId;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

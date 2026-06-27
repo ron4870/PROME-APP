@@ -10,15 +10,14 @@ interface Role {
 
 interface User {
   id: number;
-  email: string;
   name: string;
+  email: string;
   division?: string;
-  roleId: number;
-  role: Role;
+  roles: Role[];
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'user_config' | 'roles'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,16 +55,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUpdateUserRole = async (userId: number, roleId: number) => {
+  const handleUpdateUserRoles = async (userId: number, roleIds: number[]) => {
     try {
-      await fetch(`${API_URL}/users/${userId}/role`, {
+      await fetch(`${API_URL}/users/${userId}/roles`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roleId })
+        body: JSON.stringify({ roleIds })
       });
       fetchData();
     } catch (error) {
-      console.error('Error updating user role:', error);
+      console.error('Error updating user roles:', error);
     }
   };
 
@@ -102,7 +101,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           name: newUserName,
           email: newUserEmail,
-          roleId: Number(newUserRole),
+          roleIds: [Number(newUserRole)],
           division: newUserDivision
         })
       });
@@ -203,6 +202,24 @@ export default function AdminDashboard() {
           <Users size={18} /> User Assignments
         </button>
         <button
+          onClick={() => setActiveTab('user_config')}
+          style={{
+            padding: '1rem 2rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'user_config' ? '3px solid #dc2626' : '3px solid transparent',
+            color: activeTab === 'user_config' ? '#dc2626' : '#64748b',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Shield size={18} /> User Configuration
+        </button>
+        <button
           onClick={() => setActiveTab('roles')}
           style={{
             padding: '1rem 2rem',
@@ -301,22 +318,11 @@ export default function AdminDashboard() {
                       </td>
                       <td style={{ padding: '1rem 0.5rem', color: '#64748b' }}>{user.division || '-'}</td>
                       <td style={{ padding: '1rem 0.5rem' }}>
-                        <select
-                          value={user.roleId || ''}
-                          onChange={(e) => handleUpdateUserRole(user.id, Number(e.target.value))}
-                          style={{
-                            padding: '0.5rem',
-                            borderRadius: '6px',
-                            border: '1px solid #cbd5e1',
-                            background: '#f8fafc',
-                            width: '200px'
-                          }}
-                        >
-                          <option value="" disabled>Select a role...</option>
-                          {roles.map(role => (
-                            <option key={role.id} value={role.id}>{role.name}</option>
-                          ))}
-                        </select>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {user.roles && user.roles.length > 0 ? user.roles.map(r => (
+                            <span key={r.id} style={{ background: '#334155', color: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>{r.name}</span>
+                          )) : <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>None</span>}
+                        </div>
                       </td>
                       <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>
                         <button 
@@ -344,6 +350,58 @@ export default function AdminDashboard() {
               </table>
             </div>
           </div>
+          )}
+
+          {activeTab === 'user_config' && (
+            <div className="card">
+              <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: '#0f172a' }}>Assign Multiple Roles to Users</h2>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #f1f5f9', color: '#64748b' }}>
+                    <th style={{ padding: '1rem 0.5rem' }}>User</th>
+                    <th style={{ padding: '1rem 0.5rem' }}>Roles Configuration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr><td colSpan={2} style={{ padding: '1rem 0.5rem' }}>No users found.</td></tr>
+                  ) : users.map(user => (
+                    <tr key={user.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '1rem 0.5rem', verticalAlign: 'top', width: '250px' }}>
+                        <div style={{ fontWeight: 600 }}>{user.name || 'Unknown User'}</div>
+                        <div style={{ fontSize: '0.875rem', color: '#64748b' }}>{user.email}</div>
+                      </td>
+                      <td style={{ padding: '1rem 0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {roles.map(role => {
+                            const hasRole = user.roles?.some(r => r.id === role.id);
+                            return (
+                              <label key={role.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', background: hasRole ? '#eff6ff' : '#f8fafc', border: hasRole ? '1px solid #bfdbfe' : '1px solid #e2e8f0', padding: '0.4rem 0.6rem', borderRadius: '4px', userSelect: 'none' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={hasRole}
+                                  onChange={(e) => {
+                                    let newRoleIds = user.roles ? user.roles.map(r => r.id) : [];
+                                    if (e.target.checked) {
+                                      if (!newRoleIds.includes(role.id)) newRoleIds.push(role.id);
+                                    } else {
+                                      newRoleIds = newRoleIds.filter(id => id !== role.id);
+                                    }
+                                    handleUpdateUserRoles(user.id, newRoleIds);
+                                  }}
+                                  style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }}
+                                />
+                                {role.name}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {activeTab === 'roles' && (

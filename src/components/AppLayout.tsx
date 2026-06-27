@@ -185,7 +185,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 </div>
               </div>
               <a href="#" className="utility-link" onClick={(e) => { e.preventDefault(); setIsSupportModalOpen(true); }}>Support</a>
-              {(user?.role?.name === 'Administrator' || user?.role?.name === 'Managing Director') && (
+              {(user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director')) && (
                 <Link to="/ai-assistant" className="utility-link" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#cc0000', fontWeight: 600 }}>
                   <Bot size={14} /> AI Assistant
                 </Link>

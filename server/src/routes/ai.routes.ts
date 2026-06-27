@@ -13,9 +13,9 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 // Middleware to check Admin/MD Role
 const authorizeAiAccess = async (req: Request, res: Response, next: express.NextFunction) => {
   const userId = (req as any).user.userId;
-  const user = await prisma.user.findUnique({ where: { id: userId }, include: { role: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true } });
   
-  if (!user || (user.role?.name !== 'Administrator' && user.role?.name !== 'Managing Director')) {
+  if (!user || (!user.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director'))) {
     return res.status(403).json({ error: 'Access denied. AI Assistant is only available to Administrators and Managing Directors.' });
   }
   (req as any).fullUser = user;
@@ -279,7 +279,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
           const projects = await prisma.project.findMany({ select: { id: true, name: true, status: true }, take: 10 });
           functionResponse = { projects };
         } else if (call.name === 'getEmployees') {
-          const employees = await prisma.user.findMany({ select: { id: true, name: true, email: true, role: { select: { name: true } }, division: true, skills: true } });
+          const employees = await prisma.user.findMany({ select: { id: true, name: true, email: true, roles: { select: { name: true } }, division: true, skills: true } });
           functionResponse = { employees };
         } else if (call.name === 'getBids') {
           const bids = await prisma.bid.findMany({ select: { id: true, status: true, opportunity: { select: { title: true, client: true, deadline: true } } } });

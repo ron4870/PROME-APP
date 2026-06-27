@@ -62,7 +62,7 @@ export default function UserProfile() {
         <div>
           <h1 style={{ fontSize: '2rem', color: '#0f172a', margin: '0 0 0.5rem 0' }}>{user?.name || 'Unknown User'}</h1>
           <p style={{ color: '#64748b', fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Briefcase size={18} /> {user?.role?.name || 'Staff Member'} {user?.division ? `• ${user.division}` : ''}
+            <Briefcase size={18} /> {user?.roles?.map(r => r.name).join(', ') || 'Staff Member'} {user?.division ? `• ${user.division}` : ''}
           </p>
         </div>
       </div>

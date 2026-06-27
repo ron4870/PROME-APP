@@ -13,12 +13,12 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
 
     let projects;
     // Admins see all projects
-    if (user?.role?.name === 'Administrator') {
+    if (user?.roles?.some(r => r.name === 'Administrator')) {
       projects = await prisma.project.findMany({
         include: {
           members: {
@@ -62,10 +62,10 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
     
-    if (user?.role?.name !== 'Administrator') {
+    if (!user?.roles?.some(r => r.name === 'Administrator')) {
       return res.status(403).json({ message: 'Forbidden: Only Administrators can create projects' });
     }
     const { name, client, description, startDate, endDate, budget, members } = req.body;
@@ -192,10 +192,10 @@ router.delete('/:id', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
     
-    if (user?.role?.name !== 'Administrator') {
+    if (!user?.roles?.some(r => r.name === 'Administrator')) {
       return res.status(403).json({ message: 'Forbidden: Only Administrators can delete projects' });
     }
 
@@ -225,13 +225,13 @@ router.put('/:id', authenticate, checkProjectAccess(), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
 
     const membership = (req as any).projectMembership;
     
     // Only Administrators or Project Managers can edit project details
-    const canEdit = user?.role?.name === 'Administrator' || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes(membership?.role || '');
+    const canEdit = user?.roles?.some(r => r.name === 'Administrator') || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes(membership?.role || '');
 
     if (!canEdit) {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to edit this project' });
@@ -316,8 +316,8 @@ router.put('/:id/permissions', authenticate, checkProjectAccess(), async (req, r
 
     // Needs to be Administrator or Project Manager
     const membership = (req as any).projectMembership;
-    const user = await prisma.user.findUnique({ where: { id: (req as any).user!.userId }, include: { role: true } });
-    if (user?.role?.name !== 'Administrator' && membership?.role !== 'Project Manager') {
+    const user = await prisma.user.findUnique({ where: { id: (req as any).user!.userId }, include: { roles: true } });
+    if (!user?.roles?.some(r => r.name === 'Administrator') && membership?.role !== 'Project Manager') {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
@@ -420,14 +420,13 @@ router.get('/:id/financials', authenticate, checkProjectAccess(), async (req, re
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
 
     const membership = (req as any).projectMembership;
     
     // Authorization Check: Only Admin, Project Manager, or Financial Controller can view
-    const isAllowed = user?.role?.name === 'Administrator' || 
-                      user?.role?.name === 'Accountant' || 
+    const isAllowed = user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Accountant') || 
                       ['Project Manager', 'Project Top Managment', 'Employer'].includes(membership?.role || '');
 
     if (!isAllowed) {
@@ -721,8 +720,8 @@ router.put('/:id/tasks/:taskId', authenticate, checkProjectAccess(), async (req,
       return res.status(400).json({ message: 'Invalid taskId' });
     }
 
-    const userObj = await prisma.user.findUnique({ where: { id: (req as any).user.userId }, include: { role: true } });
-    const isManagerOrAdmin = userObj?.role?.name === 'Administrator' || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes((req as any).projectMembership?.role || '');
+    const userObj = await prisma.user.findUnique({ where: { id: (req as any).user.userId }, include: { roles: true } });
+    const isManagerOrAdmin = userObj?.roles?.some(r => r.name === 'Administrator') || ['Project Manager', 'Project Top Managment', 'Project Top Management'].includes((req as any).projectMembership?.role || '');
     
     let parsedProgress = undefined;
     if (progress !== undefined && progress !== null && progress !== '') {

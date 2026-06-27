@@ -138,7 +138,7 @@ const IsoDocuments: React.FC = () => {
           <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Central repository for controlled policies, procedures, and manuals.</p>
         </div>
         
-        {(user?.role?.name === 'Administrator' || user?.role?.name === 'Super Admin') && (
+        {(user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Super Admin')) && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button 
               className="btn btn-secondary"
@@ -261,7 +261,7 @@ const IsoDocuments: React.FC = () => {
                               </span>
                             )}
 
-                            {(user?.role?.name === 'Administrator' || user?.role?.name === 'Super Admin') && (
+                            {(user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Super Admin')) && (
                               <select 
                                 value={doc.status}
                                 onChange={(e) => handleStatusChange(doc.id, e.target.value)}

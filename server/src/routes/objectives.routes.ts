@@ -177,10 +177,10 @@ router.delete('/:id', authenticateToken, async (req: any, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { role: true }
+      include: { roles: true }
     });
     
-    const isAdministrator = user?.role?.name === 'Administrator' || user?.role?.name === 'Admin' || user?.role?.name === 'Super Admin';
+    const isAdministrator = user?.roles?.some(r => ['Administrator', 'Admin', 'Super Admin'].includes(r.name));
 
     if (objective.ownerId !== userId && !isAdministrator) {
       return res.status(403).json({ message: 'Forbidden. Only the owner or an administrator can delete this objective.' });

@@ -152,7 +152,7 @@ app.put('/api/roles/:id', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      include: { role: true },
+      include: { roles: true },
       orderBy: { id: 'asc' }
     });
     res.json(users);
@@ -161,18 +161,20 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.put('/api/users/:id/role', async (req, res) => {
+// Update User Roles
+app.put('/api/users/:id/roles', async (req, res) => {
   const { id } = req.params;
-  const { roleId } = req.body;
+  const { roleIds } = req.body;
   try {
     const updatedUser = await prisma.user.update({
       where: { id: Number(id) },
-      data: { roleId: Number(roleId) },
-      include: { role: true }
+      data: { roles: { set: roleIds.map((rid: number) => ({ id: Number(rid) })) } },
+      include: { roles: true }
     });
     res.json(updatedUser);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update user role' });
+    console.error('Update user roles error:', error);
+    res.status(500).json({ error: 'Failed to update user roles' });
   }
 });
 
@@ -267,7 +269,7 @@ app.put('/api/users/profile', upload.array('documents'), async (req, res) => {
 
     const finalUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: { role: true, userDocuments: true }
+      include: { roles: true, userDocuments: true }
     });
 
     res.json(finalUser);
@@ -279,22 +281,20 @@ app.put('/api/users/profile', upload.array('documents'), async (req, res) => {
 
 // Admin Create User & Send Email
 app.post('/api/users', async (req, res) => {
-  const { name, email, roleId, division } = req.body;
+  const { name, email, roleIds, division } = req.body;
   try {
-    // Generate an 8-character temporary password
     const tempPassword = Math.random().toString(36).slice(-8);
     const passwordHash = await bcrypt.hash(tempPassword, 10);
-
     const newUser = await prisma.user.create({
       data: {
         name,
         email,
-        roleId: Number(roleId),
+        passwordHash: passwordHash,
+        roles: roleIds && roleIds.length > 0 ? { connect: roleIds.map((rid: number) => ({ id: Number(rid) })) } : undefined,
         division,
-        passwordHash,
         needsPasswordChange: true
       },
-      include: { role: true }
+      include: { roles: true }
     });
 
     // Send Email
@@ -348,7 +348,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { role: true }
+      include: { roles: true }
     });
 
     if (!user) {
@@ -403,7 +403,7 @@ app.post('/api/auth/change-password', async (req, res) => {
     const updatedUser = await prisma.user.update({
       where: { email },
       data: { passwordHash: newHash, needsPasswordChange: false },
-      include: { role: true }
+      include: { roles: true }
     });
 
     res.json(updatedUser);
@@ -423,7 +423,7 @@ app.get('/api/auth/me', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: { role: true, userDocuments: true }
+      include: { roles: true, userDocuments: true }
     });
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
@@ -519,13 +519,13 @@ app.get('/api/iso-documents', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: { role: true }
+      include: { roles: true }
     });
 
     let whereClause = {};
     // If not Admin/Quality Manager (checking if role is somewhat elevated, assuming role name check or generic)
     // For now, let's say if role is Admin/Administrator, fetch all, else fetch APPROVED
-    if (user?.role?.name !== 'Admin' && user?.role?.name !== 'Super Admin' && user?.role?.name !== 'Administrator') {
+    if (!user?.roles?.some(r => r.name === 'Admin' || r.name === 'Super Admin' || r.name === 'Administrator')) {
       whereClause = { status: 'APPROVED' };
     }
 

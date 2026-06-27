@@ -82,7 +82,7 @@ router.post('/support', authenticateToken, async (req: Request, res: Response) =
 
     const sender = await prisma.user.findUnique({ where: { id: userId } });
     const admins = await prisma.user.findMany({
-      where: { role: { name: 'Administrator' } }
+      where: { roles: { some: { name: 'Administrator' } } }
     });
 
     if (admins.length === 0) {

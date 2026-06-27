@@ -24,7 +24,7 @@ export default function BidWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isPermittedToDelete = user?.role?.name === 'Admin' || user?.role?.name === 'Managing Director' || user?.role?.name === 'Head of Division';
+  const isPermittedToDelete = user?.roles?.some(r => ['Admin', 'Managing Director', 'Head of Division'].includes(r.name));
   const [bid, setBid] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<any>(null);
   const [loading, setLoading] = useState(true);

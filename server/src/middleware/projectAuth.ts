@@ -22,10 +22,10 @@ export const checkProjectAccess = (requiredRole?: string) => {
       // Allow Global Admins to bypass
       const user = await prisma.user.findUnique({
         where: { id: req.user.userId },
-        include: { role: true }
+        include: { roles: true }
       });
       
-      if (user?.role?.name === 'Administrator') {
+      if (user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Super Admin')) {
         return next();
       }
 

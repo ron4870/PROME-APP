@@ -25,10 +25,10 @@ const authenticate = (req: any, res: any, next: any) => {
 const getUserPermissions = async (userId: number) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { role: true }
+    include: { roles: true }
   });
-  if (['Admin', 'Administrator', 'Super Admin'].includes(user?.role?.name || '')) return { isAdmin: true };
-  return (user?.role?.permissions as Record<string, boolean>) || {};
+  if (user?.roles?.some(r => ['Admin', 'Administrator', 'Super Admin'].includes(r.name))) return { isAdmin: true };
+  return user?.roles?.reduce((acc, r) => ({ ...acc, ...(r.permissions as Record<string, boolean>) }), {}) || {};
 };
 
 const requireWikiView = async (req: any, res: any, next: any) => {

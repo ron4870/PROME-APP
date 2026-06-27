@@ -407,10 +407,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).userId },
-      include: { role: true }
+      include: { roles: true }
     });
     
-    const roleName = user?.role?.name;
+    const roleName = user?.roles?.[0]?.name;
     if (roleName !== 'Admin' && roleName !== 'Managing Director' && roleName !== 'Head of Division') {
       return res.status(403).json({ error: 'Unauthorized to delete bid workspaces' });
     }

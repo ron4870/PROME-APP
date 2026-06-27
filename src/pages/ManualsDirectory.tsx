@@ -153,7 +153,7 @@ Uploaded by: ${m.uploadedBy?.name}`}
           <p className="text-gray-500 text-sm mt-1">Directory of all PROME guidelines and external reference manuals</p>
         </div>
         
-        {user?.role?.name === 'Administrator' && (
+        {user?.roles?.some(r => r.name === 'Administrator') && (
           <button 
             onClick={() => setIsUploadModalOpen(true)}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"

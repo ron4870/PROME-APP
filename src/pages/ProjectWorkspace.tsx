@@ -99,7 +99,7 @@ export const ProjectWorkspace: React.FC = () => {
   const currentUserMembership = project?.members?.find((m: any) => m.user.id === user?.id);
   
   // Administrators automatically have read/write access to all projects
-  const isAdministrator = user?.role?.name === 'Administrator';
+  const isAdministrator = user?.roles?.some(r => r.name === 'Administrator');
   
   const getModuleAccess = (moduleName: string) => {
     if (isAdministrator) return 'Edit';

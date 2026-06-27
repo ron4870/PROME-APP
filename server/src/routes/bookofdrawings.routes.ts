@@ -19,11 +19,11 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
 
     let projects;
-    if (user?.role?.name === 'Administrator' || user?.role?.name === 'Managing Director') {
+    if (user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director')) {
       projects = await prisma.bookOfDrawingsProject.findMany({
         include: {
           members: {
@@ -64,10 +64,10 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
     
-    const canCreate = ['Administrator', 'Managing Director', 'Head of Division'].includes(user?.role?.name || '');
+    const canCreate = user?.roles?.some(r => ['Administrator', 'Managing Director', 'Head of Division'].includes(r.name));
     if (!canCreate) {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to create projects.' });
     }
@@ -162,7 +162,7 @@ router.get('/:id', authenticate, async (req, res) => {
     // Check access
     const user = await prisma.user.findUnique({
       where: { id: (req as any).user!.userId },
-      include: { role: true }
+      include: { roles: true }
     });
     
     const project = await prisma.bookOfDrawingsProject.findUnique({
@@ -181,7 +181,7 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const isAdminOrMD = user?.role?.name === 'Administrator' || user?.role?.name === 'Managing Director';
+    const isAdminOrMD = user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director');
     let hasAccess = false;
     
     if (isAdminOrMD) {

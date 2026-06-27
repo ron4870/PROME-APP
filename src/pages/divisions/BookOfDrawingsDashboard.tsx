@@ -17,8 +17,8 @@ export default function BookOfDrawingsDashboard() {
   const { user, token } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   
-  const isAdminOrMD = user?.role?.name === 'Administrator' || user?.role?.name === 'Managing Director';
-  const canCreateProjects = isAdminOrMD || user?.role?.name === 'Head of Division';
+  const isAdminOrMD = user?.roles?.some(r => ['Administrator', 'Managing Director'].includes(r.name));
+  const canCreateProjects = isAdminOrMD || user?.roles?.some(r => r.name === 'Head of Division');
   
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

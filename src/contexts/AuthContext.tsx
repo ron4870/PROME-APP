@@ -18,13 +18,12 @@ interface User {
   name: string;
   phone?: string;
   location?: string;
-  roleId: number;
   division?: string;
   bio?: string;
   skills?: string;
   qualifications?: string;
   needsPasswordChange: boolean;
-  role: Role;
+  roles: Role[];
   userDocuments?: UserDocument[];
 }
 
@@ -89,9 +88,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   const hasPermission = (key: string) => {
-    if (!user || !user.role) return false;
-    if (user.role.name === 'Administrator') return true; // Super admin bypass
-    return !!user.role.permissions[key];
+    if (!user || !user.roles || user.roles.length === 0) return false;
+    
+    // Check if any role has the permission or is an Administrator
+    return user.roles.some(role => {
+      if (role.name === 'Administrator' || role.name === 'Admin' || role.name === 'Super Admin') return true;
+      return !!role.permissions[key];
+    });
   };
 
   return (

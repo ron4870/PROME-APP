@@ -107,7 +107,7 @@ const extractLinks = (json: any): number[] => {
 
 const Wiki: React.FC = () => {
   const { user, hasPermission } = useAuth();
-  const isAdmin = ['Admin', 'Administrator', 'Super Admin'].includes(user?.role?.name || '');
+  const isAdmin = user?.roles?.some(r => ['Admin', 'Administrator', 'Super Admin'].includes(r.name));
   const canDraft = hasPermission('wiki_draft');
   const canReview = hasPermission('wiki_review');
   const canApprove = hasPermission('wiki_approve');
@@ -143,7 +143,7 @@ const Wiki: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
-  const canManageTemplates = isAdmin || user?.role?.name === 'Managing Director';
+  const canManageTemplates = isAdmin || user?.roles?.some(r => r.name === 'Managing Director');
 
   const { data: folders = [] } = useQuery({
     queryKey: ['wikiFolders'],
