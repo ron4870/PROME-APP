@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     // Check if any role has the permission or is an Administrator
     return user.roles.some(role => {
       if (role.name === 'Administrator' || role.name === 'Admin' || role.name === 'Super Admin') return true;
-      return !!role.permissions[key];
+      return !!role.permissions?.[key];
     });
   };
 
