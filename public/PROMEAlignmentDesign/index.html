@@ -123,15 +123,17 @@
       flex-grow: 1;
       position: relative;
       background-color: #e5e7eb;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
     }
     
     #canvas-container {
       flex-grow: 1;
+      flex-shrink: 0;
       position: relative;
-      min-height: 200px;
+      min-height: 800px;
     }
 
     /* Alignment Table Styles */
