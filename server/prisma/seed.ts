@@ -84,6 +84,40 @@ async function main() {
     }
   }
 
+  // Create CV Template Project if not exists
+  const existingCvTemplate = await prisma.cvProject.findFirst({
+    where: { isTemplate: true }
+  });
+
+  if (!existingCvTemplate) {
+    const template = await prisma.cvProject.create({
+      data: {
+        name: 'Master CV Template',
+        client: 'PROME',
+        description: 'Base template for all CVs. Editing this modifies the default pages and sections for future CVs.',
+        isTemplate: true
+      }
+    });
+
+    const defaultCvSections = [
+      "Page Layout", "Cover Page", "Personal Profile", "Key Qualifications", 
+      "Education & Training", "Professional Experience", 
+      "Key Project Experience", "Languages", "References", "Final CV Document"
+    ];
+
+    for (const section of defaultCvSections) {
+      await prisma.cvPage.create({
+        data: {
+          projectId: template.id,
+          section: section,
+          pageNumber: 1,
+          name: section === 'Page Layout' ? 'Master Frame' : section,
+          canvasState: null
+        }
+      });
+    }
+  }
+
   console.log('Seeded default roles and admin user successfully.');
 }
 

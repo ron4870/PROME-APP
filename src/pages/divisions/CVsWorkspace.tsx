@@ -39,7 +39,7 @@ const DEFAULT_SECTIONS = [
 export default function CVsWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, hasPermission } = useAuth();
+  const { token, hasPermission, user } = useAuth();
 
 
   const [project, setProject] = useState<any>(null);
@@ -500,6 +500,9 @@ export default function CVsWorkspace() {
     return <div style={{ textAlign: 'center', padding: '3rem' }}>Loading CV workspace...</div>;
   }
 
+  const isAdmin = user?.roles?.some((r: any) => r.name === 'Administrator');
+  const canEdit = !project?.isTemplate || isAdmin;
+
   const activePages = project?.pages.filter((p: any) => p.section === activeSection) || [];
   activePages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
 
@@ -520,11 +523,12 @@ export default function CVsWorkspace() {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem' }}>
           <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', paddingLeft: '0.5rem', marginBottom: '0.5rem' }}>CV Sections</h3>
-          <Reorder.Group axis="y" values={sectionsOrder} onReorder={handleReorderSections}>
+          <Reorder.Group axis="y" values={sectionsOrder} onReorder={canEdit ? handleReorderSections : () => {}}>
             {sectionsOrder.map((section) => (
               <Reorder.Item 
                 key={section} 
                 value={section}
+                dragListener={canEdit}
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -555,7 +559,7 @@ export default function CVsWorkspace() {
                   }
                 }}
               >
-                <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab' }} />
+                {canEdit && <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab' }} />}
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{section}</span>
               </Reorder.Item>
             ))}
@@ -568,38 +572,41 @@ export default function CVsWorkspace() {
         <div style={{ width: '240px', backgroundColor: '#f8fafc', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', margin: 0 }}>Section Pages</h3>
-            <button 
-              className="btn btn-secondary" 
-              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-              onClick={async () => {
-                try {
-                  const res = await fetch(`/api/cvs/${id}/pages`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ section: activeSection, name: `Page ${activePages.length + 1}` })
-                  });
-                  if (res.ok) {
-                    const newPage = await res.json();
-                    setProject((prev: any) => ({ ...prev, pages: [...prev.pages, newPage] }));
-                    setActivePageId(newPage.id);
-                    setIsCanvasOpen(true);
-                  }
-                } catch(e) { console.error(e); }
-              }}
-            >
-              Add Page
-            </button>
+            {canEdit && (
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/cvs/${id}/pages`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ section: activeSection, name: `Page ${activePages.length + 1}` })
+                    });
+                    if (res.ok) {
+                      const newPage = await res.json();
+                      setProject((prev: any) => ({ ...prev, pages: [...prev.pages, newPage] }));
+                      setActivePageId(newPage.id);
+                      setIsCanvasOpen(true);
+                    }
+                  } catch(e) { console.error(e); }
+                }}
+              >
+                Add Page
+              </button>
+            )}
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
             {activePages.length === 0 ? (
               <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>No pages in this section yet. Click Add Page above.</div>
             ) : (
-              <Reorder.Group axis="y" values={activePages} onReorder={handleReorderPages}>
+              <Reorder.Group axis="y" values={activePages} onReorder={canEdit ? handleReorderPages : () => {}}>
                 {activePages.map((page: any) => (
                   <Reorder.Item 
                     key={page.id} 
                     value={page}
+                    dragListener={canEdit}
                     style={{ 
                       padding: '0.6rem 0.75rem',
                       backgroundColor: activePageId === page.id ? '#ffffff' : 'transparent',
@@ -619,10 +626,10 @@ export default function CVsWorkspace() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', width: '80%' }}>
-                      <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab', flexShrink: 0 }} />
+                      {canEdit && <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab', flexShrink: 0 }} />}
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.name}</span>
                     </div>
-                    {activePages.length > 1 && (
+                    {activePages.length > 1 && canEdit && (
                       <button 
                         style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}
                         onClick={async (e) => {
@@ -710,25 +717,34 @@ export default function CVsWorkspace() {
             
             {/* Toolbar */}
             <div style={{ height: '52px', backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', padding: '0 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', zIndex: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={addTextOverlay} title="Add Text Block">
-                  <Type size={16} /> Text
-                </button>
-                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => addShapeOverlay('rect')} title="Add Border / Rectangle">
-                  <Square size={16} /> Rect
-                </button>
-                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => addShapeOverlay('circle')} title="Add Circle">
-                  <Circle size={16} /> Circle
-                </button>
-              </div>
+              {canEdit ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={addTextOverlay} title="Add Text Block">
+                    <Type size={16} /> Text
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => addShapeOverlay('rect')} title="Add Border / Rectangle">
+                    <Square size={16} /> Rect
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => addShapeOverlay('circle')} title="Add Circle">
+                    <Circle size={16} /> Circle
+                  </button>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: '#eab308', borderRadius: '50%' }}></span>
+                  Master CV Template (Read-Only)
+                </div>
+              )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={exportCurrentPagePDF} title="Download Current Page PDF">
                   <Download size={16} /> Export Page
                 </button>
-                <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={saveCanvas}>
-                  <Save size={16} /> Save Canvas
-                </button>
+                {canEdit && (
+                  <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={saveCanvas}>
+                    <Save size={16} /> Save Canvas
+                  </button>
+                )}
               </div>
             </div>
 
@@ -754,6 +770,7 @@ export default function CVsWorkspace() {
                 onOverlaysChange={setOverlays}
                 selectedOverlayId={selectedOverlayId}
                 onOverlaySelect={setSelectedOverlayId}
+                readOnly={!canEdit}
               />
             </div>
           </div>

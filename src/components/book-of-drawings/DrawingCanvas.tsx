@@ -17,6 +17,7 @@ interface DrawingCanvasProps {
   onOverlaysChange?: (overlays: any[]) => void;
   selectedOverlayId?: string | null;
   onOverlaySelect?: (id: string | null) => void;
+  readOnly?: boolean;
 }
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
@@ -32,7 +33,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   overlays = [],
   onOverlaysChange,
   selectedOverlayId,
-  onOverlaySelect
+  onOverlaySelect,
+  readOnly = false
 }) => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const canvasElRef = useRef<HTMLCanvasElement>(null);
@@ -57,15 +59,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     onFocusCanvasRef.current = onFocusCanvas;
     if (fabricCanvasRef.current) {
       fabricCanvasRef.current.defaultCursor = isPanMode && isInternalFocus ? 'grab' : 'default';
-      fabricCanvasRef.current.selection = !isPanMode && isInternalFocus;
+      fabricCanvasRef.current.selection = !isPanMode && isInternalFocus && !readOnly;
       // Also update objects so they don't block drag when pan is on, and block interaction if not focused
       fabricCanvasRef.current.getObjects().forEach(obj => {
-        obj.set('selectable', !isPanMode && isInternalFocus);
-        obj.set('evented', !isPanMode && isInternalFocus);
+        obj.set('selectable', !isPanMode && isInternalFocus && !readOnly);
+        obj.set('evented', !isPanMode && isInternalFocus && !readOnly);
       });
       fabricCanvasRef.current.renderAll();
     }
-  }, [isPanMode, isInternalFocus, onFocusCanvas]);
+  }, [isPanMode, isInternalFocus, onFocusCanvas, readOnly]);
 
   // We scale the canvas visually to fit the screen, but the internal logical size remains the paper size
   const displayScale = 1;
@@ -87,7 +89,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       width: paperSize.width,
       height: paperSize.height,
       preserveObjectStacking: true,
-      selection: !isPanModeRef.current && isInternalFocusRef.current,
+      selection: !isPanModeRef.current && isInternalFocusRef.current && !readOnly,
       defaultCursor: isPanModeRef.current && isInternalFocusRef.current ? 'grab' : 'default',
     });
 
@@ -254,6 +256,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             return (
               <Rnd
                 key={overlay.id}
+                disableDragging={readOnly}
+                enableResizing={!readOnly}
                 size={{ width: overlay.width, height: overlay.height }}
                 position={{ x: overlay.x, y: overlay.y }}
                 scale={finalDisplayScale}
