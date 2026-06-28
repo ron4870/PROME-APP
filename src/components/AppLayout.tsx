@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Menu, X, ChevronRight, ChevronDown, Home, Bell, User, Shield, FileText, Activity, Settings, LayoutDashboard, BookOpen, AlertTriangle, ClipboardCheck, Files, ShieldAlert, Users, Target, GraduationCap, PenTool, MessageSquare, Truck, HelpCircle, MessageCircle, Lock, Library, ClipboardList, FileSpreadsheet, Wallet, Scale, Globe, GitPullRequest, AlertOctagon, Briefcase, Bot, Palette } from 'lucide-react';
+import { LogOut, Menu, X, ChevronRight, ChevronDown, Home, Bell, User, Shield, FileText, Activity, Settings, LayoutDashboard, BookOpen, AlertTriangle, ClipboardCheck, Files, ShieldAlert, Users, Target, GraduationCap, PenTool, MessageSquare, Truck, HelpCircle, MessageCircle, Lock, Library, ClipboardList, FileSpreadsheet, Wallet, Scale, Globe, GitPullRequest, AlertOctagon, Briefcase, Bot } from 'lucide-react';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -521,18 +521,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 </div>
                 <span style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center', fontWeight: '500' }}>Library</span>
               </Link>
-              <a 
-                href={`https://design.promeconsult.com/?token=${localStorage.getItem('token') || ''}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                onClick={() => setIsRightDrawerOpen(false)} 
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}
-              >
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(145deg, #ffffff, #e6e6e6)', boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.08), -4px -4px 8px rgba(255, 255, 255, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.4)' }}>
-                  <Palette size={20} color="#cc0000" strokeWidth={2} style={{ filter: 'drop-shadow(1px 2px 2px rgba(204, 0, 0, 0.3))' }} />
-                </div>
-                <span style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center', fontWeight: '500' }}>PROME Design</span>
-              </a>
+
             </div>
           </div>
           
