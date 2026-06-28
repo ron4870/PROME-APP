@@ -1366,6 +1366,32 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
         return;
       }
       
+      function adjustCoordinatesToSelectedCRS(x, y) {
+        const isInputGeographic = Math.abs(x) < 360 && Math.abs(y) < 360;
+        const isSelectedGeographic = state.crs === 'wgs84_ll';
+
+        if (isInputGeographic && !isSelectedGeographic) {
+          const targetProj = CRS_DEFINITIONS[state.crs];
+          if (targetProj) {
+            try {
+              const projected = proj4('wgs84_ll', state.crs, [x, y]);
+              return { x: projected[0], y: projected[1] };
+            } catch (err) {
+              console.error("Proj4 conversion Lat/Lon to projected failed:", err);
+            }
+          }
+        } else if (!isInputGeographic && isSelectedGeographic) {
+          const sourceProj = CRS_DEFINITIONS['wgs84_36n'];
+          try {
+            const geographic = proj4('wgs84_36n', 'wgs84_ll', [x, y]);
+            return { x: geographic[0], y: geographic[1] };
+          } catch (err) {
+            console.error("Proj4 conversion projected to Lat/Lon failed:", err);
+          }
+        }
+        return { x, y };
+      }
+
       function extractPisFromAlignment(alignNode) {
         const geom = alignNode.getElementsByTagName('CoordGeom')[0];
         if (!geom) return null;
@@ -1383,16 +1409,23 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
               const start = startNodes[0].textContent.trim().split(/\s+/);
               const end = endNodes[0].textContent.trim().split(/\s+/);
               const isXY = document.getElementById('xml-coord-order').value === 'xy';
+              
+              const rawStart = {
+                x: parseFloat(isXY ? start[0] : start[1]),
+                y: parseFloat(isXY ? start[1] : start[0])
+              };
+              const rawEnd = {
+                x: parseFloat(isXY ? end[0] : end[1]),
+                y: parseFloat(isXY ? end[1] : end[0])
+              };
+
+              const startCoords = adjustCoordinatesToSelectedCRS(rawStart.x, rawStart.y);
+              const endCoords = adjustCoordinatesToSelectedCRS(rawEnd.x, rawEnd.y);
+
               segments.push({
                 type: 'Line',
-                start: { 
-                  x: parseFloat(isXY ? start[0] : start[1]), 
-                  y: parseFloat(isXY ? start[1] : start[0]) 
-                },
-                end: { 
-                  x: parseFloat(isXY ? end[0] : end[1]), 
-                  y: parseFloat(isXY ? end[1] : end[0]) 
-                }
+                start: startCoords,
+                end: endCoords
               });
             }
           } else if (el.tagName === 'Spiral') {
