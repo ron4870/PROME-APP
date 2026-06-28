@@ -46,6 +46,7 @@ export default function CVsWorkspace() {
   const [loading, setLoading] = useState(true);
   
   const [sectionsOrder, setSectionsOrder] = useState<string[]>(DEFAULT_SECTIONS);
+  const [newSectionName, setNewSectionName] = useState<string>('');
   const [finalBookSections, setFinalBookSections] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<string>("Final CV Document");
   const [activePageId, setActivePageId] = useState<number | null>(null);
@@ -224,6 +225,35 @@ export default function CVsWorkspace() {
         body: JSON.stringify({ sectionsOrder: newOrder })
       });
     } catch(e) { console.error(e); }
+  };
+
+  const handleAddSection = async () => {
+    const trimmed = newSectionName.trim();
+    if (!trimmed) return;
+    if (sectionsOrder.includes(trimmed)) {
+      alert("This section already exists.");
+      return;
+    }
+    const newOrder = [...sectionsOrder, trimmed];
+    // Put "Final CV Document" always at the end if it's there
+    const cleanOrder = newOrder.filter(s => s !== 'Final CV Document');
+    cleanOrder.push('Final CV Document');
+
+    try {
+      const res = await fetch(`/api/cvs/${id}/sections/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sectionsOrder: cleanOrder })
+      });
+      if (res.ok) {
+        setSectionsOrder(cleanOrder);
+        setNewSectionName('');
+      } else {
+        alert("Failed to save new section order.");
+      }
+    } catch(err) {
+      console.error(err);
+    }
   };
 
   const handleReorderPages = async (reorderedPages: any[]) => {
@@ -528,19 +558,19 @@ export default function CVsWorkspace() {
               <Reorder.Item 
                 key={section} 
                 value={section}
-                dragListener={canEdit}
+                dragListener={canEdit && section !== 'Page Layout' && section !== 'Final CV Document'}
                 style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.5rem',
                   padding: '0.6rem 0.75rem',
+                  backgroundColor: activeSection === section ? '#e0f2fe' : 'transparent',
+                  color: activeSection === section ? '#0369a1' : '#334155',
                   borderRadius: '6px',
-                  backgroundColor: activeSection === section ? '#eff6ff' : 'transparent',
-                  color: activeSection === section ? '#1d4ed8' : '#475569',
                   cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: activeSection === section ? 600 : 500,
-                  marginBottom: '2px'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.85rem',
+                  marginBottom: '4px',
+                  fontWeight: activeSection === section ? 600 : 400
                 }}
                 onClick={() => {
                   setActiveSection(section);
@@ -559,11 +589,31 @@ export default function CVsWorkspace() {
                   }
                 }}
               >
-                {canEdit && <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab' }} />}
+                {canEdit && section !== 'Page Layout' && section !== 'Final CV Document' && <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab' }} />}
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{section}</span>
               </Reorder.Item>
             ))}
           </Reorder.Group>
+
+          {isAdmin && (
+            <div style={{ padding: '0.75rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input 
+                type="text" 
+                placeholder="New section..." 
+                value={newSectionName}
+                onChange={e => setNewSectionName(e.target.value)}
+                className="form-input"
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', flex: 1, minWidth: 0 }}
+              />
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem', flexShrink: 0 }}
+                onClick={handleAddSection}
+              >
+                Add
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -625,9 +675,40 @@ export default function CVsWorkspace() {
                       setIsCanvasOpen(true);
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', width: '80%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', width: '80%' }} onClick={e => e.stopPropagation()}>
+                      <input 
+                        type="checkbox"
+                        checked={page.includeInFinal}
+                        onChange={async (e) => {
+                          const updatedInclude = e.target.checked;
+                          try {
+                            const res = await fetch(`/api/cvs/${id}/pages/${page.id}/include`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ includeInFinal: updatedInclude })
+                            });
+                            if (res.ok) {
+                              setProject((prev: any) => ({
+                                ...prev,
+                                pages: prev.pages.map((p: any) => p.id === page.id ? { ...p, includeInFinal: updatedInclude } : p)
+                              }));
+                            }
+                          } catch(err) {
+                            console.error(err);
+                          }
+                        }}
+                        style={{ cursor: 'pointer', marginRight: '4px' }}
+                      />
                       {canEdit && <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab', flexShrink: 0 }} />}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.name}</span>
+                      <span 
+                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                        onClick={() => {
+                          setActivePageId(page.id);
+                          setIsCanvasOpen(true);
+                        }}
+                      >
+                        {page.name}
+                      </span>
                     </div>
                     {activePages.length > 1 && canEdit && (
                       <button 
@@ -672,30 +753,65 @@ export default function CVsWorkspace() {
               <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>Compile Final CV Document</h2>
               <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Compile all sections and pages of this profile into a single, standardized, high-quality PDF CV.</p>
               
-              <div style={{ textAlign: 'left', marginBottom: '1.5rem', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>Included Sections:</h4>
-                {sectionsOrder.filter(s => s !== 'Page Layout' && s !== 'Final CV Document').map((s) => {
-                  const pagesCount = project?.pages.filter((p: any) => p.section === s && p.includeInFinal).length || 0;
-                  const isIncluded = finalBookSections.includes(s);
-                  return (
-                    <label key={s} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer', fontSize: '0.85rem' }}>
-                      <input 
-                        type="checkbox"
-                        checked={isIncluded}
-                        onChange={(e) => {
-                          let newOrder = [...finalBookSections];
-                          if (e.target.checked) {
-                            if (!newOrder.includes(s)) newOrder.push(s);
-                          } else {
-                            newOrder = newOrder.filter(item => item !== s);
-                          }
-                          handleReorderFinalBookSections(newOrder);
-                        }}
-                      />
-                      <span style={{ color: '#334155' }}>{s} ({pagesCount} {pagesCount === 1 ? 'page' : 'pages'})</span>
-                    </label>
-                  );
-                })}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem', textAlign: 'left', width: '100%' }}>
+                {/* Select Sections */}
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', maxHeight: '250px', overflowY: 'auto' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>Select Sections:</h4>
+                  {sectionsOrder.filter(s => s !== 'Page Layout' && s !== 'Final CV Document').map((s) => {
+                    const pagesCount = project?.pages.filter((p: any) => p.section === s && p.includeInFinal).length || 0;
+                    const isIncluded = finalBookSections.includes(s);
+                    return (
+                      <label key={s} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer', fontSize: '0.85rem' }}>
+                        <input 
+                          type="checkbox"
+                          checked={isIncluded}
+                          onChange={(e) => {
+                            let newOrder = [...finalBookSections];
+                            if (e.target.checked) {
+                              if (!newOrder.includes(s)) newOrder.push(s);
+                            } else {
+                              newOrder = newOrder.filter(item => item !== s);
+                            }
+                            handleReorderFinalBookSections(newOrder);
+                          }}
+                        />
+                        <span style={{ color: '#334155' }}>{s} ({pagesCount} {pagesCount === 1 ? 'page' : 'pages'})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Arrange Order */}
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', maxHeight: '250px', overflowY: 'auto' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>Arrange Order:</h4>
+                  {finalBookSections.length === 0 ? (
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', padding: '1rem 0', textAlign: 'center' }}>No sections selected. Select sections on the left.</div>
+                  ) : (
+                    <Reorder.Group axis="y" values={finalBookSections} onReorder={handleReorderFinalBookSections}>
+                      {finalBookSections.map((s) => (
+                        <Reorder.Item 
+                          key={s} 
+                          value={s}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.4rem 0.5rem',
+                            borderRadius: '4px',
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            marginBottom: '4px',
+                            fontSize: '0.8rem',
+                            cursor: 'grab'
+                          }}
+                        >
+                          <GripVertical size={12} color="#94a3b8" />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s}</span>
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  )}
+                </div>
               </div>
 
               {isCompiling ? (

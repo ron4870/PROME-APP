@@ -304,6 +304,24 @@ router.post('/:id/pages', authenticate, checkCvsPermission, async (req, res) => 
   }
 });
 
+// Update page includeInFinal status
+router.put('/:id/pages/:pageId/include', authenticate, checkCvsPermission, async (req, res) => {
+  try {
+    const pageId = parseInt(req.params.pageId);
+    const { includeInFinal } = req.body;
+
+    const page = await prisma.cvPage.update({
+      where: { id: pageId },
+      data: { includeInFinal }
+    });
+
+    res.json(page);
+  } catch (error) {
+    console.error('Error updating page include status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Update a page
 router.put('/:id/pages/:pageId', authenticate, checkCvsPermission, async (req, res) => {
   try {
