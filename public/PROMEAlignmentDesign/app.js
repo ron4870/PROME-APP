@@ -1382,10 +1382,17 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
             if (startNodes.length > 0 && endNodes.length > 0) {
               const start = startNodes[0].textContent.trim().split(/\s+/);
               const end = endNodes[0].textContent.trim().split(/\s+/);
+              const isXY = document.getElementById('xml-coord-order').value === 'xy';
               segments.push({
                 type: 'Line',
-                start: { x: parseFloat(start[1]), y: parseFloat(start[0]) },
-                end: { x: parseFloat(end[1]), y: parseFloat(end[0]) }
+                start: { 
+                  x: parseFloat(isXY ? start[0] : start[1]), 
+                  y: parseFloat(isXY ? start[1] : start[0]) 
+                },
+                end: { 
+                  x: parseFloat(isXY ? end[0] : end[1]), 
+                  y: parseFloat(isXY ? end[1] : end[0]) 
+                }
               });
             }
           } else if (el.tagName === 'Spiral') {
@@ -2646,5 +2653,40 @@ canvas.addEventListener('dblclick', (e) => {
     
     showToast(`Switched active alignment to: ${state.alignments[foundIndex].name}`);
   }
+});
+
+// Recenter Map View Helper
+function recenterMapView() {
+  if (state.pis.length === 0) return;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  state.pis.forEach(p => {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  });
+  const w = maxX - minX || 100;
+  const h = maxY - minY || 100;
+  state.panX = minX + w/2;
+  state.panY = minY + h/2;
+  state.zoom = Math.min((canvas.width * 0.8) / w, (canvas.height * 0.8) / h);
+}
+
+// Swap coordinate button click handler
+document.getElementById('swap-coor-btn').addEventListener('click', () => {
+  if (state.pis.length === 0) {
+    showToast("No active alignment coordinates to swap");
+    return;
+  }
+  state.pis = state.pis.map(p => ({
+    ...p,
+    x: p.y,
+    y: p.x
+  }));
+  syncActiveAlignment();
+  recenterMapView();
+  updateDataPanel();
+  draw();
+  showToast("Swapped X and Y coordinates");
 });
 
