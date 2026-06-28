@@ -179,6 +179,19 @@ const systemTools: any[] = [
       },
       required: ["query"]
     }
+  },
+  {
+    name: "createFaqItem",
+    description: "Adds or updates a Frequently Asked Question (FAQ) and response to the shared FAQs directory when a user asks a common question or requests knowledge expansion.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        question: { type: Type.STRING, description: "The commonly asked question." },
+        answer: { type: Type.STRING, description: "The accurate answer/response." },
+        category: { type: Type.STRING, description: "The category (e.g., CVs, ISO, Bids, General)." }
+      },
+      required: ["question", "answer"]
+    }
   }
 ];
 
@@ -238,7 +251,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // System instruction
     const systemInstruction = {
       role: "system",
-      parts: [{ text: "You are the PROME App AI Assistant. You help Administrators and Managing Directors manage their company. You are professional, concise, and helpful. You have access to system tools (including company Wiki pages, documentation, and the Organizational Knowledge Folder via getOrganizationalKnowledge) to look up live data." }]
+      parts: [{ text: "You are the PROME App AI Assistant. You help Administrators and Managing Directors manage their company. You are professional, concise, and helpful. You have access to system tools (including company Wiki pages, documentation, FAQs, and the Organizational Knowledge Folder via getOrganizationalKnowledge) to look up live data. You can also write or expand FAQs by using createFaqItem when a user asks an FAQ-relevant question or requests to add an answer to the corporate FAQs database." }]
     };
 
     // Initialize chat session with history
@@ -336,7 +349,35 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
             select: { id: true, title: true, content: true },
             take: 5
           });
-          functionResponse = { pages: pages.map(p => ({ title: p.title, content: p.content.substring(0, 1000) })) };
+          const faqs = await prisma.faqItem.findMany({
+            where: {
+              OR: [
+                { question: { contains: query, mode: 'insensitive' } },
+                { answer: { contains: query, mode: 'insensitive' } }
+              ]
+            },
+            select: { id: true, question: true, answer: true, category: true },
+            take: 5
+          });
+          functionResponse = { 
+            wikiPages: pages.map(p => ({ title: p.title, content: p.content.substring(0, 1000) })),
+            faqItems: faqs.map(f => ({ question: f.question, answer: f.answer, category: f.category }))
+          };
+        } else if (call.name === 'createFaqItem') {
+          const args = call.args as any;
+          const faq = await prisma.faqItem.upsert({
+            where: { question: args.question.trim() },
+            update: {
+              answer: args.answer.trim(),
+              category: args.category ? args.category.trim() : 'General'
+            },
+            create: {
+              question: args.question.trim(),
+              answer: args.answer.trim(),
+              category: args.category ? args.category.trim() : 'General'
+            }
+          });
+          functionResponse = { faq: { id: faq.id, question: faq.question } };
         } else {
           functionResponse = { error: 'Function not found' };
         }

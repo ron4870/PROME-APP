@@ -133,6 +133,48 @@ async function main() {
     }
   }
 
+  // Seed typical FAQs
+  const defaultFaqs = [
+    {
+      question: "How do I create a new CV Profile?",
+      answer: "Click 'Create CV Profile' in the CVs Compiler dashboard, fill in the candidate name, role title, select a category, assign collaborators, and click 'Create'. This will initialize the project using the structure of the Master CV Template.",
+      category: "CVs Compiler"
+    },
+    {
+      question: "Who can edit the Master CV Template?",
+      answer: "Only users with the Administrator role can edit the Master CV Template. Standard users can view the template or copy it, but cannot make modifications to the layout.",
+      category: "CVs Compiler"
+    },
+    {
+      question: "How do I include or exclude pages in the final CV compilation?",
+      answer: "Inside the CV Workspace, open the target page and tick or untick the checkbox next to the page name in the 'Section Pages' panel. Unticked pages will not be included in the compiled PDF.",
+      category: "CVs Compiler"
+    },
+    {
+      question: "How do I reorder the compilation sequence of sections?",
+      answer: "In the CV Workspace, select the 'Final CV Document' section. Under 'Arrange Order' on the right, you can drag and drop sections to rearrange the exact sequence in which they will be exported to the PDF.",
+      category: "CVs Compiler"
+    },
+    {
+      question: "How do I add a new CV Category?",
+      answer: "Administrators can add new CV categories dynamically from the CVs Dashboard using the 'New Category...' input field.",
+      category: "CVs Compiler"
+    },
+    {
+      question: "How do I create a new Wiki Page?",
+      answer: "Go to the Company Documents section, navigate to a folder, and click 'New Page'. Wiki pages are created in Draft status and must be submitted and approved by an Administrator or Managing Director to become official.",
+      category: "Wiki & Documents"
+    }
+  ];
+
+  for (const faq of defaultFaqs) {
+    await prisma.faqItem.upsert({
+      where: { question: faq.question },
+      update: {},
+      create: faq
+    });
+  }
+
   console.log('Seeded default roles and admin user successfully.');
 }
 

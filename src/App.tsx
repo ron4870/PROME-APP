@@ -68,6 +68,7 @@ import ManualsDirectory from './pages/ManualsDirectory';
 import LibraryModule from './pages/LibraryModule';
 import Wiki from './pages/Wiki';
 import AIAssistant from './pages/AIAssistant';
+import FAQs from './pages/FAQs';
 
 
 import BookOfDrawingsDashboard from './pages/divisions/BookOfDrawingsDashboard';
@@ -165,6 +166,7 @@ function App() {
         <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
         <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
         <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+        <Route path="/faqs" element={<ProtectedRoute><FAQs /></ProtectedRoute>} />
         
         {/* Division Routes */}
         <Route path="/division/pmbdd" element={<ProtectedRoute><PMBDD /></ProtectedRoute>} />

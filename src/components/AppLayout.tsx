@@ -528,12 +528,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <div style={{ padding: '1rem 1rem 0.5rem 1rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#111', margin: '0 0 1rem 0' }}>Help</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-              <a href="#" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}>
+              <Link to="/faqs" onClick={() => setIsRightDrawerOpen(false)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(145deg, #ffffff, #e6e6e6)', boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.08), -4px -4px 8px rgba(255, 255, 255, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.4)' }}>
                   <HelpCircle size={24} color="#cc0000" strokeWidth={2} style={{ filter: 'drop-shadow(1px 2px 2px rgba(204, 0, 0, 0.3))' }} />
                 </div>
                 <span style={{ fontSize: '0.75rem', color: '#333', textAlign: 'center', fontWeight: '500' }}>FAQs</span>
-              </a>
+              </Link>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsRightDrawerOpen(false); setIsSupportModalOpen(true); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(145deg, #ffffff, #e6e6e6)', boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.08), -4px -4px 8px rgba(255, 255, 255, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.4)' }}>
                   <MessageCircle size={24} color="#cc0000" strokeWidth={2} style={{ filter: 'drop-shadow(1px 2px 2px rgba(204, 0, 0, 0.3))' }} />
