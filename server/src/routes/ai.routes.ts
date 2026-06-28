@@ -168,6 +168,17 @@ const systemTools: any[] = [
       },
       required: ["projectId"]
     }
+  },
+  {
+    name: "getOrganizationalKnowledge",
+    description: "Searches the company Wiki pages, documentation, and directories (OKF) for answers relating to company guidelines, instructions, policies, procedures, and projects.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "The search query or keyword to find relevant knowledge in Wiki pages." }
+      },
+      required: ["query"]
+    }
   }
 ];
 
@@ -227,7 +238,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // System instruction
     const systemInstruction = {
       role: "system",
-      parts: [{ text: "You are the PROME App AI Assistant. You help Administrators and Managing Directors manage their company. You are professional, concise, and helpful. You have access to system tools to look up data." }]
+      parts: [{ text: "You are the PROME App AI Assistant. You help Administrators and Managing Directors manage their company. You are professional, concise, and helpful. You have access to system tools (including company Wiki pages, documentation, and the Organizational Knowledge Folder via getOrganizationalKnowledge) to look up live data." }]
     };
 
     // Initialize chat session with history
@@ -312,6 +323,20 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
             include: { tasks: true, members: { include: { user: true } }, financials: true }
           });
           functionResponse = project ? { project } : { error: 'Project not found' };
+        } else if (call.name === 'getOrganizationalKnowledge') {
+          const args = call.args as any;
+          const query = args.query || '';
+          const pages = await prisma.wikiPage.findMany({
+            where: {
+              OR: [
+                { title: { contains: query, mode: 'insensitive' } },
+                { content: { contains: query, mode: 'insensitive' } }
+              ]
+            },
+            select: { id: true, title: true, content: true },
+            take: 5
+          });
+          functionResponse = { pages: pages.map(p => ({ title: p.title, content: p.content.substring(0, 1000) })) };
         } else {
           functionResponse = { error: 'Function not found' };
         }
