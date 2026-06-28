@@ -17,18 +17,6 @@ export default function CVsDashboard() {
   const { user, token, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   
-  if (!hasPermission('cvs')) {
-    return (
-      <div style={{ padding: '3rem', textAlign: 'center' }}>
-        <h2 style={{ color: '#ef4444' }}>Access Denied</h2>
-        <p style={{ color: '#64748b', marginTop: '0.5rem' }}>You do not have permission to access the CVs module. Please contact your administrator.</p>
-      </div>
-    );
-  }
-
-  const isAdminOrMD = user?.roles?.some(r => ['Administrator', 'Managing Director'].includes(r.name));
-  const canCreateCVs = isAdminOrMD || user?.roles?.some(r => r.name === 'Head of Division');
-  
   const [projects, setProjects] = useState<CvProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +32,10 @@ export default function CVsDashboard() {
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!hasPermission('cvs')) return;
     fetchProjects();
     fetchUsers();
-  }, []);
+  }, [hasPermission]);
 
   const fetchUsers = async () => {
     try {
@@ -101,7 +90,18 @@ export default function CVsDashboard() {
       setIsModalOpen(false);
     }
   };
-  
+  if (!hasPermission('cvs')) {
+    return (
+      <div style={{ padding: '3rem', textAlign: 'center' }}>
+        <h2 style={{ color: '#ef4444' }}>Access Denied</h2>
+        <p style={{ color: '#64748b', marginTop: '0.5rem' }}>You do not have permission to access the CVs module. Please contact your administrator.</p>
+      </div>
+    );
+  }
+
+  const isAdminOrMD = user?.roles?.some(r => ['Administrator', 'Managing Director'].includes(r.name));
+  const canCreateCVs = isAdminOrMD || user?.roles?.some(r => r.name === 'Head of Division');
+
   const filteredProjects = projects.filter(p => 
     !p.isTemplate && (
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

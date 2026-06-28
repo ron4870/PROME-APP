@@ -40,15 +40,7 @@ export default function CVsWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token, hasPermission } = useAuth();
-  
-  if (!hasPermission('cvs')) {
-    return (
-      <div style={{ padding: '3rem', textAlign: 'center' }}>
-        <h2 style={{ color: '#ef4444' }}>Access Denied</h2>
-        <p style={{ color: '#64748b', marginTop: '0.5rem' }}>You do not have permission to access the CVs module. Please contact your administrator.</p>
-      </div>
-    );
-  }
+
 
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -95,6 +87,7 @@ export default function CVsWorkspace() {
   };
 
   useEffect(() => {
+    if (!hasPermission('cvs')) return;
     if (activeSection !== 'Final CV Document' && isCanvasOpen) {
       const timer = setTimeout(() => {
         fitCanvasToScreen();
@@ -104,13 +97,15 @@ export default function CVsWorkspace() {
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [activeSection, isCanvasOpen, paperSize]);
+  }, [activeSection, isCanvasOpen, paperSize, hasPermission]);
 
   useEffect(() => {
+    if (!hasPermission('cvs')) return;
     fetchProject();
-  }, [id]);
+  }, [id, hasPermission]);
 
   useEffect(() => {
+    if (!hasPermission('cvs')) return;
     if (project && activeSection === 'Page Layout') {
       const pageLayoutPages = project.pages.filter((p: any) => p.section === 'Page Layout');
       if (pageLayoutPages.length > 0) {
@@ -133,7 +128,7 @@ export default function CVsWorkspace() {
           .catch(err => console.error('Error creating Page Layout page:', err));
       }
     }
-  }, [activeSection, project, id, token]);
+  }, [activeSection, project, id, token, hasPermission]);
 
   const fetchProject = async () => {
     try {
@@ -164,6 +159,7 @@ export default function CVsWorkspace() {
   };
 
   useEffect(() => {
+    if (!hasPermission('cvs')) return;
     if (!canvas || !activePageId || !project || !isCanvasOpen) return;
     
     const page = project.pages.find((p: any) => p.id === activePageId);
@@ -217,7 +213,7 @@ export default function CVsWorkspace() {
       canvas.renderAll();
       setOverlays([]);
     }
-  }, [activePageId, canvas, project, isCanvasOpen]);
+  }, [activePageId, canvas, project, isCanvasOpen, hasPermission]);
 
   const handleReorderSections = async (newOrder: string[]) => {
     setSectionsOrder(newOrder);
@@ -490,6 +486,15 @@ export default function CVsWorkspace() {
     setOverlays([...overlays, newOverlay]);
     setSelectedOverlayId(newOverlay.id);
   };
+
+  if (!hasPermission('cvs')) {
+    return (
+      <div style={{ padding: '3rem', textAlign: 'center' }}>
+        <h2 style={{ color: '#ef4444' }}>Access Denied</h2>
+        <p style={{ color: '#64748b', marginTop: '0.5rem' }}>You do not have permission to access the CVs module. Please contact your administrator.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '3rem' }}>Loading CV workspace...</div>;
