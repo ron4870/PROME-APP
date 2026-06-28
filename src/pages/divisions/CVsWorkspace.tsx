@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutTemplate, Type, Save, Download, Trash2, ArrowLeft, GripVertical, Square, Circle } from 'lucide-react';
+import { LayoutTemplate, Type, Save, Download, Trash2, ArrowLeft, GripVertical, Square, Circle, Edit } from 'lucide-react';
 import { DrawingCanvas } from '../../components/book-of-drawings/DrawingCanvas';
 import * as fabric from 'fabric';
 import jsPDF from 'jspdf';
@@ -47,6 +47,8 @@ export default function CVsWorkspace() {
   
   const [sectionsOrder, setSectionsOrder] = useState<string[]>(DEFAULT_SECTIONS);
   const [newSectionName, setNewSectionName] = useState<string>('');
+  const [sectionContextMenu, setSectionContextMenu] = useState<{ x: number; y: number; section: string } | null>(null);
+  const [pageContextMenu, setPageContextMenu] = useState<{ x: number; y: number; page: any } | null>(null);
   const [finalBookSections, setFinalBookSections] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<string>("Final CV Document");
   const [activePageId, setActivePageId] = useState<number | null>(null);
@@ -104,6 +106,15 @@ export default function CVsWorkspace() {
     if (!hasPermission('cvs')) return;
     fetchProject();
   }, [id, hasPermission]);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setSectionContextMenu(null);
+      setPageContextMenu(null);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   useEffect(() => {
     if (!hasPermission('cvs')) return;
@@ -250,6 +261,68 @@ export default function CVsWorkspace() {
         setNewSectionName('');
       } else {
         alert("Failed to save new section order.");
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  const handleRenameSection = async (oldName: string) => {
+    if (oldName === 'Page Layout' || oldName === 'Final CV Document') {
+      alert("This section cannot be renamed.");
+      return;
+    }
+    const newName = window.prompt("Enter new name for section:", oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    
+    const trimmed = newName.trim();
+    if (sectionsOrder.includes(trimmed)) {
+      alert("A section with this name already exists.");
+      return;
+    }
+
+    const updatedSections = sectionsOrder.map(s => s === oldName ? trimmed : s);
+    const updatedFinalSections = finalBookSections.map(s => s === oldName ? trimmed : s);
+    const updatedPages = project.pages.map((p: any) => p.section === oldName ? { ...p, section: trimmed } : p);
+
+    try {
+      const res = await fetch(`/api/cvs/${id}/sections/rename`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ oldName, newName: trimmed })
+      });
+      if (res.ok) {
+        setSectionsOrder(updatedSections);
+        setFinalBookSections(updatedFinalSections);
+        setProject((prev: any) => ({ ...prev, pages: updatedPages }));
+        if (activeSection === oldName) {
+          setActiveSection(trimmed);
+        }
+      } else {
+        alert("Failed to rename section on server.");
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  const handleRenamePage = async (page: any) => {
+    const newName = window.prompt("Enter new name for page:", page.name);
+    if (!newName || !newName.trim() || newName.trim() === page.name) return;
+
+    try {
+      const res = await fetch(`/api/cvs/${id}/pages/${page.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newName.trim() })
+      });
+      if (res.ok) {
+        setProject((prev: any) => ({
+          ...prev,
+          pages: prev.pages.map((p: any) => p.id === page.id ? { ...p, name: newName.trim() } : p)
+        }));
+      } else {
+        alert("Failed to rename page.");
       }
     } catch(err) {
       console.error(err);
@@ -588,6 +661,16 @@ export default function CVsWorkspace() {
                     }
                   }
                 }}
+                onContextMenu={(e) => {
+                  if (!canEdit || section === 'Page Layout' || section === 'Final CV Document') return;
+                  e.preventDefault();
+                  setSectionContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    section: section
+                  });
+                  setPageContextMenu(null);
+                }}
               >
                 {canEdit && section !== 'Page Layout' && section !== 'Final CV Document' && <GripVertical size={14} color="#cbd5e1" style={{ cursor: 'grab' }} />}
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{section}</span>
@@ -673,6 +756,16 @@ export default function CVsWorkspace() {
                     onClick={() => {
                       setActivePageId(page.id);
                       setIsCanvasOpen(true);
+                    }}
+                    onContextMenu={(e) => {
+                      if (!canEdit) return;
+                      e.preventDefault();
+                      setPageContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        page: page
+                      });
+                      setSectionContextMenu(null);
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', width: '80%' }} onClick={e => e.stopPropagation()}>
@@ -896,6 +989,91 @@ export default function CVsWorkspace() {
           </div>
         )}
       </div>
+
+      {/* Custom Context Menus */}
+      {sectionContextMenu && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: sectionContextMenu.y,
+            left: sectionContextMenu.x,
+            backgroundColor: 'white',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+            zIndex: 9999,
+            padding: '4px 0',
+            minWidth: '130px'
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button 
+            style={{
+              width: '100%',
+              padding: '6px 12px',
+              textAlign: 'left',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              color: '#334155',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onClick={() => {
+              handleRenameSection(sectionContextMenu.section);
+              setSectionContextMenu(null);
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <Edit size={14} /> Rename Section
+          </button>
+        </div>
+      )}
+
+      {pageContextMenu && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: pageContextMenu.y,
+            left: pageContextMenu.x,
+            backgroundColor: 'white',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+            zIndex: 9999,
+            padding: '4px 0',
+            minWidth: '130px'
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button 
+            style={{
+              width: '100%',
+              padding: '6px 12px',
+              textAlign: 'left',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              color: '#334155',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onClick={() => {
+              handleRenamePage(pageContextMenu.page);
+              setPageContextMenu(null);
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <Edit size={14} /> Rename Page
+          </button>
+        </div>
+      )}
     </div>
   );
 }

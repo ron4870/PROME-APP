@@ -362,6 +362,48 @@ router.delete('/:id/pages/:pageId', authenticate, checkCvsPermission, async (req
   }
 });
 
+// Rename a section (updates sectionsOrder, finalBookSections, and all pages belonging to the section)
+router.put('/:id/sections/rename', authenticate, checkCvsPermission, async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id);
+    const { oldName, newName } = req.body;
+
+    if (!oldName || !newName || !newName.trim()) {
+      return res.status(400).json({ message: 'Old and new section names are required' });
+    }
+
+    const project = await prisma.cvProject.findUnique({ where: { id: projectId } });
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    // Update sectionsOrder
+    let sectionsOrder: string[] = Array.isArray(project.sectionsOrder) ? (project.sectionsOrder as string[]) : [];
+    sectionsOrder = sectionsOrder.map(s => s === oldName ? newName.trim() : s);
+
+    // Update finalBookSections
+    let finalBookSections: string[] = Array.isArray(project.finalBookSections) ? (project.finalBookSections as string[]) : [];
+    finalBookSections = finalBookSections.map(s => s === oldName ? newName.trim() : s);
+
+    await prisma.$transaction([
+      prisma.cvProject.update({
+        where: { id: projectId },
+        data: {
+          sectionsOrder,
+          finalBookSections
+        }
+      }),
+      prisma.cvPage.updateMany({
+        where: { projectId, section: oldName },
+        data: { section: newName.trim() }
+      })
+    ]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error renaming section:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Update sections order
 router.put('/:id/sections/order', authenticate, checkCvsPermission, async (req, res) => {
   try {
