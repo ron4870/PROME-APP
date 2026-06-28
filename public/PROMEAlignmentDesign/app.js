@@ -1309,6 +1309,9 @@ document.getElementById('tab-pis').addEventListener('click', () => {
   state.activeTab = 'pis';
   document.getElementById('tab-pis').classList.add('active');
   document.getElementById('tab-curves').classList.remove('active');
+  document.getElementById('tab-ai').classList.remove('active');
+  document.getElementById('data-container').style.display = 'block';
+  document.getElementById('ai-container').style.display = 'none';
   updateDataPanel();
 });
 
@@ -1316,6 +1319,9 @@ document.getElementById('tab-curves').addEventListener('click', () => {
   state.activeTab = 'curves';
   document.getElementById('tab-curves').classList.add('active');
   document.getElementById('tab-pis').classList.remove('active');
+  document.getElementById('tab-ai').classList.remove('active');
+  document.getElementById('data-container').style.display = 'block';
+  document.getElementById('ai-container').style.display = 'none';
   updateDataPanel();
 });
 
@@ -2276,3 +2282,271 @@ document.getElementById('export-btn').addEventListener('click', async () => {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+
+// --- AI Road Planner Integration ---
+let aiSessionId = null;
+
+// Tab switcher logic
+document.getElementById('tab-ai').addEventListener('click', () => {
+  state.activeTab = 'ai';
+  document.getElementById('tab-ai').classList.add('active');
+  document.getElementById('tab-pis').classList.remove('active');
+  document.getElementById('tab-curves').classList.remove('active');
+  document.getElementById('data-container').style.display = 'none';
+  document.getElementById('ai-container').style.display = 'flex';
+  scrollToBottom();
+});
+
+// Helper: Scroll chat log to bottom
+function scrollToBottom() {
+  const chatLog = document.getElementById('ai-chat-log');
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// Helper: Download OpenDrive File
+window.downloadOpenDrive = function(xml) {
+  const blob = new Blob([xml], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Road_Alignment_OpenDrive.xodr';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// Helper: Append a message to the chat log
+function appendAiChatMessage(role, text) {
+  const chatLog = document.getElementById('ai-chat-log');
+  const msgDiv = document.createElement('div');
+  
+  if (role === 'user') {
+    msgDiv.style.background = '#374151';
+    msgDiv.style.padding = '8px 10px';
+    msgDiv.style.borderRadius = '6px';
+    msgDiv.style.alignSelf = 'flex-end';
+    msgDiv.style.maxWidth = '85%';
+    msgDiv.style.color = '#fff';
+    msgDiv.style.marginLeft = 'auto';
+    msgDiv.textContent = text;
+  } else {
+    msgDiv.style.background = '#1f2937';
+    msgDiv.style.padding = '10px';
+    msgDiv.style.borderRadius = '6px';
+    msgDiv.style.alignSelf = 'flex-start';
+    msgDiv.style.maxWidth = '90%';
+    msgDiv.style.color = '#cbd5e1';
+    msgDiv.style.lineHeight = '1.5';
+    msgDiv.style.marginRight = 'auto';
+    
+    // Check if the response contains an OpenDrive XML block
+    const xmlRegex = /<\?xml[\s\S]*?<\/openDRIVE>/i;
+    const match = text.match(xmlRegex);
+    
+    if (match) {
+      const xmlBlock = match[0];
+      const otherText = text.replace(xmlBlock, '');
+      
+      const textSpan = document.createElement('span');
+      textSpan.textContent = otherText;
+      msgDiv.appendChild(textSpan);
+      
+      const xmlContainer = document.createElement('div');
+      xmlContainer.style.background = '#111827';
+      xmlContainer.style.padding = '8px';
+      xmlContainer.style.borderRadius = '4px';
+      xmlContainer.style.border = '1px solid #374151';
+      xmlContainer.style.marginTop = '8px';
+      
+      const pre = document.createElement('pre');
+      pre.style.overflowX = 'auto';
+      pre.style.fontFamily = 'monospace';
+      pre.style.fontSize = '0.75rem';
+      pre.style.color = '#34d399';
+      pre.style.maxHeight = '150px';
+      pre.style.whiteSpace = 'pre';
+      pre.textContent = xmlBlock;
+      xmlContainer.appendChild(pre);
+      
+      const btnContainer = document.createElement('div');
+      btnContainer.style.marginTop = '6px';
+      btnContainer.style.display = 'flex';
+      btnContainer.style.gap = '6px';
+      
+      const copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy XML';
+      copyBtn.className = 'btn';
+      copyBtn.style.fontSize = '0.7rem';
+      copyBtn.style.padding = '3px 6px';
+      copyBtn.style.background = '#374151';
+      copyBtn.style.color = '#fff';
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(xmlBlock);
+        alert('XML copied to clipboard!');
+      };
+      
+      const downloadBtn = document.createElement('button');
+      downloadBtn.textContent = 'Download .xodr';
+      downloadBtn.className = 'btn primary';
+      downloadBtn.style.fontSize = '0.7rem';
+      downloadBtn.style.padding = '3px 6px';
+      downloadBtn.style.background = '#cc0000';
+      downloadBtn.style.borderColor = '#cc0000';
+      downloadBtn.style.color = '#fff';
+      downloadBtn.onclick = () => {
+        window.downloadOpenDrive(xmlBlock);
+      };
+      
+      btnContainer.appendChild(copyBtn);
+      btnContainer.appendChild(downloadBtn);
+      xmlContainer.appendChild(btnContainer);
+      msgDiv.appendChild(xmlContainer);
+    } else {
+      msgDiv.textContent = text;
+    }
+  }
+  
+  chatLog.appendChild(msgDiv);
+  scrollToBottom();
+}
+
+// Function to send a message to backend AI route
+async function sendAiMessage(messageText) {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    appendAiChatMessage('model', 'Error: You must be logged in to use the AI Copilot.');
+    return;
+  }
+  
+  // Prepare active alignment data if checkmark is checked
+  let enrichedMessage = messageText;
+  const useRefLine = document.getElementById('ai-use-ref-line').checked;
+  if (useRefLine && state.pis && state.pis.length > 0) {
+    enrichedMessage = `
+[REFERENCE ALIGNMENT GEOMETRY]
+CRS: ${state.crs}
+Design Speed: ${state.designSpeed} km/h
+Design Standard: ${state.standard}
+Points of Intersection (PIs):
+${JSON.stringify(state.pis.map(p => ({ id: p.id, x: p.x, y: p.y, r: p.r, lsIn: p.lsIn, lsOut: p.lsOut })), null, 2)}
+
+User request:
+${messageText}
+`;
+  }
+  
+  // Show spinner / loading state
+  const chatLog = document.getElementById('ai-chat-log');
+  const loadingDiv = document.createElement('div');
+  loadingDiv.id = 'ai-loading-indicator';
+  loadingDiv.style.alignSelf = 'flex-start';
+  loadingDiv.style.color = '#9ca3af';
+  loadingDiv.style.fontSize = '0.8rem';
+  loadingDiv.textContent = 'PROME Copilot is planning...';
+  chatLog.appendChild(loadingDiv);
+  scrollToBottom();
+  
+  try {
+    // 1. Create session if none exists
+    if (!aiSessionId) {
+      const sessionRes = await fetch('/api/ai/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ title: 'Alignment Copilot Chat' })
+      });
+      if (sessionRes.ok) {
+        const sessionData = await sessionRes.json();
+        aiSessionId = sessionData.id;
+      }
+    }
+    
+    // 2. Post Chat message
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        sessionId: aiSessionId,
+        message: enrichedMessage
+      })
+    });
+    
+    // Remove loading indicator
+    const indicator = document.getElementById('ai-loading-indicator');
+    if (indicator) indicator.remove();
+    
+    if (response.ok) {
+      const responseData = await response.json();
+      // Fetch latest messages
+      const sessionDetailRes = await fetch(`/api/ai/sessions/${aiSessionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (sessionDetailRes.ok) {
+        const sessionDetail = await sessionDetailRes.json();
+        const latestMsg = sessionDetail.messages[sessionDetail.messages.length - 1];
+        if (latestMsg && latestMsg.role === 'model') {
+          appendAiChatMessage('model', latestMsg.content);
+        }
+      }
+    } else {
+      appendAiChatMessage('model', 'Failed to communicate with AI Assistant. Ensure you have proper permissions.');
+    }
+  } catch (err) {
+    const indicator = document.getElementById('ai-loading-indicator');
+    if (indicator) indicator.remove();
+    console.error(err);
+    appendAiChatMessage('model', 'An error occurred while connecting to the AI service.');
+  }
+}
+
+// Event Listeners for Chat Inputs
+document.getElementById('ai-send-btn').addEventListener('click', () => {
+  const inputEl = document.getElementById('ai-chat-input');
+  const text = inputEl.value.trim();
+  if (text) {
+    appendAiChatMessage('user', text);
+    inputEl.value = '';
+    sendAiMessage(text);
+  }
+});
+
+document.getElementById('ai-chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('ai-send-btn').click();
+  }
+});
+
+// Preset Buttons Event Listeners
+document.getElementById('preset-opendrive').addEventListener('click', () => {
+  if (!state.pis || state.pis.length === 0) {
+    alert("Please place alignment points on the map first.");
+    return;
+  }
+  appendAiChatMessage('user', 'Generate ASAM OpenDrive (.xodr) road network along this reference line alignment.');
+  sendAiMessage('Generate ASAM OpenDrive (.xodr) road network along this reference line alignment. Make sure the output XML is complete, valid, and contains proper lane widths, lanes, and planView parameters matching the reference coordinate points.');
+});
+
+document.getElementById('preset-lanes').addEventListener('click', () => {
+  if (!state.pis || state.pis.length === 0) {
+    alert("Please place alignment points on the map first.");
+    return;
+  }
+  appendAiChatMessage('user', 'Design a 2-lane road with road markings along the reference line.');
+  sendAiMessage('Design a 2-lane road with specific lane widths, lane markings, and shoulder features along the alignment reference line. Generate the corresponding ASAM OpenDrive XML containing these design features.');
+});
+
+document.getElementById('preset-check').addEventListener('click', () => {
+  if (!state.pis || state.pis.length === 0) {
+    alert("Please place alignment points on the map first.");
+    return;
+  }
+  appendAiChatMessage('user', 'Perform a geometric safety check on the alignment.');
+  sendAiMessage('Perform a geometric safety check on the alignment. Analyze curvature, radii, and spiral transitions relative to AASHTO or Uganda design speed parameters and report any issues or feedback.');
+});
+

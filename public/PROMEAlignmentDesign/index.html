@@ -751,16 +751,45 @@
     </div>
 
     <!-- Right Panel: Data Table -->
-    <div class="panel-right">
+    <div class="panel-right" style="display: flex; flex-direction: column; height: 100%;">
       <div class="tabs">
         <div class="tab active" id="tab-pis">Points of Intersection (PI)</div>
         <div class="tab" id="tab-curves">Curves</div>
+        <div class="tab" id="tab-ai" style="display: flex; align-items: center; justify-content: center; gap: 4px; color: #cc0000; font-weight: 600;"><span style="font-size: 14px;">🤖</span> AI Planner</div>
       </div>
       
-      <div class="panel-content" id="data-container">
+      <div class="panel-content" id="data-container" style="flex: 1; overflow-y: auto;">
         <!-- Dynamically populated by JS -->
         <div class="empty-state">
           No alignment defined.<br><br>Click on the map to start placing Points of Intersection (PIs).
+        </div>
+      </div>
+
+      <div class="panel-content" id="ai-container" style="display: none; flex: 1; flex-direction: column; overflow: hidden; background: #111827; color: #f3f4f6; border-top: 1px solid #374151;">
+        <div id="ai-chat-log" style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+          <div style="background: #1f2937; padding: 10px; border-radius: 6px; border-left: 3px solid #cc0000; color: #cbd5e1; line-height: 1.5;">
+            <strong>PROME Road Design Copilot:</strong><br>
+            Hello! I am your AI road planning assistant. Draw or import a horizontal alignment, check the option below, and I will generate an ASAM OpenDrive (.xodr) road model or design features along the alignment.
+          </div>
+        </div>
+
+        <!-- Reference Line Toggle & Preset Prompts -->
+        <div style="padding: 10px; background: #1f2937; border-top: 1px solid #374151; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+            <input type="checkbox" id="ai-use-ref-line" checked style="accent-color: #cc0000;" />
+            <label for="ai-use-ref-line" style="color: #9ca3af; cursor: pointer; user-select: none;">Use alignment as reference line</label>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn" id="preset-opendrive" style="font-size: 0.75rem; padding: 4px 8px; background: #374151; border: 1px solid #4b5563; color: white;">Generate OpenDrive</button>
+            <button class="btn" id="preset-lanes" style="font-size: 0.75rem; padding: 4px 8px; background: #374151; border: 1px solid #4b5563; color: white;">Design 2 Lanes</button>
+            <button class="btn" id="preset-check" style="font-size: 0.75rem; padding: 4px 8px; background: #374151; border: 1px solid #4b5563; color: white;">Geometric check</button>
+          </div>
+        </div>
+
+        <!-- Input Bar -->
+        <div style="padding: 10px; background: #111827; border-top: 1px solid #374151; display: flex; gap: 6px; align-items: center;">
+          <input type="text" id="ai-chat-input" placeholder="Ask AI Copilot..." style="flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #374151; background: #1f2937; color: white; font-size: 0.85rem; outline: none;" />
+          <button class="btn primary" id="ai-send-btn" style="padding: 8px 12px; font-size: 0.85rem; background: #cc0000; border-color: #cc0000; color: white;">Send</button>
         </div>
       </div>
     </div>
