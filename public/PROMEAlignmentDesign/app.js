@@ -2550,3 +2550,101 @@ document.getElementById('preset-check').addEventListener('click', () => {
   sendAiMessage('Perform a geometric safety check on the alignment. Analyze curvature, radii, and spiral transitions relative to AASHTO or Uganda design speed parameters and report any issues or feedback.');
 });
 
+// Distance helper: project point p onto segment ab
+function distanceToSegment(p, a, b) {
+  const A = p.x - a.x;
+  const B = p.y - a.y;
+  const C = b.x - a.x;
+  const D = b.y - a.y;
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  if (lenSq !== 0) {
+    param = dot / lenSq;
+  }
+  let xx, yy;
+  if (param < 0) {
+    xx = a.x;
+    yy = a.y;
+  } else if (param > 1) {
+    xx = b.x;
+    yy = b.y;
+  } else {
+    xx = a.x + param * C;
+    yy = a.y + param * D;
+  }
+  const dx = p.x - xx;
+  const dy = p.y - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Modern Toast Notification Overlay
+function showToast(message) {
+  const existing = document.getElementById('prome-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'prome-toast';
+  toast.textContent = message;
+  toast.style.position = 'fixed';
+  toast.style.bottom = '24px';
+  toast.style.left = '50%';
+  toast.style.transform = 'translateX(-50%)';
+  toast.style.backgroundColor = '#cc0000';
+  toast.style.color = 'white';
+  toast.style.padding = '12px 24px';
+  toast.style.borderRadius = '8px';
+  toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+  toast.style.zIndex = '10000';
+  toast.style.fontSize = '0.9rem';
+  toast.style.fontWeight = '600';
+  toast.style.pointerEvents = 'none';
+  toast.style.transition = 'opacity 0.2s ease-in-out';
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 200);
+  }, 3000);
+}
+
+// Canvas Double Click Alignment Activation
+canvas.addEventListener('dblclick', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const mapCoords = canvasToMap(mx, my);
+  
+  // Convert 15px double-click boundary zone into map units
+  const tolerance = 15 / state.zoom;
+  let foundIndex = -1;
+  
+  // Find which inactive alignment segment was double-clicked
+  for (let idx = 0; idx < state.alignments.length; idx++) {
+    const aln = state.alignments[idx];
+    if (aln.pis.length < 2) continue;
+    for (let i = 0; i < aln.pis.length - 1; i++) {
+      const dist = distanceToSegment(mapCoords, aln.pis[i], aln.pis[i+1]);
+      if (dist < tolerance) {
+        foundIndex = idx;
+        break;
+      }
+    }
+    if (foundIndex !== -1) break;
+  }
+  
+  if (foundIndex !== -1 && foundIndex !== state.activeAlignmentIndex) {
+    // Sync current alignment points
+    syncActiveAlignment();
+    
+    // Switch to double-clicked alignment
+    state.activeAlignmentIndex = foundIndex;
+    state.pis = [...state.alignments[foundIndex].pis];
+    state.selectedPiIndex = -1;
+    
+    updateAlignmentDropdown();
+    updateDataPanel();
+    draw();
+    
+    showToast(`Switched active alignment to: ${state.alignments[foundIndex].name}`);
+  }
+});
+
