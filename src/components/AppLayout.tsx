@@ -112,7 +112,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       { label: 'Staff Data Management', path: '#' },
       { label: 'Performance Management', path: '#' },
       { label: 'Leave Management', path: '#' },
-      { label: 'Payroll', path: '#' }
+      { label: 'CVs', path: '#' }
     ];
   } else if (location.pathname.startsWith('/division/fd')) {
     navLinks = [

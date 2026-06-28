@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, Calendar, UserPlus, Box, DollarSign, Award } from 'lucide-react';
+import { Users, Calendar, UserPlus, Box, Award, FileText } from 'lucide-react';
 
 export default function HRAD() {
   const modules = [
@@ -7,7 +7,7 @@ export default function HRAD() {
     { name: 'Leave Management', icon: <Calendar size={24} />, desc: 'Track vacations and absence' },
     { name: 'Recruitment', icon: <UserPlus size={24} />, desc: 'Job postings and candidate tracking' },
     { name: 'Asset Management', icon: <Box size={24} />, desc: 'Company laptops, vehicles, etc.' },
-    { name: 'Payroll & Benefits', icon: <DollarSign size={24} />, desc: 'Manage compensation and benefits' },
+    { name: 'CVs', icon: <FileText size={24} />, desc: 'Manage employee CVs and qualifications' },
     { name: 'Performance', icon: <Award size={24} />, desc: 'Appraisals and goal tracking' },
   ];
 
