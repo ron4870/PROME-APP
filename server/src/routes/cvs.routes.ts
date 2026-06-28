@@ -37,6 +37,7 @@ router.get('/', authenticate, checkCvsPermission, async (req, res) => {
     if (user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director')) {
       projects = await prisma.cvProject.findMany({
         include: {
+          category: true,
           members: {
             include: { user: { select: { id: true, name: true, email: true } } }
           }
@@ -50,6 +51,7 @@ router.get('/', authenticate, checkCvsPermission, async (req, res) => {
           members: { some: { userId: (req as any).user!.userId } }
         },
         include: {
+          category: true,
           members: {
             include: { user: { select: { id: true, name: true, email: true } } }
           }
@@ -83,7 +85,7 @@ router.post('/', authenticate, checkCvsPermission, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to create CV projects.' });
     }
 
-    const { name, client, description, members } = req.body;
+    const { name, client, description, members, categoryId } = req.body;
 
     const project = await prisma.$transaction(async (tx) => {
       // 1. Create the new project
@@ -92,7 +94,8 @@ router.post('/', authenticate, checkCvsPermission, async (req, res) => {
           name,
           client,
           description,
-          isTemplate: false
+          isTemplate: false,
+          categoryId: categoryId ? parseInt(categoryId) : null
         }
       });
 
@@ -157,6 +160,48 @@ router.post('/', authenticate, checkCvsPermission, async (req, res) => {
   }
 });
 
+// Fetch all CV Categories
+router.get('/categories/all', authenticate, checkCvsPermission, async (req, res) => {
+  try {
+    const categories = await prisma.cvCategory.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching CV categories:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create a new CV Category (only admin)
+router.post('/categories', authenticate, checkCvsPermission, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: (req as any).user!.userId },
+      include: { roles: true }
+    });
+    
+    const isAdmin = user?.roles?.some(r => r.name === 'Administrator');
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Forbidden: Only administrators can create new categories.' });
+    }
+
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+
+    const category = await prisma.cvCategory.create({
+      data: { name: name.trim() }
+    });
+
+    res.status(201).json(category);
+  } catch (error) {
+    console.error('Error creating CV category:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get a single CV project
 router.get('/:id', authenticate, checkCvsPermission, async (req, res) => {
   try {
@@ -170,6 +215,7 @@ router.get('/:id', authenticate, checkCvsPermission, async (req, res) => {
     const project = await prisma.cvProject.findUnique({
       where: { id: projectId },
       include: {
+        category: true,
         members: {
           include: { user: { select: { id: true, name: true, email: true } } }
         },

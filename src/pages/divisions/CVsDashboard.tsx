@@ -10,6 +10,10 @@ interface CvProject {
   isTemplate: boolean;
   membersCount: number;
   createdAt: string;
+  category?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export default function CVsDashboard() {
@@ -21,12 +25,17 @@ export default function CVsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('All');
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: '',
     client: '',
-    description: ''
+    description: '',
+    categoryId: ''
   });
   const [assignedUsers, setAssignedUsers] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -35,7 +44,46 @@ export default function CVsDashboard() {
     if (!hasPermission('cvs')) return;
     fetchProjects();
     fetchUsers();
+    fetchCategories();
   }, [hasPermission]);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/cvs/categories/all', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch CV categories', err);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const res = await fetch('/api/cvs/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newCategoryName })
+      });
+      if (res.ok) {
+        const newCat = await res.json();
+        setCategories([...categories, newCat]);
+        setNewCategoryName('');
+      } else {
+        const errData = await res.json();
+        alert(errData.message || 'Failed to add category');
+      }
+    } catch (err) {
+      console.error('Error adding category', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -83,6 +131,8 @@ export default function CVsDashboard() {
       });
       if (!res.ok) throw new Error('Failed to create CV project');
       setIsModalOpen(false);
+      setNewProject({ name: '', client: '', description: '', categoryId: '' });
+      setAssignedUsers([]);
       fetchProjects();
     } catch (err) {
       console.error('Failed to create CV project', err);
@@ -99,15 +149,23 @@ export default function CVsDashboard() {
     );
   }
 
+  const isAdmin = user?.roles?.some(r => r.name === 'Administrator');
   const isAdminOrMD = user?.roles?.some(r => ['Administrator', 'Managing Director'].includes(r.name));
   const canCreateCVs = isAdminOrMD || user?.roles?.some(r => r.name === 'Head of Division');
 
-  const filteredProjects = projects.filter(p => 
-    !p.isTemplate && (
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      p.client.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredProjects = projects.filter(p => {
+    if (p.isTemplate) return false;
+    
+    // Search Term Filter
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          p.client.toLowerCase().includes(searchTerm.toLowerCase());
+                          
+    // Category Filter
+    const matchesCategory = selectedCategoryFilter === 'All' || 
+                            p.category?.name === selectedCategoryFilter;
+                            
+    return matchesSearch && matchesCategory;
+  });
 
   const templateProject = projects.find(p => p.isTemplate);
 
@@ -148,8 +206,8 @@ export default function CVsDashboard() {
         </div>
       )}
 
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <div className="search-bar" style={{ maxWidth: '400px', flex: 1 }}>
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div className="search-bar" style={{ maxWidth: '500px', flex: 1 }}>
           <Search size={18} className="search-icon" />
           <input 
             type="text" 
@@ -159,6 +217,64 @@ export default function CVsDashboard() {
             className="form-input"
           />
         </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '2rem' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b', marginRight: '0.5rem' }}>Filter by Category:</span>
+        <button 
+          onClick={() => setSelectedCategoryFilter('All')}
+          style={{
+            padding: '0.4rem 0.8rem',
+            borderRadius: '20px',
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            border: 'none',
+            cursor: 'pointer',
+            backgroundColor: selectedCategoryFilter === 'All' ? '#0f766e' : '#e2e8f0',
+            color: selectedCategoryFilter === 'All' ? '#ffffff' : '#475569',
+            transition: 'background-color 0.2s, color 0.2s'
+          }}
+        >
+          All
+        </button>
+        {categories.map((cat) => (
+          <button 
+            key={cat.id}
+            onClick={() => setSelectedCategoryFilter(cat.name)}
+            style={{
+              padding: '0.4rem 0.8rem',
+              borderRadius: '20px',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              backgroundColor: selectedCategoryFilter === cat.name ? '#0f766e' : '#e2e8f0',
+              color: selectedCategoryFilter === cat.name ? '#ffffff' : '#475569',
+              transition: 'background-color 0.2s, color 0.2s'
+            }}
+          >
+            {cat.name}
+          </button>
+        ))}
+        {isAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+            <input 
+              type="text" 
+              placeholder="New category..." 
+              value={newCategoryName}
+              onChange={e => setNewCategoryName(e.target.value)}
+              className="form-input"
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', width: '130px', height: '32px' }}
+            />
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', height: '32px', display: 'flex', alignItems: 'center' }}
+              onClick={handleAddCategory}
+            >
+              Add
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -187,6 +303,12 @@ export default function CVsDashboard() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', lineHeight: 1.3, flex: 1, paddingRight: '1rem' }}>{project.name}</h3>
                 </div>
+                
+                {project.category && (
+                  <div style={{ display: 'inline-block', padding: '0.2rem 0.5rem', backgroundColor: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem', borderRadius: '4px', marginBottom: '0.75rem', fontWeight: 600 }}>
+                    {project.category.name}
+                  </div>
+                )}
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                   <User size={16} /> Candidate: <span style={{ fontWeight: 500 }}>{project.client}</span>
@@ -246,6 +368,21 @@ export default function CVsDashboard() {
                 value={newProject.client}
                 onChange={e => setNewProject({...newProject, client: e.target.value})}
               />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CV Category</label>
+              <select 
+                className="form-input" 
+                style={{ width: '100%' }} 
+                value={newProject.categoryId}
+                onChange={e => setNewProject({...newProject, categoryId: e.target.value})}
+              >
+                <option value="">-- Select Category --</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
             </div>
 
             <div style={{ borderTop: '1px solid #e2e8f0', margin: '2rem 0 1.5rem 0', paddingTop: '1.5rem' }}>

@@ -1620,11 +1620,21 @@ model CvProject {
   isTemplate        Boolean  @default(false)
   sectionsOrder     Json?
   finalBookSections Json?
+  categoryId        Int?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  members CvProjectMember[]
-  pages   CvPage[]
+  category CvCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  members  CvProjectMember[]
+  pages    CvPage[]
+}
+
+model CvCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  projects CvProject[]
 }
 
 model CvProjectMember {

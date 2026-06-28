@@ -84,6 +84,21 @@ async function main() {
     }
   }
 
+  // Create Default CV Categories if not exists
+  const defaultCategories = [
+    "Roads & Highways", "Structures", "Architect", "Electrical & Mechanical", 
+    "Materials", "Hydrology", "Survey", "Environment", 
+    "Social", "Economist", "Valuer", "Planner"
+  ];
+
+  for (const catName of defaultCategories) {
+    await prisma.cvCategory.upsert({
+      where: { name: catName },
+      update: {},
+      create: { name: catName }
+    });
+  }
+
   // Create CV Template Project if not exists
   const existingCvTemplate = await prisma.cvProject.findFirst({
     where: { isTemplate: true }
