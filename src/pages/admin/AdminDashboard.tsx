@@ -168,6 +168,7 @@ export default function AdminDashboard() {
     { key: 'pdmd', label: 'Project Delivery (PDMD)' },
     { key: 'hrad', label: 'Human Resources (HRAD)' },
     { key: 'fd', label: 'Finance & Accounts (FD)' },
+    { key: 'cvs', label: 'CVs Module Access' },
     { key: 'wiki_view', label: 'Wiki Module - View Pages' },
     { key: 'wiki_draft', label: 'Wiki Module - Draft Pages' },
     { key: 'wiki_review', label: 'Wiki Module - Review Pages' },

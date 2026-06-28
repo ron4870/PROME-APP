@@ -94,6 +94,7 @@ model User {
   // Project Relations
   projectMemberships          ProjectMember[]
   bookOfDrawingsMemberships   BookOfDrawingsProjectMember[]
+  cvMemberships               CvProjectMember[]
   // Project Module Relations
   assignedProjectTasks        ProjectTask[]                 @relation("TaskAssignee")
   loggedFinancials            ProjectFinancial[]            @relation("FinancialLogger")
@@ -1609,4 +1610,46 @@ model BookOfDrawingsPage {
   updatedAt      DateTime @updatedAt
 
   project BookOfDrawingsProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model CvProject {
+  id                Int      @id @default(autoincrement())
+  name              String
+  client            String
+  description       String?  @db.Text
+  isTemplate        Boolean  @default(false)
+  sectionsOrder     Json?
+  finalBookSections Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  members CvProjectMember[]
+  pages   CvPage[]
+}
+
+model CvProjectMember {
+  id        Int    @id @default(autoincrement())
+  projectId Int
+  userId    Int
+  role      String // e.g., Editor, Viewer
+
+  project CvProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model CvPage {
+  id             Int      @id @default(autoincrement())
+  projectId      Int
+  section        String
+  pageNumber     Int
+  name           String   @default("Unnamed Page")
+  applyFrame     Boolean  @default(false)
+  includeInFinal Boolean  @default(true)
+  canvasState    String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project CvProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

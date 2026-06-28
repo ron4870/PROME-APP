@@ -37,6 +37,7 @@ import aiRoutes from './routes/ai.routes';
 import bidsRoutes from './routes/bids.routes';
 import libraryRoutes from './routes/library.routes';
 import bookOfDrawingsRoutes from './routes/bookofdrawings.routes';
+import cvsRoutes from './routes/cvs.routes';
 import { setupCronJobs } from './services/cron.service';
 dotenv.config();
 
@@ -90,6 +91,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/bids', bidsRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/book-of-drawings', bookOfDrawingsRoutes);
+app.use('/api/cvs', cvsRoutes);
 
 import { driveService, GOOGLE_DRIVE_FOLDER_ID, upload } from './services/drive.service';
 

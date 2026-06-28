@@ -112,7 +112,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       { label: 'Staff Data Management', path: '#' },
       { label: 'Performance Management', path: '#' },
       { label: 'Leave Management', path: '#' },
-      { label: 'CVs', path: '#' }
+      { label: 'CVs', path: '/cvs' }
     ];
   } else if (location.pathname.startsWith('/division/fd')) {
     navLinks = [
@@ -286,6 +286,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     target={isExternal ? "_blank" : undefined}
                     rel={isExternal ? "noopener noreferrer" : undefined}
                     onClick={(e) => {
+                      if (link.label === 'CVs') {
+                        e.preventDefault();
+                        window.open('/cvs', '_blank');
+                        return;
+                      }
                       if (!isExternal && link.path !== '#') {
                         e.preventDefault();
                         navigate(link.path);
@@ -323,6 +328,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   target={isExternal ? "_blank" : undefined}
                   rel={isExternal ? "noopener noreferrer" : undefined}
                   onClick={(e) => {
+                    if (link.label === 'CVs') {
+                      e.preventDefault();
+                      window.open('/cvs', '_blank');
+                      setIsMobileMenuOpen(false);
+                      return;
+                    }
                     if (!isExternal && link.path !== '#') {
                       e.preventDefault();
                       navigate(link.path);

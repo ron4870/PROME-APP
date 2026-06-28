@@ -72,6 +72,8 @@ import AIAssistant from './pages/AIAssistant';
 
 import BookOfDrawingsDashboard from './pages/divisions/BookOfDrawingsDashboard';
 import BookOfDrawingsWorkspace from './pages/divisions/BookOfDrawingsWorkspace';
+import CVsDashboard from './pages/divisions/CVsDashboard';
+import CVsWorkspace from './pages/divisions/CVsWorkspace';
 
 // Simple protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -182,6 +184,10 @@ function App() {
         {/* Book of Drawings */}
         <Route path="/book-of-drawings" element={<ProtectedRoute><BookOfDrawingsDashboard /></ProtectedRoute>} />
         <Route path="/book-of-drawings/:id" element={<ProtectedRoute><BookOfDrawingsWorkspace /></ProtectedRoute>} />
+        
+        {/* CVs Module */}
+        <Route path="/cvs" element={<ProtectedRoute><CVsDashboard /></ProtectedRoute>} />
+        <Route path="/cvs/:id" element={<ProtectedRoute><CVsWorkspace /></ProtectedRoute>} />
         <Route path="/division/pdmd" element={<ProtectedRoute><PDMD /></ProtectedRoute>} />
         <Route path="/division/pdmd/construction-management" element={<ProtectedRoute><PDMDConstructionManagement /></ProtectedRoute>} />
         <Route path="/division/hrad" element={<ProtectedRoute><HRAD /></ProtectedRoute>} />
