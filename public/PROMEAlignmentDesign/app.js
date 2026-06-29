@@ -1474,10 +1474,7 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
             
             let lineIdx = 0;
             for (let i = 0; i < segments.length; i++) {
-              const el = children[i];
-              if (!el) continue;
-              const tagName = el.tagName.toLowerCase().replace(/.*:/, '');
-              if (tagName === 'line') {
+              if (segments[i].type === 'Line') {
                 if (lineIdx < lines.length - 1) {
                   const currentLine = lines[lineIdx];
                   const nextLine = lines[lineIdx + 1];
@@ -1486,17 +1483,16 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
                     let r = 0, lsIn = 0, lsOut = 0;
                     let j = i + 1;
                     let seenSpiral = false;
-                    while (j < segments.length && children[j] && children[j].tagName.toLowerCase().replace(/.*:/, '') !== 'line') {
-                      const childTag = children[j].tagName.toLowerCase().replace(/.*:/, '');
-                      if (childTag === 'spiral') {
+                    while (j < segments.length && segments[j].type !== 'Line') {
+                      if (segments[j].type === 'Spiral') {
                         if (!seenSpiral) {
-                          lsIn = parseFloat(children[j].getAttribute('length')) || 0;
+                          lsIn = segments[j].length || 0;
                           seenSpiral = true;
                         } else {
-                          lsOut = parseFloat(children[j].getAttribute('length')) || 0;
+                          lsOut = segments[j].length || 0;
                         }
-                      } else if (childTag === 'curve') {
-                        r = parseFloat(children[j].getAttribute('radius')) || 0;
+                      } else if (segments[j].type === 'Curve') {
+                        r = segments[j].radius || 0;
                       }
                       j++;
                     }
