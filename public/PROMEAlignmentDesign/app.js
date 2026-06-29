@@ -8,6 +8,7 @@ const CRS_DEFINITIONS = {
 };
 
 // Register projections
+proj4.defs('EPSG:3857', '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs');
 Object.entries(CRS_DEFINITIONS).forEach(([code, def]) => {
   proj4.defs(code, def);
 });
@@ -1089,8 +1090,8 @@ function drawMapTiles() {
     const tlLocal = canvasToMap(0, 0);
     const brLocal = canvasToMap(canvas.width, canvas.height);
     
-    const tlWebMerc = proj4(projStr, 'EPSG:3857', [tlLocal.x, tlLocal.y]);
-    const brWebMerc = proj4(projStr, 'EPSG:3857', [brLocal.x, brLocal.y]);
+    const tlWebMerc = proj4(state.crs, 'EPSG:3857', [tlLocal.x, tlLocal.y]);
+    const brWebMerc = proj4(state.crs, 'EPSG:3857', [brLocal.x, brLocal.y]);
     
     const minX = Math.min(tlWebMerc[0], brWebMerc[0]);
     const maxX = Math.max(tlWebMerc[0], brWebMerc[0]);
@@ -1157,8 +1158,8 @@ function drawMapTiles() {
           const tileMaxXWebMerc = tileMinXWebMerc + tileWidth;
           const tileMinYWebMerc = tileMaxYWebMerc - tileWidth;
           
-          const tlProj = proj4('EPSG:3857', projStr, [tileMinXWebMerc, tileMaxYWebMerc]);
-          const brProj = proj4('EPSG:3857', projStr, [tileMaxXWebMerc, tileMinYWebMerc]);
+          const tlProj = proj4('EPSG:3857', state.crs, [tileMinXWebMerc, tileMaxYWebMerc]);
+          const brProj = proj4('EPSG:3857', state.crs, [tileMaxXWebMerc, tileMinYWebMerc]);
           
           const p1 = mapToCanvas(tlProj[0], tlProj[1]);
           const p2 = mapToCanvas(brProj[0], brProj[1]);
