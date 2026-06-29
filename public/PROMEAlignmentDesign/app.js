@@ -4,12 +4,7 @@ const CRS_DEFINITIONS = {
   'wgs84_35n': '+proj=utm +zone=35 +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
   'wgs84_35s': '+proj=utm +zone=35 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
   'wgs84_36n': '+proj=utm +zone=36 +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
-  'wgs84_36s': '+proj=utm +zone=36 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs',
-  'arc1960_ll': '+proj=longlat +ellps=clrk80m +towgs84=-136.7231,-87.8654,20.1215,4.966933,-9.010010,-2.724860,7.86009 +no_defs',
-  'arc1960_35n': '+proj=utm +zone=35 +ellps=clrk80m +towgs84=-136.7231,-87.8654,20.1215,4.966933,-9.010010,-2.724860,7.86009 +units=m +no_defs',
-  'arc1960_35s': '+proj=utm +zone=35 +south +ellps=clrk80m +towgs84=-136.7231,-87.8654,20.1215,4.966933,-9.010010,-2.724860,7.86009 +units=m +no_defs',
-  'arc1960_36n': '+proj=utm +zone=36 +ellps=clrk80m +towgs84=-136.7231,-87.8654,20.1215,4.966933,-9.010010,-2.724860,7.86009 +units=m +no_defs',
-  'arc1960_36s': '+proj=utm +zone=36 +south +ellps=clrk80m +towgs84=-136.7231,-87.8654,20.1215,4.966933,-9.010010,-2.724860,7.86009 +units=m +no_defs'
+  'wgs84_36s': '+proj=utm +zone=36 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs'
 };
 
 // Register projections
@@ -1398,27 +1393,14 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
           else if (epsg === '32635') detectedCrs = 'wgs84_35n';
           else if (epsg === '32735') detectedCrs = 'wgs84_35s';
           else if (epsg === '4326') detectedCrs = 'wgs84_ll';
-          else if (epsg === '21096') detectedCrs = 'arc1960_36n';
-          else if (epsg === '21036') detectedCrs = 'arc1960_36s';
-          else if (epsg === '21095') detectedCrs = 'arc1960_35n';
-          else if (epsg === '21035') detectedCrs = 'arc1960_35s';
-          else if (epsg === '4210') detectedCrs = 'arc1960_ll';
         }
         if (!detectedCrs) {
           const desc = (coordSystemNodes[0].getAttribute('desc') || '').toLowerCase();
-          if (desc.includes('arc1960') || desc.includes('arc 1960') || desc.includes('clarke')) {
-            if (desc.includes('36n') || desc.includes('36 north')) detectedCrs = 'arc1960_36n';
-            else if (desc.includes('36s') || desc.includes('36 south')) detectedCrs = 'arc1960_36s';
-            else if (desc.includes('35n') || desc.includes('35 north')) detectedCrs = 'arc1960_35n';
-            else if (desc.includes('35s') || desc.includes('35 south')) detectedCrs = 'arc1960_35s';
-            else detectedCrs = 'arc1960_ll';
-          } else {
-            if (desc.includes('36n') || desc.includes('36 north')) detectedCrs = 'wgs84_36n';
-            else if (desc.includes('36s') || desc.includes('36 south')) detectedCrs = 'wgs84_36s';
-            else if (desc.includes('35n') || desc.includes('35 north')) detectedCrs = 'wgs84_35n';
-            else if (desc.includes('35s') || desc.includes('35 south')) detectedCrs = 'wgs84_35s';
-            else if (desc.includes('wgs84') || desc.includes('geographic')) detectedCrs = 'wgs84_ll';
-          }
+          if (desc.includes('36n') || desc.includes('36 north')) detectedCrs = 'wgs84_36n';
+          else if (desc.includes('36s') || desc.includes('36 south')) detectedCrs = 'wgs84_36s';
+          else if (desc.includes('35n') || desc.includes('35 north')) detectedCrs = 'wgs84_35n';
+          else if (desc.includes('35s') || desc.includes('35 south')) detectedCrs = 'wgs84_35s';
+          else if (desc.includes('wgs84') || desc.includes('geographic')) detectedCrs = 'wgs84_ll';
         }
       }
 
