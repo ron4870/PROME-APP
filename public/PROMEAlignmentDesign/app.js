@@ -2556,7 +2556,6 @@ ${messageText}
   loadingDiv.style.alignSelf = 'flex-start';
   loadingDiv.style.color = '#9ca3af';
   loadingDiv.style.fontSize = '0.8rem';
-  loadingDiv.textContent = 'PROME Copilot is planning...';
   chatLog.appendChild(loadingDiv);
   scrollToBottom();
   
