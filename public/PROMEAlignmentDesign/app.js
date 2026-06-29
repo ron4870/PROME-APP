@@ -724,6 +724,9 @@ function getCoordinateAtStation(elements, st) {
       const startCircSt = el.lsIn > 0 ? el.station_sc : el.station_pc;
       const endCircSt = el.lsOut > 0 ? el.station_cs : el.station_pt;
       if (st >= startCircSt && st < endCircSt) {
+        if (!el.center || el.radius <= 0 || isNaN(el.radius)) {
+          return { x: el.pi.x, y: el.pi.y, az: el.azIn };
+        }
         const startCircPt = el.lsIn > 0 ? el.sc : el.pc;
         const l = st - startCircSt;
         const r = el.radius;
