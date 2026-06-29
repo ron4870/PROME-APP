@@ -1392,107 +1392,149 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
         return { x, y };
       }
 
+      function getTagsCaseInsensitive(parent, tagName) {
+        const lower = tagName.toLowerCase();
+        const results = [];
+        const all = parent.getElementsByTagName('*');
+        for (let i = 0; i < all.length; i++) {
+          if (all[i].tagName.toLowerCase() === lower || all[i].tagName.toLowerCase().endsWith(':' + lower)) {
+            results.push(all[i]);
+          }
+        }
+        return results;
+      }
+
       function extractPisFromAlignment(alignNode) {
-        const geom = alignNode.getElementsByTagName('CoordGeom')[0];
-        if (!geom) return null;
-        
-        const children = geom.children;
+        let geom = getTagsCaseInsensitive(alignNode, 'coordgeom')[0];
         const newPis = [];
         
-        const segments = [];
-        for (let i = 0; i < children.length; i++) {
-          const el = children[i];
-          if (el.tagName === 'Line') {
-            const startNodes = el.getElementsByTagName('Start');
-            const endNodes = el.getElementsByTagName('End');
-            if (startNodes.length > 0 && endNodes.length > 0) {
-              const start = startNodes[0].textContent.trim().split(/\s+/);
-              const end = endNodes[0].textContent.trim().split(/\s+/);
-              const isXY = document.getElementById('xml-coord-order').value === 'xy';
-              
-              const rawStart = {
-                x: parseFloat(isXY ? start[0] : start[1]),
-                y: parseFloat(isXY ? start[1] : start[0])
-              };
-              const rawEnd = {
-                x: parseFloat(isXY ? end[0] : end[1]),
-                y: parseFloat(isXY ? end[1] : end[0])
-              };
+        if (geom) {
+          const children = geom.children;
+          const segments = [];
+          for (let i = 0; i < children.length; i++) {
+            const el = children[i];
+            const tagName = el.tagName.toLowerCase().replace(/.*:/, ''); // Strip potential namespaces
+            if (tagName === 'line') {
+              const startNodes = getTagsCaseInsensitive(el, 'start');
+              const endNodes = getTagsCaseInsensitive(el, 'end');
+              if (startNodes.length > 0 && endNodes.length > 0) {
+                const start = startNodes[0].textContent.trim().split(/[\s,]+/);
+                const end = endNodes[0].textContent.trim().split(/[\s,]+/);
+                const isXY = document.getElementById('xml-coord-order').value === 'xy';
+                
+                const rawStart = {
+                  x: parseFloat(isXY ? start[0] : start[1]),
+                  y: parseFloat(isXY ? start[1] : start[0])
+                };
+                const rawEnd = {
+                  x: parseFloat(isXY ? end[0] : end[1]),
+                  y: parseFloat(isXY ? end[1] : end[0])
+                };
 
-              const startCoords = adjustCoordinatesToSelectedCRS(rawStart.x, rawStart.y);
-              const endCoords = adjustCoordinatesToSelectedCRS(rawEnd.x, rawEnd.y);
+                const startCoords = adjustCoordinatesToSelectedCRS(rawStart.x, rawStart.y);
+                const endCoords = adjustCoordinatesToSelectedCRS(rawEnd.x, rawEnd.y);
 
+                segments.push({
+                  type: 'Line',
+                  start: startCoords,
+                  end: endCoords
+                });
+              }
+            } else if (tagName === 'spiral') {
               segments.push({
-                type: 'Line',
-                start: startCoords,
-                end: endCoords
+                type: 'Spiral',
+                length: parseFloat(el.getAttribute('length')) || 0
+              });
+            } else if (tagName === 'curve') {
+              segments.push({
+                type: 'Curve',
+                radius: parseFloat(el.getAttribute('radius')) || 0
               });
             }
-          } else if (el.tagName === 'Spiral') {
-            segments.push({
-              type: 'Spiral',
-              length: parseFloat(el.getAttribute('length')) || 0
-            });
-          } else if (el.tagName === 'Curve') {
-            segments.push({
-              type: 'Curve',
-              radius: parseFloat(el.getAttribute('radius')) || 0
-            });
           }
-        }
-        
-        function getIntersection(l1, l2) {
-          const p1 = l1.start, p2 = l1.end;
-          const p3 = l2.start, p4 = l2.end;
-          const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
-          const d2x = p4.x - p3.x, d2y = p4.y - p3.y;
-          const denom = d1x * d2y - d1y * d2x;
-          if (Math.abs(denom) < 1e-6) return null;
-          const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom;
-          return { x: p1.x + t * d1x, y: p1.y + t * d1y };
-        }
 
-        const lines = segments.filter(s => s.type === 'Line');
-        
-        if (lines.length > 0) {
-          newPis.push({ x: lines[0].start.x, y: lines[0].start.y, r: 0, lsIn: 0, lsOut: 0 });
+          function getIntersection(l1, l2) {
+            const p1 = l1.start, p2 = l1.end;
+            const p3 = l2.start, p4 = l2.end;
+            const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+            const d2x = p4.x - p3.x, d2y = p4.y - p3.y;
+            const denom = d1x * d2y - d1y * d2x;
+            if (Math.abs(denom) < 1e-6) return null;
+            const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom;
+            return { x: p1.x + t * d1x, y: p1.y + t * d1y };
+          }
+
+          const lines = segments.filter(s => s.type === 'Line');
           
-          let lineIdx = 0;
-          for (let i = 0; i < segments.length; i++) {
-            if (segments[i].type === 'Line') {
-              if (lineIdx < lines.length - 1) {
-                const currentLine = lines[lineIdx];
-                const nextLine = lines[lineIdx + 1];
-                const pi = getIntersection(currentLine, nextLine);
-                if (pi) {
-                  let r = 0, lsIn = 0, lsOut = 0;
-                  let j = i + 1;
-                  let seenSpiral = false;
-                  while (j < segments.length && segments[j].type !== 'Line') {
-                    if (segments[j].type === 'Spiral') {
-                      if (!seenSpiral) {
-                        lsIn = segments[j].length || 0;
-                        seenSpiral = true;
-                      } else {
-                        lsOut = segments[j].length || 0;
+          if (lines.length > 0) {
+            newPis.push({ x: lines[0].start.x, y: lines[0].start.y, r: state.rMin, lsIn: 0, lsOut: 0 });
+            
+            let lineIdx = 0;
+            for (let i = 0; i < segments.length; i++) {
+              const el = children[i];
+              if (!el) continue;
+              const tagName = el.tagName.toLowerCase().replace(/.*:/, '');
+              if (tagName === 'line') {
+                if (lineIdx < lines.length - 1) {
+                  const currentLine = lines[lineIdx];
+                  const nextLine = lines[lineIdx + 1];
+                  const pi = getIntersection(currentLine, nextLine);
+                  if (pi) {
+                    let r = 0, lsIn = 0, lsOut = 0;
+                    let j = i + 1;
+                    let seenSpiral = false;
+                    while (j < segments.length && children[j] && children[j].tagName.toLowerCase().replace(/.*:/, '') !== 'line') {
+                      const childTag = children[j].tagName.toLowerCase().replace(/.*:/, '');
+                      if (childTag === 'spiral') {
+                        if (!seenSpiral) {
+                          lsIn = parseFloat(children[j].getAttribute('length')) || 0;
+                          seenSpiral = true;
+                        } else {
+                          lsOut = parseFloat(children[j].getAttribute('length')) || 0;
+                        }
+                      } else if (childTag === 'curve') {
+                        r = parseFloat(children[j].getAttribute('radius')) || 0;
                       }
-                    } else if (segments[j].type === 'Curve') {
-                      r = parseFloat(segments[j].radius) || 0;
+                      j++;
                     }
-                    j++;
+                    if (r === 0 || isNaN(r)) {
+                      r = state.rMin;
+                    }
+                    newPis.push({ x: pi.x, y: pi.y, r: r, lsIn: lsIn, lsOut: lsOut });
                   }
-                  if (r === 0 || isNaN(r)) {
-                    r = state.rMin;
-                  }
-                  newPis.push({ x: pi.x, y: pi.y, r: r, lsIn: lsIn, lsOut: lsOut });
                 }
+                lineIdx++;
               }
-              lineIdx++;
+            }
+            
+            const lastLine = lines[lines.length - 1];
+            newPis.push({ x: lastLine.end.x, y: lastLine.end.y, r: state.rMin, lsIn: 0, lsOut: 0 });
+          }
+        } else {
+          // Fallback: Parse using PIs element (sequence of point intersections)
+          const pisElement = getTagsCaseInsensitive(alignNode, 'pis')[0];
+          if (pisElement) {
+            const piNodes = getTagsCaseInsensitive(pisElement, 'pi');
+            const isXY = document.getElementById('xml-coord-order').value === 'xy';
+            for (let i = 0; i < piNodes.length; i++) {
+              const el = piNodes[i];
+              const coords = el.textContent.trim().split(/[\s,]+/);
+              if (coords.length >= 2) {
+                const rawX = parseFloat(isXY ? coords[0] : coords[1]);
+                const rawY = parseFloat(isXY ? coords[1] : coords[0]);
+                const radius = parseFloat(el.getAttribute('radius')) || 0;
+                
+                const adjusted = adjustCoordinatesToSelectedCRS(rawX, rawY);
+                newPis.push({
+                  x: adjusted.x,
+                  y: adjusted.y,
+                  r: (radius === 0 || isNaN(radius)) ? state.rMin : radius,
+                  lsIn: 0,
+                  lsOut: 0
+                });
+              }
             }
           }
-          
-          const lastLine = lines[lines.length - 1];
-          newPis.push({ x: lastLine.end.x, y: lastLine.end.y, r: 0, lsIn: 0, lsOut: 0 });
         }
         
         return newPis;
