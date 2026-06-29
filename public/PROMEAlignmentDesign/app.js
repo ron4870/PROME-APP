@@ -528,7 +528,7 @@ function calculateGeometry() {
       if (delta > Math.PI) delta -= 2*Math.PI;
       if (delta < -Math.PI) delta += 2*Math.PI;
       
-      const r = pi2.r !== undefined ? pi2.r : state.rMin;
+      const r = (pi2.r !== undefined && !isNaN(pi2.r) && pi2.r !== 0) ? pi2.r : state.rMin;
       const lsIn = r > 0 ? (pi2.lsIn || 0) : 0;
       const lsOut = r > 0 ? (pi2.lsOut || 0) : 0;
       const absDelta = Math.abs(delta);
@@ -1471,15 +1471,18 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
                   while (j < segments.length && segments[j].type !== 'Line') {
                     if (segments[j].type === 'Spiral') {
                       if (!seenSpiral) {
-                        lsIn = segments[j].length;
+                        lsIn = segments[j].length || 0;
                         seenSpiral = true;
                       } else {
-                        lsOut = segments[j].length;
+                        lsOut = segments[j].length || 0;
                       }
                     } else if (segments[j].type === 'Curve') {
-                      r = segments[j].radius;
+                      r = parseFloat(segments[j].radius) || 0;
                     }
                     j++;
+                  }
+                  if (r === 0 || isNaN(r)) {
+                    r = state.rMin;
                   }
                   newPis.push({ x: pi.x, y: pi.y, r: r, lsIn: lsIn, lsOut: lsOut });
                 }
