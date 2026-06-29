@@ -15,8 +15,8 @@ const authorizeAiAccess = async (req: Request, res: Response, next: express.Next
   const userId = (req as any).user.userId;
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true } });
   
-  if (!user || (!user.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director'))) {
-    return res.status(403).json({ error: 'Access denied. AI Assistant is only available to Administrators and Managing Directors.' });
+  if (!user) {
+    return res.status(403).json({ error: 'Access denied. User not found.' });
   }
   (req as any).fullUser = user;
   next();

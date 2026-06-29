@@ -123,28 +123,31 @@
       flex-grow: 1;
       position: relative;
       background-color: #e5e7eb;
-      overflow-y: auto;
-      overflow-x: hidden;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
+      height: 100%;
+      min-height: 0;
     }
     
     #canvas-container {
-      flex-grow: 1;
+      height: 60%;
+      min-height: 350px;
       flex-shrink: 0;
       position: relative;
-      min-height: 800px;
     }
 
     /* Alignment Table Styles */
     #table-container {
-      height: 560px;
+      height: 40%;
+      min-height: 250px;
       background-color: #1a1e23;
       border-top: 2px solid var(--border-color);
       display: flex;
       flex-direction: row;
       color: #e2e8f0;
       font-size: 0.8rem;
+      flex-shrink: 0;
     }
     
     .table-section {
