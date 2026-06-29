@@ -508,6 +508,18 @@
         </div>
 
         <div class="form-group">
+          <label>LandXML Source CRS</label>
+          <select id="xml-source-crs" style="width:100%; height:35px; border-radius:6px; border:1px solid var(--border-color); font-size:0.875rem; padding: 0 10px;">
+            <option value="auto" selected>Auto-detect / Match World Settings</option>
+            <option value="wgs84_36n">WGS 84 / UTM Zone 36N</option>
+            <option value="wgs84_36s">WGS 84 / UTM Zone 36S</option>
+            <option value="wgs84_35n">WGS 84 / UTM Zone 35N</option>
+            <option value="wgs84_35s">WGS 84 / UTM Zone 35S</option>
+            <option value="wgs84_ll">WGS 84 Geographic (Lat/Lon)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label>LandXML Import Coordinate Order</label>
           <select id="xml-coord-order" style="width:100%; height:35px; border-radius:6px; border:1px solid var(--border-color); font-size:0.875rem; padding: 0 10px;">
             <option value="yx" selected>Northing Easting (Y X) - Default</option>

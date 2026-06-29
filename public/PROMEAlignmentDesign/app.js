@@ -1370,32 +1370,6 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
         return;
       }
       
-      function adjustCoordinatesToSelectedCRS(x, y) {
-        const isInputGeographic = Math.abs(x) < 360 && Math.abs(y) < 360;
-        const isSelectedGeographic = state.crs === 'wgs84_ll';
-
-        if (isInputGeographic && !isSelectedGeographic) {
-          const targetProj = CRS_DEFINITIONS[state.crs];
-          if (targetProj) {
-            try {
-              const projected = proj4('wgs84_ll', state.crs, [x, y]);
-              return { x: projected[0], y: projected[1] };
-            } catch (err) {
-              console.error("Proj4 conversion Lat/Lon to projected failed:", err);
-            }
-          }
-        } else if (!isInputGeographic && isSelectedGeographic) {
-          const sourceProj = CRS_DEFINITIONS['wgs84_36n'];
-          try {
-            const geographic = proj4('wgs84_36n', 'wgs84_ll', [x, y]);
-            return { x: geographic[0], y: geographic[1] };
-          } catch (err) {
-            console.error("Proj4 conversion projected to Lat/Lon failed:", err);
-          }
-        }
-        return { x, y };
-      }
-
       function getTagsCaseInsensitive(parent, tagName) {
         const lower = tagName.toLowerCase();
         const results = [];
@@ -1406,6 +1380,60 @@ document.getElementById('import-xml').addEventListener('change', (e) => {
           }
         }
         return results;
+      }
+
+      // Auto-detect coordinate system from the XML
+      let detectedCrs = null;
+      const coordSystemNodes = getTagsCaseInsensitive(xmlDoc, 'coordinatesystem');
+      if (coordSystemNodes.length > 0) {
+        const epsg = coordSystemNodes[0].getAttribute('epsgCode');
+        if (epsg) {
+          if (epsg === '32636') detectedCrs = 'wgs84_36n';
+          else if (epsg === '32736') detectedCrs = 'wgs84_36s';
+          else if (epsg === '32635') detectedCrs = 'wgs84_35n';
+          else if (epsg === '32735') detectedCrs = 'wgs84_35s';
+          else if (epsg === '4326') detectedCrs = 'wgs84_ll';
+        }
+        if (!detectedCrs) {
+          const desc = (coordSystemNodes[0].getAttribute('desc') || '').toLowerCase();
+          if (desc.includes('36n') || desc.includes('36 north')) detectedCrs = 'wgs84_36n';
+          else if (desc.includes('36s') || desc.includes('36 south')) detectedCrs = 'wgs84_36s';
+          else if (desc.includes('35n') || desc.includes('35 north')) detectedCrs = 'wgs84_35n';
+          else if (desc.includes('35s') || desc.includes('35 south')) detectedCrs = 'wgs84_35s';
+          else if (desc.includes('wgs84') || desc.includes('geographic')) detectedCrs = 'wgs84_ll';
+        }
+      }
+
+      function adjustCoordinatesToSelectedCRS(x, y) {
+        const xmlSourceSelect = document.getElementById('xml-source-crs').value;
+        let sourceCrs = state.crs; // Default to same as project/world settings
+        
+        if (xmlSourceSelect === 'auto') {
+          if (detectedCrs) {
+            sourceCrs = detectedCrs;
+          } else {
+            const isGeographic = Math.abs(x) < 360 && Math.abs(y) < 360;
+            if (isGeographic) {
+              sourceCrs = 'wgs84_ll';
+            } else {
+              sourceCrs = state.crs;
+            }
+          }
+        } else {
+          sourceCrs = xmlSourceSelect;
+        }
+
+        if (sourceCrs === state.crs) {
+          return { x, y };
+        }
+
+        try {
+          const projected = proj4(sourceCrs, state.crs, [x, y]);
+          return { x: projected[0], y: projected[1] };
+        } catch (err) {
+          console.error("Proj4 conversion from " + sourceCrs + " to " + state.crs + " failed:", err);
+          return { x, y };
+        }
       }
 
       function extractPisFromAlignment(alignNode) {
