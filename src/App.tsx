@@ -38,6 +38,7 @@ import { MocDetails } from './pages/MocDetails';
 import { NcrDashboard } from './pages/NcrDashboard';
 import { ProjectsDashboard } from './pages/ProjectsDashboard';
 import { ProjectsDatabase } from './pages/ProjectsDatabase';
+import { CesiumWorkspace } from './pages/CesiumWorkspace';
 import { ProjectWorkspace } from './pages/ProjectWorkspace';
 import FormsDirectory from './pages/forms/FormsDirectory';
 import FundsRequisitionForm from './pages/forms/FundsRequisitionForm';
@@ -158,6 +159,7 @@ function App() {
         <Route path="/ncr" element={<ProtectedRoute><NcrDashboard /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><ProjectsDashboard /></ProtectedRoute>} />
         <Route path="/projects-database" element={<ProtectedRoute><ProjectsDatabase /></ProtectedRoute>} />
+        <Route path="/projects-database/3d" element={<ProtectedRoute><CesiumWorkspace /></ProtectedRoute>} />
         <Route path="/projects/:id" element={<ProtectedRoute><ProjectWorkspace /></ProtectedRoute>} />
         
         {/* Forms Routes */}

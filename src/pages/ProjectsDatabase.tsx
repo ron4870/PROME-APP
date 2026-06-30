@@ -216,7 +216,7 @@ export const ProjectsDatabase: React.FC = () => {
         
         {hasPermission('admin_panel') && (
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn btn-outline" onClick={() => setIsMasterModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button className="btn btn-outline" onClick={() => window.open('/projects-database/3d', '_blank')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Database size={18} />
               Open Master Database
             </button>
