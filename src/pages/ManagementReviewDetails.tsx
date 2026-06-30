@@ -516,9 +516,16 @@ const ManagementReviewDetails: React.FC = () => {
 
   const handleMoveCard = (index: number, direction: 'up' | 'down') => {
     if (!review) return;
-    const currentOrder = Array.isArray(review.cardOrder) 
+    const baseOrder = Array.isArray(review.cardOrder) 
       ? [...review.cardOrder] 
       : DEFAULT_SECTIONS.map(s => s.key);
+      
+    let currentOrder = baseOrder.filter(key => DEFAULT_SECTIONS.some(s => s.key === key));
+    DEFAULT_SECTIONS.forEach(s => {
+      if (!currentOrder.includes(s.key)) {
+        currentOrder.push(s.key);
+      }
+    });
       
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
