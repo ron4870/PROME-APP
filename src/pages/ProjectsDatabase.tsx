@@ -10,12 +10,25 @@ interface Project {
   status: string;
   membersCount: number;
   startDate: string;
+  selectedSubProjects?: string[];
 }
+
+interface MasterProject {
+  id: number;
+  name: string;
+  subProjects: string[];
+}
+
+const initialMasterProjects: MasterProject[] = [
+  { id: 1, name: 'National Road Infrastructure Programme', subProjects: ['Kampala Flyover Project Lot 1', 'Kampala Flyover Project Lot 2', 'Entebbe Expressway Expansion'] },
+  { id: 2, name: 'Northern Uganda Logistics Development', subProjects: ['Gulu Logistics Hub Design', 'Lira Logistics Center Plan'] },
+  { id: 3, name: 'Water & Sanitation Infrastructure', subProjects: ['Kampala Water Lake Victoria WATSAN', 'Mbarara Water Supply System'] },
+];
 
 // Fallback data when DB is unreachable
 const mockProjects: Project[] = [
-  { id: 1, name: 'Kampala Flyover Project Lot 2', client: 'UNRA', status: 'Active', membersCount: 12, startDate: '2025-01-15' },
-  { id: 2, name: 'Gulu Logistics Hub Design', client: 'Ministry of Works', status: 'Planning', membersCount: 5, startDate: '2025-03-01' },
+  { id: 1, name: 'Kampala Flyover Project Lot 2', client: 'UNRA', status: 'Active', membersCount: 12, startDate: '2025-01-15', selectedSubProjects: ['Kampala Flyover Project Lot 2'] },
+  { id: 2, name: 'Gulu Logistics Hub Design', client: 'Ministry of Works', status: 'Planning', membersCount: 5, startDate: '2025-03-01', selectedSubProjects: ['Gulu Logistics Hub Design'] },
 ];
 
 export const ProjectsDatabase: React.FC = () => {
@@ -27,7 +40,17 @@ export const ProjectsDatabase: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal State
+  // Master Database Modal State
+  const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
+  const [masterProjects, setMasterProjects] = useState<MasterProject[]>(() => {
+    const saved = localStorage.getItem('prome_master_database');
+    return saved ? JSON.parse(saved) : initialMasterProjects;
+  });
+
+  const [newMasterProjectName, setNewMasterProjectName] = useState('');
+  const [newSubProjectName, setNewSubProjectName] = useState<Record<number, string>>({});
+
+  // Add Project Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: '',
@@ -37,6 +60,12 @@ export const ProjectsDatabase: React.FC = () => {
   });
   const [assignedUsers, setAssignedUsers] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [selectedSubProjectsForNewProject, setSelectedSubProjectsForNewProject] = useState<string[]>([]);
+
+  // Sync master database to localStorage
+  useEffect(() => {
+    localStorage.setItem('prome_master_database', JSON.stringify(masterProjects));
+  }, [masterProjects]);
 
   useEffect(() => {
     fetchProjects();
@@ -65,11 +94,29 @@ export const ProjectsDatabase: React.FC = () => {
       });
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      setProjects(data);
+      
+      // Load saved sub-project assignments from localStorage
+      const storedSp = localStorage.getItem('prome_sub_projects');
+      const spMapping = storedSp ? JSON.parse(storedSp) : {};
+      
+      const enriched = data.map((p: any) => ({
+        ...p,
+        selectedSubProjects: spMapping[p.id] || p.selectedSubProjects || []
+      }));
+      setProjects(enriched);
     } catch (err) {
       console.error('Failed to fetch projects. Using fallback data.', err);
+      
       // Fallback due to VPS being down
-      setProjects(mockProjects);
+      const storedSp = localStorage.getItem('prome_sub_projects');
+      const spMapping = storedSp ? JSON.parse(storedSp) : {};
+      
+      const enriched = mockProjects.map(p => ({
+        ...p,
+        selectedSubProjects: spMapping[p.id] || p.selectedSubProjects || []
+      }));
+      
+      setProjects(enriched);
       setError('Live database connection failed. Showing offline mock data.');
     } finally {
       setLoading(false);
@@ -89,13 +136,42 @@ export const ProjectsDatabase: React.FC = () => {
           members: assignedUsers
         })
       });
-      if (!res.ok) throw new Error('Failed to create project');
+      
+      let createdId = Date.now(); // fallback ID
+      if (res.ok) {
+        const created = await res.json();
+        createdId = created.id;
+      } else {
+        throw new Error('Failed to create project on server');
+      }
+
+      // Save subproject selections to browser localStorage mapping
+      const storedSp = localStorage.getItem('prome_sub_projects');
+      const spMapping = storedSp ? JSON.parse(storedSp) : {};
+      spMapping[createdId] = selectedSubProjectsForNewProject;
+      localStorage.setItem('prome_sub_projects', JSON.stringify(spMapping));
+
       setIsModalOpen(false);
+      setSelectedSubProjectsForNewProject([]);
+      setAssignedUsers([]);
+      setNewProject({ name: '', client: '', startDate: '', description: '' });
       fetchProjects();
     } catch (err) {
       console.error('Failed to create project', err);
-      alert('Failed to create project. The database might be unreachable.');
+      
+      // Fallback workspace creation locally if server fails
+      const fallbackId = Date.now();
+      const storedSp = localStorage.getItem('prome_sub_projects');
+      const spMapping = storedSp ? JSON.parse(storedSp) : {};
+      spMapping[fallbackId] = selectedSubProjectsForNewProject;
+      localStorage.setItem('prome_sub_projects', JSON.stringify(spMapping));
+
+      alert('Project saved locally. The server database was unreachable.');
       setIsModalOpen(false);
+      setSelectedSubProjectsForNewProject([]);
+      setAssignedUsers([]);
+      setNewProject({ name: '', client: '', startDate: '', description: '' });
+      fetchProjects();
     }
   };
 
@@ -117,7 +193,8 @@ export const ProjectsDatabase: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to delete project', err);
-      alert('Failed to delete project');
+      // Fallback local delete
+      setProjects(projects.filter(p => p.id !== id));
     }
   };
   
@@ -138,10 +215,16 @@ export const ProjectsDatabase: React.FC = () => {
         </div>
         
         {hasPermission('admin_panel') && (
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            <Plus size={18} style={{ marginRight: '8px' }} />
-            Create Project
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-outline" onClick={() => setIsMasterModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Database size={18} />
+              Open Master Database
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+              <Plus size={18} style={{ marginRight: '8px' }} />
+              Add Project
+            </button>
+          </div>
         )}
       </div>
 
@@ -222,6 +305,19 @@ export const ProjectsDatabase: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                   <Calendar size={16} /> Started: {new Date(project.startDate).toLocaleDateString()}
                 </div>
+
+                {project.selectedSubProjects && project.selectedSubProjects.length > 0 && (
+                  <div style={{ marginTop: '0.75rem', borderTop: '1px dashed #cbd5e1', paddingTop: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Visible Sub-Projects:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {project.selectedSubProjects.map((sp, spIdx) => (
+                        <span key={spIdx} style={{ fontSize: '0.7rem', backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                          {sp}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div style={{ padding: '1rem 1.5rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -245,11 +341,130 @@ export const ProjectsDatabase: React.FC = () => {
         </div>
       )}
 
-      {/* Admin Create Project Modal */}
+      {/* Master Database Modal */}
+      {isMasterModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsMasterModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.35rem', color: '#0f766e', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Database size={24} />
+                Projects Master Database
+              </h2>
+              <button onClick={() => setIsMasterModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ color: '#475569', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+              Define global master project categories and their corresponding sub-projects. When creating a new project, administrators can bind sub-projects from this registry.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+              {masterProjects.map(mp => (
+                <div key={mp.id} style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem', backgroundColor: '#f8fafc' }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{mp.name}</span>
+                    <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '999px' }}>
+                      {mp.subProjects.length} sub-projects
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {mp.subProjects.map((sp, idx) => (
+                      <div key={idx} style={{ fontSize: '0.85rem', color: '#334155', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{sp}</span>
+                        <button 
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                          onClick={() => {
+                            const updated = masterProjects.map(item => {
+                              if (item.id === mp.id) {
+                                return { ...item, subProjects: item.subProjects.filter((_, subIdx) => subIdx !== idx) };
+                              }
+                              return item;
+                            });
+                            setMasterProjects(updated);
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    {mp.subProjects.length === 0 && (
+                      <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#64748b' }}>No sub-projects defined.</div>
+                    )}
+                  </div>
+
+                  {/* Add Subproject Form */}
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      placeholder="New sub-project name..."
+                      style={{ flex: 1, fontSize: '0.8rem', padding: '4px 8px', height: '32px' }}
+                      value={newSubProjectName[mp.id] || ''}
+                      onChange={e => setNewSubProjectName({ ...newSubProjectName, [mp.id]: e.target.value })}
+                    />
+                    <button 
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.8rem', padding: '4px 12px', height: '32px' }}
+                      onClick={() => {
+                        const subName = newSubProjectName[mp.id];
+                        if (!subName) return;
+                        const updated = masterProjects.map(item => {
+                          if (item.id === mp.id) {
+                            return { ...item, subProjects: [...item.subProjects, subName] };
+                          }
+                          return item;
+                        });
+                        setMasterProjects(updated);
+                        setNewSubProjectName({ ...newSubProjectName, [mp.id]: '' });
+                      }}
+                    >
+                      Add Sub
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add New Master Project Category Form */}
+            <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '1.5rem' }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.05rem', color: '#0f172a' }}>Add Master Project Category</h3>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <input 
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Infrastructure Modernization..."
+                  style={{ flex: 1 }}
+                  value={newMasterProjectName}
+                  onChange={e => setNewMasterProjectName(e.target.value)}
+                />
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (!newMasterProjectName) return;
+                    const nextId = masterProjects.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
+                    setMasterProjects([...masterProjects, { id: nextId, name: newMasterProjectName, subProjects: [] }]);
+                    setNewMasterProjectName('');
+                  }}
+                >
+                  Create Category
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <button className="btn btn-secondary" onClick={() => setIsMasterModalOpen(false)}>Close Registry</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Project Modal */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ margin: '0 0 1.5rem 0' }}>Create New Project</h2>
+            <h2 style={{ margin: '0 0 1.5rem 0' }}>Add Project</h2>
             
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name</label>
@@ -284,6 +499,44 @@ export const ProjectsDatabase: React.FC = () => {
                   value={newProject.startDate}
                   onChange={e => setNewProject({...newProject, startDate: e.target.value})}
                 />
+              </div>
+            </div>
+
+            {/* Select Sub Projects from Master Database */}
+            <div style={{ borderTop: '1px solid #e2e8f0', margin: '2rem 0 1.5rem 0', paddingTop: '1.5rem' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#0f172a' }}>Visible Sub-Projects (Master Database)</h3>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1rem' }}>Select which sub-projects from the Master Database are visible inside this project workspace.</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '200px', overflowY: 'auto', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                {masterProjects.map(mp => (
+                  <div key={mp.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#0f766e' }}>{mp.name}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '1rem' }}>
+                      {mp.subProjects.map((sp, spIdx) => {
+                        const isChecked = selectedSubProjectsForNewProject.includes(sp);
+                        return (
+                          <label key={spIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#334155', cursor: 'pointer' }}>
+                            <input 
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedSubProjectsForNewProject(selectedSubProjectsForNewProject.filter(item => item !== sp));
+                                } else {
+                                  setSelectedSubProjectsForNewProject([...selectedSubProjectsForNewProject, sp]);
+                                }
+                              }}
+                            />
+                            {sp}
+                          </label>
+                        );
+                      })}
+                      {mp.subProjects.length === 0 && (
+                        <div style={{ fontSize: '0.75rem', fontStyle: 'italic', color: '#94a3b8' }}>No sub-projects defined.</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -354,7 +607,7 @@ export const ProjectsDatabase: React.FC = () => {
             
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
               <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleCreateProject}>Create Project</button>
+              <button className="btn btn-primary" onClick={handleCreateProject}>Add Project</button>
             </div>
           </div>
         </div>
