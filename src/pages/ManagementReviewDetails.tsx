@@ -655,6 +655,32 @@ const ManagementReviewDetails: React.FC = () => {
             </div>
           </div>
 
+          {/* Agenda Section */}
+          <div 
+            className="card" 
+            style={{ 
+              backgroundColor: 'white', 
+              padding: '1.5rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem'
+            }}
+          >
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
+              Agenda
+            </h2>
+            <ol style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.9rem', color: '#334155', lineHeight: '1.4' }}>
+              {orderedSections.map((section) => (
+                <li key={section.key} style={{ fontWeight: '500' }}>
+                  {section.label}
+                </li>
+              ))}
+            </ol>
+          </div>
+
           <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem', color: '#1e293b', marginTop: '1rem' }}>
             Review Inputs & Outputs (ISO 9001: 9.3)
           </h2>
