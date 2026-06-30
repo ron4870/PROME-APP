@@ -37,6 +37,7 @@ import { MocDashboard } from './pages/MocDashboard';
 import { MocDetails } from './pages/MocDetails';
 import { NcrDashboard } from './pages/NcrDashboard';
 import { ProjectsDashboard } from './pages/ProjectsDashboard';
+import { ProjectsDatabase } from './pages/ProjectsDatabase';
 import { ProjectWorkspace } from './pages/ProjectWorkspace';
 import FormsDirectory from './pages/forms/FormsDirectory';
 import FundsRequisitionForm from './pages/forms/FundsRequisitionForm';
@@ -156,6 +157,7 @@ function App() {
         <Route path="/moc/:id" element={<ProtectedRoute><MocDetails /></ProtectedRoute>} />
         <Route path="/ncr" element={<ProtectedRoute><NcrDashboard /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><ProjectsDashboard /></ProtectedRoute>} />
+        <Route path="/projects-database" element={<ProtectedRoute><ProjectsDatabase /></ProtectedRoute>} />
         <Route path="/projects/:id" element={<ProtectedRoute><ProjectWorkspace /></ProtectedRoute>} />
         
         {/* Forms Routes */}

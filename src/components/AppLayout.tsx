@@ -571,7 +571,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               </a>
               <a href="#" onClick={(e) => {
                 e.preventDefault();
-                navigate('/projects');
+                navigate('/projects-database');
                 setIsRightDrawerOpen(false);
               }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(145deg, #ffffff, #e6e6e6)', boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.08), -4px -4px 8px rgba(255, 255, 255, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.4)' }}>
