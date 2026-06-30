@@ -309,6 +309,10 @@ model ManagementReview {
   providerPerformanceSummary String? @db.Text
   adequacyOfResources        String? @db.Text
 
+  policyReviewSummary                          String? @db.Text
+  processPerformanceProductConformitySummary   String? @db.Text
+  continualImprovementSummary                  String? @db.Text
+
   cardOrder   Json?
   cardOutputs Json?
 

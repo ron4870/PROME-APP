@@ -37,6 +37,9 @@ interface ManagementReview {
   monitoringResults: string;
   providerPerformanceSummary: string;
   adequacyOfResources: string;
+  policyReviewSummary: string;
+  processPerformanceProductConformitySummary: string;
+  continualImprovementSummary: string;
   cardOrder: string[] | null;
   cardOutputs: Record<string, string> | null;
   actionItems: ActionItem[];
@@ -272,6 +275,69 @@ const DEFAULT_SECTIONS: SectionDefinition[] = [
         items: [
           'Status of QMS improvement initiatives and market opportunities;',
           'Realized benefits from proactive changes.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'policyReviewSummary',
+    label: 'Review of Policy for the IMS',
+    placeholderInput: 'Review of Quality, HSE, and other IMS policies suitability and effectiveness...',
+    placeholderOutput: 'Decisions/Actions on IMS Policy...',
+    guidance: [
+      {
+        title: 'Policy Suitability:',
+        items: [
+          'Review of the Quality Policy, HSE Policy, and other IMS policies suitability and effectiveness;',
+          'Alignment of policies with organizational goals and context.'
+        ]
+      },
+      {
+        title: 'Policy Awareness:',
+        items: [
+          'Policy communication and understanding among employees and stakeholders.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'processPerformanceProductConformitySummary',
+    label: 'Process performance & Product conformity for IMS',
+    placeholderInput: 'Process performance indicators, product and service conformity logs...',
+    placeholderOutput: 'Decisions/Actions on process performance & product conformity...',
+    guidance: [
+      {
+        title: 'Process Performance:',
+        items: [
+          'Key process indicators, performance bottlenecks, and efficiency metrics;',
+          'Conformity of design deliverables, reports, and service outcomes.'
+        ]
+      },
+      {
+        title: 'Product Conformity:',
+        items: [
+          'Project quality logs, non-conformance trends, and inspection reports.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'continualImprovementSummary',
+    label: 'Recommendations for improvement / Opportunities for continual improvement',
+    placeholderInput: 'Opportunities for continual improvement and recommendations...',
+    placeholderOutput: 'Decisions/Actions on continual improvement and recommendations...',
+    guidance: [
+      {
+        title: 'Continual Improvement:',
+        items: [
+          'Suggestions and recommendations from audits, personnel, or management;',
+          'Preventive actions and process optimization opportunities.'
+        ]
+      },
+      {
+        title: 'Innovations:',
+        items: [
+          'Adoption of new design tools, AI planning copilots, or updated QMS guidelines.'
         ]
       }
     ]

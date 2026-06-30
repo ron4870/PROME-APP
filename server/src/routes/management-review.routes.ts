@@ -92,7 +92,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       previousActionsStatus, changesInIssues, customerFeedbackSummary,
       qualityObjectivesSummary, monitoringResults, providerPerformanceSummary,
       adequacyOfResources,
-      cardOrder, cardOutputs
+      cardOrder, cardOutputs,
+      policyReviewSummary, processPerformanceProductConformitySummary, continualImprovementSummary
     } = req.body;
 
     const data: any = {
@@ -110,7 +111,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       providerPerformanceSummary,
       adequacyOfResources,
       cardOrder,
-      cardOutputs
+      cardOutputs,
+      policyReviewSummary,
+      processPerformanceProductConformitySummary,
+      continualImprovementSummary
     };
 
     if (scheduledDate) data.scheduledDate = new Date(scheduledDate);
