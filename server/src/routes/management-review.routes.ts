@@ -91,7 +91,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       attendeeIds,
       previousActionsStatus, changesInIssues, customerFeedbackSummary,
       qualityObjectivesSummary, monitoringResults, providerPerformanceSummary,
-      adequacyOfResources
+      adequacyOfResources,
+      cardOrder, cardOutputs
     } = req.body;
 
     const data: any = {
@@ -107,7 +108,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
       qualityObjectivesSummary,
       monitoringResults,
       providerPerformanceSummary,
-      adequacyOfResources
+      adequacyOfResources,
+      cardOrder,
+      cardOutputs
     };
 
     if (scheduledDate) data.scheduledDate = new Date(scheduledDate);
@@ -143,14 +146,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.post('/:id/actions', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, assignedToId, dueDate } = req.body;
+    const { description, assignedToId, dueDate, sectionKey } = req.body;
 
     const action = await prisma.reviewActionItem.create({
       data: {
         reviewId: parseInt(id),
         description,
         assignedToId: assignedToId ? parseInt(assignedToId) : null,
-        dueDate: dueDate ? new Date(dueDate) : null
+        dueDate: dueDate ? new Date(dueDate) : null,
+        sectionKey
       },
       include: {
         assignedTo: { select: { id: true, name: true } }
@@ -168,7 +172,7 @@ router.post('/:id/actions', authenticateToken, async (req, res) => {
 router.put('/:id/actions/:actionId', authenticateToken, async (req, res) => {
   try {
     const { actionId } = req.params;
-    const { status, description, assignedToId, dueDate } = req.body;
+    const { status, description, assignedToId, dueDate, sectionKey } = req.body;
 
     const action = await prisma.reviewActionItem.update({
       where: { id: parseInt(actionId) },
@@ -176,7 +180,8 @@ router.put('/:id/actions/:actionId', authenticateToken, async (req, res) => {
         status,
         description,
         assignedToId: assignedToId ? parseInt(assignedToId) : null,
-        dueDate: dueDate ? new Date(dueDate) : null
+        dueDate: dueDate ? new Date(dueDate) : null,
+        sectionKey
       },
       include: {
         assignedTo: { select: { id: true, name: true } }

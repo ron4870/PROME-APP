@@ -309,6 +309,9 @@ model ManagementReview {
   providerPerformanceSummary String? @db.Text
   adequacyOfResources        String? @db.Text
 
+  cardOrder   Json?
+  cardOutputs Json?
+
   actionItems ReviewActionItem[]
 
   createdAt DateTime @default(now())
@@ -326,6 +329,8 @@ model ReviewActionItem {
 
   dueDate DateTime?
   status  String    @default("Open") // "Open", "In Progress", "Completed"
+
+  sectionKey String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

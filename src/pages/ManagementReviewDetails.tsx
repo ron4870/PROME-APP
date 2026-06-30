@@ -14,6 +14,7 @@ interface ActionItem {
   assignedTo?: User;
   dueDate: string | null;
   status: string;
+  sectionKey?: string | null;
 }
 
 interface ManagementReview {
@@ -36,8 +37,261 @@ interface ManagementReview {
   monitoringResults: string;
   providerPerformanceSummary: string;
   adequacyOfResources: string;
+  cardOrder: string[] | null;
+  cardOutputs: Record<string, string> | null;
   actionItems: ActionItem[];
 }
+
+interface GuidanceBlock {
+  title: string;
+  items: string[];
+}
+
+interface SectionDefinition {
+  key: string;
+  label: string;
+  placeholderInput: string;
+  placeholderOutput: string;
+  guidance?: GuidanceBlock[];
+}
+
+const DEFAULT_SECTIONS: SectionDefinition[] = [
+  {
+    key: 'previousActionsStatus',
+    label: 'Status of actions from previous meetings',
+    placeholderInput: 'Status of actions from previous management review meetings...',
+    placeholderOutput: 'Decisions/Actions on previous actions...',
+    guidance: [
+      {
+        title: 'Prior Action Items Review:',
+        items: [
+          'Management review action log;',
+          'Actions from the previous meeting (open/closed).'
+        ]
+      },
+      {
+        title: 'Prior Meeting Minutes Review:',
+        items: [
+          'Minutes from previous management review meeting;',
+          'Age profile of open actions, e.g., 3 months, 6 months, greater than 1 year.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'changesInIssues',
+    label: 'Changes in external and internal issues',
+    placeholderInput: 'Changes in external and internal issues relevant to the QMS...',
+    placeholderOutput: 'Decisions/Actions on changes in external/internal issues...',
+    guidance: [
+      {
+        title: 'Internal Issues Review:',
+        items: [
+          'Changes in organizational structure, key personnel, or core processes;',
+          'Strategic direction alignment and internal SWOT factors.'
+        ]
+      },
+      {
+        title: 'External Issues Review:',
+        items: [
+          'Market trends, legal/regulatory developments, and technological changes;',
+          'Economic factors and competitor activities affecting the QMS.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'customerFeedbackSummary',
+    label: 'Customer feedback and interested party feedback',
+    placeholderInput: 'Information on the performance and effectiveness of the QMS, including customer feedback and interested party feedback...',
+    placeholderOutput: 'Decisions/Actions on customer and interested party feedback...',
+    guidance: [
+      {
+        title: 'Customer Satisfaction Review:',
+        items: [
+          'Customer survey scores, compliments, and key complaints;',
+          'Client retention rates and service delivery feedback.'
+        ]
+      },
+      {
+        title: 'Interested Parties Review:',
+        items: [
+          'Feedback from regulatory bodies, partners, and key stakeholders;',
+          'Changing needs and expectations of interested parties.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'qualityObjectivesSummary',
+    label: 'Quality objectives and KPIs',
+    placeholderInput: 'The extent to which quality objectives and KPIs have been met...',
+    placeholderOutput: 'Decisions/Actions on quality objectives and KPIs...',
+    guidance: [
+      {
+        title: 'Objective Tracking:',
+        items: [
+          'Status of company-wide and division-specific quality objectives;',
+          'Performance trends against target benchmarks.'
+        ]
+      },
+      {
+        title: 'KPI Measurements:',
+        items: [
+          'Monitoring data from engineering, project, and administrative divisions;',
+          'Identification of off-track metrics requiring corrective actions.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'auditResultsSummary',
+    label: 'Audit Results Summary',
+    placeholderInput: 'Summary of internal and external audit findings...',
+    placeholderOutput: 'Decisions/Actions on audit results...',
+    guidance: [
+      {
+        title: 'Internal Audits:',
+        items: [
+          'Findings from scheduled internal audits and system reviews;',
+          'Number of minor and major non-conformities identified.'
+        ]
+      },
+      {
+        title: 'External Audits:',
+        items: [
+          'Certification body assessments and client audits;',
+          'Opportunities for improvement (OFIs) and compliance status.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'capaSummary',
+    label: 'Non-Conformities & CAPA',
+    placeholderInput: 'Status of corrective and preventive actions...',
+    placeholderOutput: 'Decisions/Actions on non-conformities & CAPA...',
+    guidance: [
+      {
+        title: 'Non-Conformities:',
+        items: [
+          'Product or service non-conformities logged during the period;',
+          'Analysis of recurring issues and root causes.'
+        ]
+      },
+      {
+        title: 'Corrective Actions:',
+        items: [
+          'Implementation status of Corrective and Preventive Actions (CAPAs);',
+          'Verification of effectiveness for closed actions.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'monitoringResults',
+    label: 'Monitoring and measurement results',
+    placeholderInput: 'Monitoring and measurement results...',
+    placeholderOutput: 'Decisions/Actions on monitoring and measurement results...',
+    guidance: [
+      {
+        title: 'Process Performance:',
+        items: [
+          'Product/service conformance metrics and inspection logs;',
+          'Verification and validation records from active projects.'
+        ]
+      },
+      {
+        title: 'Equipment & Systems:',
+        items: [
+          'Calibration status and maintenance records of measuring equipment;',
+          'Software and system performance metrics.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'providerPerformanceSummary',
+    label: 'Performance of external providers',
+    placeholderInput: 'Performance of external providers (suppliers, contractors)...',
+    placeholderOutput: 'Decisions/Actions on performance of external providers...',
+    guidance: [
+      {
+        title: 'Supplier Evaluations:',
+        items: [
+          'Supplier scorecards (quality, delivery, responsiveness);',
+          'Status of critical subcontractors and materials providers.'
+        ]
+      },
+      {
+        title: 'External Services:',
+        items: [
+          'Performance reviews of outsourced design or testing agencies;',
+          'Issues/claims relating to external providers.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'adequacyOfResources',
+    label: 'Adequacy of resources',
+    placeholderInput: 'The adequacy of resources...',
+    placeholderOutput: 'Decisions/Actions on adequacy of resources...',
+    guidance: [
+      {
+        title: 'Human Resources:',
+        items: [
+          'Staff competence, training history, and resource constraints;',
+          'Personnel allocations to key projects and roles.'
+        ]
+      },
+      {
+        title: 'Infrastructure & Environment:',
+        items: [
+          'Adequacy of physical facilities, IT systems, and design software;',
+          'Workspace conditions and support resources.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'riskSummary',
+    label: 'Risks & Opportunities',
+    placeholderInput: 'Effectiveness of actions taken to address risks and opportunities...',
+    placeholderOutput: 'Decisions/Actions on risks & opportunities...',
+    guidance: [
+      {
+        title: 'Actions on Risks:',
+        items: [
+          'Effectiveness of mitigation plans for identified operational risks;',
+          'Review of newly identified threats and threat levels.'
+        ]
+      },
+      {
+        title: 'Actions on Opportunities:',
+        items: [
+          'Status of QMS improvement initiatives and market opportunities;',
+          'Realized benefits from proactive changes.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'generalNotes',
+    label: 'General Notes & Other Inputs',
+    placeholderInput: 'Other general notes or inputs...',
+    placeholderOutput: 'Decisions/Actions on other general notes or inputs...',
+    guidance: [
+      {
+        title: 'Other Input Sources:',
+        items: [
+          'General notes, miscellaneous observations, or external recommendations;',
+          'Safety or health-related topics brought up during the review.'
+        ]
+      }
+    ]
+  }
+];
 
 const ManagementReviewDetails: React.FC = () => {
   const { id } = useParams();
@@ -45,7 +299,11 @@ const ManagementReviewDetails: React.FC = () => {
   const [review, setReview] = useState<ManagementReview | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [newAction, setNewAction] = useState<ActionItem>({ description: '', assignedToId: null, dueDate: '', status: 'Open' });
+  
+  // Section-specific Action states
+  const [newActions, setNewActions] = useState<Record<string, ActionItem>>({});
+  // General (Global) Action state
+  const [generalNewAction, setGeneralNewAction] = useState<ActionItem>({ description: '', assignedToId: null, dueDate: '', status: 'Open' });
 
   useEffect(() => {
     fetchReview();
@@ -100,8 +358,9 @@ const ManagementReviewDetails: React.FC = () => {
     }
   };
 
-  const handleAddAction = async () => {
-    if (!newAction.description) return;
+  const handleAddSectionAction = async (sectionKey: string) => {
+    const actionData = newActions[sectionKey];
+    if (!actionData || !actionData.description) return;
     try {
       const response = await fetch(`/api/management-reviews/${id}/actions`, {
         method: 'POST',
@@ -109,12 +368,36 @@ const ManagementReviewDetails: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(newAction)
+        body: JSON.stringify({ ...actionData, sectionKey })
       });
       if (response.ok) {
         const addedAction = await response.json();
         setReview(prev => prev ? { ...prev, actionItems: [...prev.actionItems, addedAction] } : null);
-        setNewAction({ description: '', assignedToId: null, dueDate: '', status: 'Open' });
+        setNewActions(prev => ({
+          ...prev,
+          [sectionKey]: { description: '', assignedToId: null, dueDate: '', status: 'Open' }
+        }));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleAddGeneralAction = async () => {
+    if (!generalNewAction.description) return;
+    try {
+      const response = await fetch(`/api/management-reviews/${id}/actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ ...generalNewAction, sectionKey: null })
+      });
+      if (response.ok) {
+        const addedAction = await response.json();
+        setReview(prev => prev ? { ...prev, actionItems: [...prev.actionItems, addedAction] } : null);
+        setGeneralNewAction({ description: '', assignedToId: null, dueDate: '', status: 'Open' });
       }
     } catch (error) {
       console.error(error);
@@ -165,10 +448,65 @@ const ManagementReviewDetails: React.FC = () => {
     }
   };
 
+  const handleMoveCard = (index: number, direction: 'up' | 'down') => {
+    if (!review) return;
+    const currentOrder = Array.isArray(review.cardOrder) 
+      ? [...review.cardOrder] 
+      : DEFAULT_SECTIONS.map(s => s.key);
+      
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
+    
+    const temp = currentOrder[index];
+    currentOrder[index] = currentOrder[targetIndex];
+    currentOrder[targetIndex] = temp;
+    
+    setReview({
+      ...review,
+      cardOrder: currentOrder
+    });
+  };
+
+  const handleCardOutputChange = (key: string, value: string) => {
+    if (!review) return;
+    const currentOutputs = typeof review.cardOutputs === 'object' && review.cardOutputs ? { ...review.cardOutputs } : {};
+    setReview({
+      ...review,
+      cardOutputs: {
+        ...currentOutputs,
+        [key]: value
+      }
+    });
+  };
+
+  const handleNewActionChange = (key: string, field: string, value: any) => {
+    setNewActions(prev => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] || { description: '', assignedToId: null, dueDate: '', status: 'Open' }),
+        [field]: value
+      }
+    }));
+  };
+
   if (!review) return <div className="layout-container">Loading...</div>;
 
+  // Determine current card ordering
+  const currentOrder = Array.isArray(review.cardOrder)
+    ? review.cardOrder
+    : DEFAULT_SECTIONS.map(s => s.key);
+
+  let orderedKeys = currentOrder.filter(key => DEFAULT_SECTIONS.some(s => s.key === key));
+  DEFAULT_SECTIONS.forEach(s => {
+    if (!orderedKeys.includes(s.key)) {
+      orderedKeys.push(s.key);
+    }
+  });
+
+  const orderedSections = orderedKeys.map(key => DEFAULT_SECTIONS.find(s => s.key === key)!);
+
   return (
-    <div className="layout-container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="layout-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <button onClick={() => navigate('/management-reviews')} className="btn btn-outline" style={{ padding: '0.5rem' }}>
@@ -206,165 +544,222 @@ const ManagementReviewDetails: React.FC = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
-        {/* Main Content Area */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Main Content Area: Draggable Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.5rem' }}>Review Inputs (ISO 9001: 9.3.2)</h2>
-            
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Audit Results Summary</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.auditResultsSummary || ''}
-                onChange={e => setReview({...review, auditResultsSummary: e.target.value})}
-                placeholder="Summary of internal and external audit findings..."
-              />
-            </div>
-            
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Non-Conformities & CAPA</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.capaSummary || ''}
-                onChange={e => setReview({...review, capaSummary: e.target.value})}
-                placeholder="Status of corrective and preventive actions..."
-              />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem', color: '#1e293b' }}>
+            Review Inputs & Outputs (ISO 9001: 9.3)
+          </h2>
+
+          {orderedSections.map((section, index) => {
+            const sectionNewAction = newActions[section.key] || { description: '', assignedToId: null, dueDate: '', status: 'Open' };
+            const sectionActionItems = review.actionItems.filter(action => action.sectionKey === section.key);
+
+            return (
+              <div 
+                key={section.key} 
+                className="card" 
+                style={{ 
+                  backgroundColor: 'white', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px', 
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem'
+                }}
+              >
+                {/* Header with drag/reorder controls */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
+                    {index + 1}. {section.label}
+                  </h3>
+                  <div style={{ display: 'flex', gap: '0.25rem' }} className="no-print">
+                    <button 
+                      onClick={() => handleMoveCard(index, 'up')}
+                      disabled={index === 0}
+                      className="btn btn-outline"
+                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '28px', color: index === 0 ? '#94a3b8' : '#334155' }}
+                    >
+                      ▲ Move Up
+                    </button>
+                    <button 
+                      onClick={() => handleMoveCard(index, 'down')}
+                      disabled={index === orderedSections.length - 1}
+                      className="btn btn-outline"
+                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '28px', color: index === orderedSections.length - 1 ? '#94a3b8' : '#334155' }}
+                    >
+                      ▼ Move Down
+                    </button>
+                  </div>
+                </div>
+
+                {/* Guidance checklists (mocking the reference image) */}
+                {section.guidance && (
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#fafafa' }}>
+                    {section.guidance.map((g, gIdx) => (
+                      <div key={gIdx} style={{ borderBottom: gIdx < (section.guidance?.length || 0) - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                        <div style={{ backgroundColor: '#f1f5f9', padding: '6px 12px', fontWeight: 'bold', fontSize: '0.8rem', color: '#475569', borderBottom: '1px solid #e2e8f0' }}>
+                          {g.title}
+                        </div>
+                        <ul style={{ margin: 0, padding: '10px 24px', listStyleType: 'disc', fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                          {g.items.map((item, itemIdx) => (
+                            <li key={itemIdx} style={{ marginBottom: '2px' }}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input Details */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '600' }}>Review Input Details / Findings</label>
+                  <textarea 
+                    className="form-textarea"
+                    rows={4}
+                    value={review[section.key as keyof ManagementReview] as string || ''}
+                    onChange={e => setReview({ ...review, [section.key]: e.target.value })}
+                    placeholder={section.placeholderInput}
+                  />
+                </div>
+
+                {/* Output Decisions */}
+                <div className="form-group" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem' }}>
+                  <label className="form-label" style={{ fontWeight: '600', color: '#cc0000' }}>Review Output / Decisions & Resource Needs</label>
+                  <textarea 
+                    className="form-textarea"
+                    rows={3}
+                    value={(review.cardOutputs && review.cardOutputs[section.key]) || ''}
+                    onChange={e => handleCardOutputChange(section.key, e.target.value)}
+                    placeholder={section.placeholderOutput}
+                  />
+                </div>
+
+                {/* Section Specific Action Items */}
+                <div style={{ marginTop: '0.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.75rem' }}>Action Items</h4>
+                  
+                  {/* Action creation form */}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }} className="no-print">
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="New action item..." 
+                      value={sectionNewAction.description}
+                      onChange={e => handleNewActionChange(section.key, 'description', e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <select 
+                      className="form-select" 
+                      value={sectionNewAction.assignedToId || ''}
+                      onChange={e => handleNewActionChange(section.key, 'assignedToId', parseInt(e.target.value) || null)}
+                      style={{ width: '150px' }}
+                    >
+                      <option value="">Assignee...</option>
+                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      value={sectionNewAction.dueDate || ''}
+                      onChange={e => handleNewActionChange(section.key, 'dueDate', e.target.value)}
+                      style={{ width: '150px' }}
+                    />
+                    <button className="btn btn-primary" onClick={() => handleAddSectionAction(section.key)} disabled={!sectionNewAction.description}>
+                      <Plus size={18} />
+                    </button>
+                  </div>
+
+                  {/* Section Actions Table */}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Description</th>
+                          <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Assigned To</th>
+                          <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Due Date</th>
+                          <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                          <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }} className="no-print"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sectionActionItems.map(action => (
+                          <tr key={action.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>{action.description}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>{action.assignedTo?.name || '-'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>
+                              {action.dueDate ? new Date(action.dueDate).toLocaleDateString() : '-'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <select 
+                                className="form-select" 
+                                style={{ padding: '2px 4px', fontSize: '0.7rem' }}
+                                value={action.status}
+                                onChange={(e) => handleUpdateActionStatus(action.id!, e.target.value)}
+                              >
+                                <option value="Open">Open</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                              </select>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} className="no-print">
+                              <button onClick={() => handleDeleteAction(action.id!)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {sectionActionItems.length === 0 && (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '0.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.8rem' }}>
+                              No action items for this section.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Fallback card: General / Unassigned Action Items */}
+          <div 
+            className="card" 
+            style={{ 
+              backgroundColor: '#f8fafc', 
+              padding: '1.5rem', 
+              borderRadius: '8px', 
+              border: '1px dashed #cbd5e1',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}
+          >
+            <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#475569', margin: 0 }}>
+                General / Unassigned Action Items
+              </h3>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Risks & Opportunities</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.riskSummary || ''}
-                onChange={e => setReview({...review, riskSummary: e.target.value})}
-                placeholder="Effectiveness of actions taken to address risks and opportunities..."
-              />
-            </div>
-            
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Status of actions from previous meetings</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.previousActionsStatus || ''}
-                onChange={e => setReview({...review, previousActionsStatus: e.target.value})}
-                placeholder="Status of actions from previous management review meetings..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Changes in external and internal issues</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.changesInIssues || ''}
-                onChange={e => setReview({...review, changesInIssues: e.target.value})}
-                placeholder="Changes in external and internal issues relevant to the QMS..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Customer feedback and interested party feedback</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.customerFeedbackSummary || ''}
-                onChange={e => setReview({...review, customerFeedbackSummary: e.target.value})}
-                placeholder="Information on the performance and effectiveness of the QMS, including customer feedback and interested party feedback..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Quality objectives and KPIs</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.qualityObjectivesSummary || ''}
-                onChange={e => setReview({...review, qualityObjectivesSummary: e.target.value})}
-                placeholder="The extent to which quality objectives and KPIs have been met..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Monitoring and measurement results</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.monitoringResults || ''}
-                onChange={e => setReview({...review, monitoringResults: e.target.value})}
-                placeholder="Monitoring and measurement results..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Performance of external providers</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.providerPerformanceSummary || ''}
-                onChange={e => setReview({...review, providerPerformanceSummary: e.target.value})}
-                placeholder="Performance of external providers (suppliers, contractors)..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Adequacy of resources</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.adequacyOfResources || ''}
-                onChange={e => setReview({...review, adequacyOfResources: e.target.value})}
-                placeholder="The adequacy of resources..."
-              />
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">General Notes & Other Inputs</label>
-              <textarea 
-                className="form-textarea" 
-                rows={3}
-                value={review.generalNotes || ''}
-                onChange={e => setReview({...review, generalNotes: e.target.value})}
-                placeholder="Other general notes or inputs..."
-              />
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.5rem' }}>Review Outputs (ISO 9001: 9.3.3)</h2>
-            
-            <div className="form-group">
-              <label className="form-label">Decisions & Resource Needs</label>
-              <textarea 
-                className="form-textarea" 
-                rows={4}
-                value={review.decisions || ''}
-                onChange={e => setReview({...review, decisions: e.target.value})}
-                placeholder="Opportunities for improvement, any need for changes to the QMS, and resource needs..."
-              />
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.5rem' }}>Action Items</h2>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            {/* General Action creation form */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }} className="no-print">
               <input 
                 type="text" 
                 className="form-input" 
-                placeholder="New action item..." 
-                value={newAction.description}
-                onChange={e => setNewAction({...newAction, description: e.target.value})}
+                placeholder="New general action..." 
+                value={generalNewAction.description}
+                onChange={e => setGeneralNewAction({...generalNewAction, description: e.target.value})}
                 style={{ flex: 1 }}
               />
               <select 
                 className="form-select" 
-                value={newAction.assignedToId || ''}
-                onChange={e => setNewAction({...newAction, assignedToId: parseInt(e.target.value) || null})}
+                value={generalNewAction.assignedToId || ''}
+                onChange={e => setGeneralNewAction({...generalNewAction, assignedToId: parseInt(e.target.value) || null})}
                 style={{ width: '150px' }}
               >
                 <option value="">Assignee...</option>
@@ -373,38 +768,38 @@ const ManagementReviewDetails: React.FC = () => {
               <input 
                 type="date" 
                 className="form-input" 
-                value={newAction.dueDate || ''}
-                onChange={e => setNewAction({...newAction, dueDate: e.target.value})}
+                value={generalNewAction.dueDate || ''}
+                onChange={e => setGeneralNewAction({...generalNewAction, dueDate: e.target.value})}
                 style={{ width: '150px' }}
               />
-              <button className="btn btn-primary" onClick={handleAddAction} disabled={!newAction.description}>
+              <button className="btn btn-primary" onClick={handleAddGeneralAction} disabled={!generalNewAction.description}>
                 <Plus size={18} />
               </button>
             </div>
 
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: '#f9fafb' }}>
+                <thead style={{ backgroundColor: '#e2e8f0' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Description</th>
-                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Assigned To</th>
-                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Due Date</th>
-                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Status</th>
-                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}></th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#475569' }}>Description</th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#475569' }}>Assigned To</th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#475569' }}>Due Date</th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#475569' }}>Status</th>
+                    <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#475569' }} className="no-print"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {review.actionItems.map(action => (
-                    <tr key={action.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{action.description}</td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{action.assignedTo?.name || '-'}</td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>
+                  {review.actionItems.filter(action => !action.sectionKey).map(action => (
+                    <tr key={action.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>{action.description}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>{action.assignedTo?.name || '-'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>
                         {action.dueDate ? new Date(action.dueDate).toLocaleDateString() : '-'}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
                         <select 
                           className="form-select" 
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                          style={{ padding: '2px 4px', fontSize: '0.7rem' }}
                           value={action.status}
                           onChange={(e) => handleUpdateActionStatus(action.id!, e.target.value)}
                         >
@@ -413,17 +808,17 @@ const ManagementReviewDetails: React.FC = () => {
                           <option value="Completed">Completed</option>
                         </select>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} className="no-print">
                         <button onClick={() => handleDeleteAction(action.id!)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>
                   ))}
-                  {review.actionItems.length === 0 && (
+                  {review.actionItems.filter(action => !action.sectionKey).length === 0 && (
                     <tr>
                       <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
-                        No action items created.
+                        No general action items created.
                       </td>
                     </tr>
                   )}
@@ -431,6 +826,20 @@ const ManagementReviewDetails: React.FC = () => {
               </table>
             </div>
           </div>
+
+          {/* Legacy Global Decisions (if any exist) */}
+          {review.decisions && (
+            <div className="card" style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <label className="form-label" style={{ fontWeight: '600' }}>Global / General Decisions (Legacy)</label>
+              <textarea 
+                className="form-textarea"
+                rows={3}
+                value={review.decisions}
+                onChange={e => setReview({ ...review, decisions: e.target.value })}
+              />
+            </div>
+          )}
+
         </div>
 
         {/* Right Sidebar */}
@@ -490,12 +899,13 @@ const ManagementReviewDetails: React.FC = () => {
                     <button 
                       onClick={() => setReview({...review, attendees: review.attendees.filter(a => a.id !== attendee.id)})}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#9ca3af' }}
+                      className="no-print"
                     >×</button>
                   </span>
                 ))}
               </div>
               <select 
-                className="form-select"
+                className="form-select no-print"
                 onChange={(e) => {
                   const userId = parseInt(e.target.value);
                   if (userId && !review.attendees.find(a => a.id === userId)) {
