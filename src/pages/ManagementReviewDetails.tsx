@@ -29,6 +29,13 @@ interface ManagementReview {
   riskSummary: string;
   generalNotes: string;
   decisions: string;
+  previousActionsStatus: string;
+  changesInIssues: string;
+  customerFeedbackSummary: string;
+  qualityObjectivesSummary: string;
+  monitoringResults: string;
+  providerPerformanceSummary: string;
+  adequacyOfResources: string;
   actionItems: ActionItem[];
 }
 
@@ -238,6 +245,83 @@ const ManagementReviewDetails: React.FC = () => {
               />
             </div>
             
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Status of actions from previous meetings</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.previousActionsStatus || ''}
+                onChange={e => setReview({...review, previousActionsStatus: e.target.value})}
+                placeholder="Status of actions from previous management review meetings..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Changes in external and internal issues</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.changesInIssues || ''}
+                onChange={e => setReview({...review, changesInIssues: e.target.value})}
+                placeholder="Changes in external and internal issues relevant to the QMS..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Customer feedback and interested party feedback</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.customerFeedbackSummary || ''}
+                onChange={e => setReview({...review, customerFeedbackSummary: e.target.value})}
+                placeholder="Information on the performance and effectiveness of the QMS, including customer feedback and interested party feedback..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Quality objectives and KPIs</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.qualityObjectivesSummary || ''}
+                onChange={e => setReview({...review, qualityObjectivesSummary: e.target.value})}
+                placeholder="The extent to which quality objectives and KPIs have been met..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Monitoring and measurement results</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.monitoringResults || ''}
+                onChange={e => setReview({...review, monitoringResults: e.target.value})}
+                placeholder="Monitoring and measurement results..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Performance of external providers</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.providerPerformanceSummary || ''}
+                onChange={e => setReview({...review, providerPerformanceSummary: e.target.value})}
+                placeholder="Performance of external providers (suppliers, contractors)..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Adequacy of resources</label>
+              <textarea 
+                className="form-textarea" 
+                rows={3}
+                value={review.adequacyOfResources || ''}
+                onChange={e => setReview({...review, adequacyOfResources: e.target.value})}
+                placeholder="The adequacy of resources..."
+              />
+            </div>
+            
             <div className="form-group">
               <label className="form-label">General Notes & Other Inputs</label>
               <textarea 
@@ -245,7 +329,7 @@ const ManagementReviewDetails: React.FC = () => {
                 rows={3}
                 value={review.generalNotes || ''}
                 onChange={e => setReview({...review, generalNotes: e.target.value})}
-                placeholder="Customer feedback, quality objectives, changes in external/internal issues..."
+                placeholder="Other general notes or inputs..."
               />
             </div>
           </div>

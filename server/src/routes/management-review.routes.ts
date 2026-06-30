@@ -88,7 +88,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { 
       status, scheduledDate, conductedDate,
       auditResultsSummary, capaSummary, riskSummary, generalNotes, decisions,
-      attendeeIds
+      attendeeIds,
+      previousActionsStatus, changesInIssues, customerFeedbackSummary,
+      qualityObjectivesSummary, monitoringResults, providerPerformanceSummary,
+      adequacyOfResources
     } = req.body;
 
     const data: any = {
@@ -97,7 +100,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       capaSummary,
       riskSummary,
       generalNotes,
-      decisions
+      decisions,
+      previousActionsStatus,
+      changesInIssues,
+      customerFeedbackSummary,
+      qualityObjectivesSummary,
+      monitoringResults,
+      providerPerformanceSummary,
+      adequacyOfResources
     };
 
     if (scheduledDate) data.scheduledDate = new Date(scheduledDate);

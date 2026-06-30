@@ -300,6 +300,15 @@ model ManagementReview {
   generalNotes        String? @db.Text
   decisions           String? @db.Text
 
+  // Newly Added ISO 9001: 9.3.2 Inputs
+  previousActionsStatus      String? @db.Text
+  changesInIssues            String? @db.Text
+  customerFeedbackSummary    String? @db.Text
+  qualityObjectivesSummary   String? @db.Text
+  monitoringResults          String? @db.Text
+  providerPerformanceSummary String? @db.Text
+  adequacyOfResources        String? @db.Text
+
   actionItems ReviewActionItem[]
 
   createdAt DateTime @default(now())
