@@ -41,6 +41,9 @@ interface ManagementReview {
   processPerformanceProductConformitySummary: string;
   continualImprovementSummary: string;
   purpose: string;
+  conclusion: string;
+  approvedByName: string;
+  approvedDate: string;
   cardOrder: string[] | null;
   cardOutputs: Record<string, string> | null;
   actionItems: ActionItem[];
@@ -386,6 +389,15 @@ const ManagementReviewDetails: React.FC = () => {
         const data = await response.json();
         if (data && !data.purpose) {
           data.purpose = 'To evaluate overall QMS effectiveness and to enable evidence-based decision-making and the establishment of actions to achieve desired results. Actions arising from the management review are recorded as Action Items.';
+        }
+        if (data && !data.conclusion) {
+          data.conclusion = 'Top Management concluded that the QMS remains suitable, adequate, and effective in meeting the company\'s strategic goals and the requirements of ISO';
+        }
+        if (data && !data.approvedByName) {
+          data.approvedByName = 'Managing Director';
+        }
+        if (data && !data.approvedDate) {
+          data.approvedDate = new Date().toISOString().split('T')[0];
         }
         setReview(data);
       }
@@ -973,6 +985,86 @@ const ManagementReviewDetails: React.FC = () => {
               />
             </div>
           )}
+          {/* Conclusion Section */}
+          <div 
+            className="card" 
+            style={{ 
+              backgroundColor: 'white', 
+              padding: '1.5rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              marginTop: '1rem'
+            }}
+          >
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
+              Conclusion
+            </h2>
+
+            {/* Editable Conclusion Text (Screen only) */}
+            <div className="form-group no-print" style={{ margin: 0 }}>
+              <label className="form-label" style={{ fontWeight: '600' }}>Conclusion Statement</label>
+              <textarea 
+                className="form-textarea"
+                rows={3}
+                value={review.conclusion || ''}
+                onChange={e => setReview({ ...review, conclusion: e.target.value })}
+                placeholder="Top Management concluded that..."
+              />
+            </div>
+
+            {/* Conclusion static text (Print only) */}
+            <div className="print-only" style={{ fontSize: '0.95rem', color: '#000', lineHeight: '1.5', marginBottom: '1.5rem' }}>
+              {review.conclusion || ''}
+            </div>
+
+            {/* Signatures */}
+            <div style={{ marginTop: '0.5rem' }}>
+              <label className="form-label" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Minutes Approved By:</label>
+              
+              {/* Screen Inputs (Screen only) */}
+              <div style={{ display: 'flex', gap: '1rem' }} className="no-print">
+                <div style={{ flex: 1 }}>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Approved By Name/Role (e.g. Managing Director)"
+                    value={review.approvedByName || ''}
+                    onChange={e => setReview({ ...review, approvedByName: e.target.value })}
+                  />
+                </div>
+                <div style={{ width: '200px' }}>
+                  <input 
+                    type="date" 
+                    className="form-input" 
+                    value={review.approvedDate || ''}
+                    onChange={e => setReview({ ...review, approvedDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Print Layout (Print only) */}
+              <div className="print-only" style={{ marginTop: '2.5rem', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', maxWidth: '600px' }}>
+                  <div style={{ borderBottom: '1px solid #000', width: '300px', paddingBottom: '4px', fontSize: '0.9rem' }}>
+                    {review.approvedByName || '_______________________'}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <strong>Date:</strong> 
+                    <span style={{ borderBottom: '1px solid #000', width: '200px', display: 'inline-block', textAlign: 'center', paddingBottom: '4px' }}>
+                      {review.approvedDate ? new Date(review.approvedDate).toLocaleDateString() : '_________________'}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#475569', marginTop: '2px' }}>
+                  [Managing Director Signature]
+                </div>
+              </div>
+            </div>
+          </div>
 
         </div>
 

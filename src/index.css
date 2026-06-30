@@ -676,10 +676,18 @@ a:hover {
   color: #bb0a0a;
 }
 
+.print-only {
+  display: none !important;
+}
+
 /* ==========================================================================
    Print / PDF Export Styles
    ========================================================================== */
 @media print {
+  .print-only {
+    display: flex !important;
+  }
+
   /* Hide UI elements that shouldn't be in the PDF */
   .sidebar,
   .top-navbar,

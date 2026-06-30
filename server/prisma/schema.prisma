@@ -315,6 +315,10 @@ model ManagementReview {
 
   purpose                                      String? @db.Text
 
+  conclusion                                   String? @db.Text
+  approvedByName                               String?
+  approvedDate                                 String?
+
   cardOrder   Json?
   cardOutputs Json?
 
