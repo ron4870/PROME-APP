@@ -721,54 +721,19 @@ const ManagementReviewDetails: React.FC = () => {
           <thead className="print-table-thead print-only">
             <tr className="print-table-tr">
               <td className="print-table-td" style={{ padding: 0 }}>
-                {/* PDF Header block matching the mockup image */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', marginBottom: '20px' }}>
-                  <tbody>
-                    <tr>
-                      <td rowSpan={3} style={{ width: '25%', border: '1px solid #000', padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
-                        <svg width="150" height="48" viewBox="0 0 150 48" style={{ display: 'block', margin: '0 auto' }}>
-                          <text x="5" y="25" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="#c00" letter-spacing="-1">pr</text>
-                          <polygon points="36,12 46,12 51,20 46,28 36,28 31,20" fill="#666" />
-                          <circle cx="41" cy="20" r="3.5" fill="#fff" />
-                          <text x="52" y="25" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="#c00" letter-spacing="-1">me</text>
-                          <text x="5" y="35" font-family="Arial, sans-serif" font-weight="bold" font-size="9" fill="#000">Consultants Ltd</text>
-                          <text x="5" y="44" font-family="Arial, sans-serif" font-style="italic" font-size="4.2" fill="#555">Project Management And Engineering Consultants Ltd</text>
-                        </svg>
-                      </td>
-                      <td style={{ width: '50%', border: '1px solid #000', padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', verticalAlign: 'middle', color: '#000' }}>
-                        PROME Consultants Ltd
-                      </td>
-                      <td style={{ width: '10%', border: '1px solid #000', padding: '6px', fontWeight: 'bold', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
-                        Doc:
-                      </td>
-                      <td style={{ width: '15%', border: '1px solid #000', padding: '6px', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
-                        PROME-IMSR-AFD-05
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', color: '#0369a1', verticalAlign: 'middle' }}>
-                        IMS (ISO 9001:2015 and ISO 45001:2018)
-                      </td>
-                      <td style={{ border: '1px solid #000', padding: '6px', fontWeight: 'bold', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
-                        Status:
-                      </td>
-                      <td style={{ border: '1px solid #000', padding: '6px', fontSize: '0.85rem', verticalAlign: 'middle', fontWeight: '600', color: '#000' }}>
-                        {review.status}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold', verticalAlign: 'middle', color: '#000' }}>
-                        Minutes of Management Review Meeting
-                      </td>
-                      <td style={{ border: '1px solid #000', padding: '6px', fontWeight: 'bold', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
-                        Date:
-                      </td>
-                      <td style={{ border: '1px solid #000', padding: '6px', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
-                        {review.conductedDate ? new Date(review.conductedDate).toLocaleDateString() : '-'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                {/* Modern PDF Header */}
+                <div style={{ display: 'flex', width: '100%', borderBottom: '2px solid #cbd5e1', paddingBottom: '12px', marginBottom: '24px', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <img src="/prome.png" alt="PROME Logo" style={{ height: '44px', display: 'block' }} />
+                  </div>
+                  <div style={{ textAlign: 'right', fontFamily: "'Inter', sans-serif", color: '#475569', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#0f172a', marginBottom: '2px' }}>Minutes of Management Review Meeting</div>
+                    <div style={{ fontSize: '0.7rem', color: '#0369a1', fontWeight: '600', marginBottom: '4px' }}>IMS (ISO 9001:2015 and ISO 45001:2018)</div>
+                    <div>Doc Ref: <span style={{ fontWeight: '600', color: '#1e293b' }}>PROME-IMSR-AFD-05</span></div>
+                    <div>Status: <span style={{ fontWeight: '600', color: '#1e293b' }}>{review.status}</span></div>
+                    <div>Date: <span style={{ fontWeight: '600', color: '#1e293b' }}>{review.conductedDate ? new Date(review.conductedDate).toLocaleDateString() : '-'}</span></div>
+                  </div>
+                </div>
               </td>
             </tr>
           </thead>
@@ -777,64 +742,96 @@ const ManagementReviewDetails: React.FC = () => {
               <td className="print-table-td" style={{ padding: 0 }}>
                 {/* Main Content Area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* Purpose of Management Review Meeting Section */}
-          <div 
-            className="card" 
-            style={{ 
-              backgroundColor: 'white', 
-              padding: '1.5rem', 
-              borderRadius: '8px', 
-              border: '1px solid #cbd5e1',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem'
-            }}
-          >
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
-              Purpose of Management Review Meeting
-            </h2>
-            <div className="form-group" style={{ margin: 0 }}>
-              <textarea 
-                className="form-textarea"
-                rows={3}
-                value={review.purpose || ''}
-                onChange={e => setReview({ ...review, purpose: e.target.value })}
-                placeholder="To evaluate overall QMS effectiveness and to enable evidence-based decision-making and the establishment of actions to achieve desired results..."
-              />
-            </div>
-          </div>
 
-          {/* Agenda Section */}
-          <div 
-            className="card" 
-            style={{ 
-              backgroundColor: 'white', 
-              padding: '1.5rem', 
-              borderRadius: '8px', 
-              border: '1px solid #cbd5e1',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem'
-            }}
-          >
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
-              Agenda
-            </h2>
-            <ol style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.9rem', color: '#334155', lineHeight: '1.4' }}>
-              {orderedSections.map((section) => (
-                <li key={section.key} style={{ fontWeight: '500' }}>
-                  {section.label}
-                </li>
-              ))}
-            </ol>
-          </div>
+                  {/* Cover Page Wrapper */}
+                  <div className="print-cover-page" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {/* Purpose of Management Review Meeting Section */}
+                    <div 
+                      className="card" 
+                      style={{ 
+                        backgroundColor: 'white', 
+                        padding: '1.5rem', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem'
+                      }}
+                    >
+                      <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
+                        Purpose of Management Review Meeting
+                      </h2>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <textarea 
+                          className="form-textarea"
+                          rows={3}
+                          value={review.purpose || ''}
+                          onChange={e => setReview({ ...review, purpose: e.target.value })}
+                          placeholder="To evaluate overall QMS effectiveness and to enable evidence-based decision-making and the establishment of actions to achieve desired results..."
+                        />
+                      </div>
+                    </div>
 
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem', color: '#1e293b', marginTop: '1rem' }}>
-            Review Inputs & Outputs (ISO 9001: 9.3)
-          </h2>
+                    {/* Agenda Section */}
+                    <div 
+                      className="card" 
+                      style={{ 
+                        backgroundColor: 'white', 
+                        padding: '1.5rem', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem'
+                      }}
+                    >
+                      <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
+                        Agenda
+                      </h2>
+                      <ol style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.9rem', color: '#334155', lineHeight: '1.4' }}>
+                        {orderedSections.map((section) => (
+                          <li key={section.key} style={{ fontWeight: '500' }}>
+                            {section.label}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    {/* List of Attendees (Print only on Cover Page) */}
+                    <div 
+                      className="card print-only" 
+                      style={{ 
+                        backgroundColor: 'white', 
+                        padding: '1.5rem', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem'
+                      }}
+                    >
+                      <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
+                        List of Attendees
+                      </h2>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {review.attendees.map((attendee, index) => (
+                          <div key={attendee.id} style={{ fontSize: '0.95rem', color: '#334155', fontWeight: '500' }}>
+                            {index + 1}. {attendee.name}
+                          </div>
+                        ))}
+                        {review.attendees.length === 0 && (
+                          <div style={{ fontStyle: 'italic', color: '#6b7280' }}>No attendees recorded.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem', color: '#1e293b', marginTop: '1rem' }} className="no-print">
+                    Review Inputs & Outputs (ISO 9001: 9.3)
+                  </h2>
 
           {orderedSections.map((section, index) => {
             const sectionNewAction = newActions[section.key] || { description: '', assignedToId: null, dueDate: '', status: 'Open' };
@@ -843,7 +840,7 @@ const ManagementReviewDetails: React.FC = () => {
             return (
               <div 
                 key={section.key} 
-                className="card" 
+                className="card print-page-break" 
                 style={{ 
                   backgroundColor: 'white', 
                   padding: '1.5rem', 
@@ -1126,7 +1123,7 @@ const ManagementReviewDetails: React.FC = () => {
           )}
           {/* Conclusion Section */}
           <div 
-            className="card" 
+            className="card print-page-break" 
             style={{ 
               backgroundColor: 'white', 
               padding: '1.5rem', 

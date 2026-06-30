@@ -749,6 +749,14 @@ a:hover {
   .main-grid-container {
     display: block !important;
   }
+  .print-cover-page {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  .print-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
