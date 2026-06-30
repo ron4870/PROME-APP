@@ -313,6 +313,8 @@ model ManagementReview {
   processPerformanceProductConformitySummary   String? @db.Text
   continualImprovementSummary                  String? @db.Text
 
+  purpose                                      String? @db.Text
+
   cardOrder   Json?
   cardOutputs Json?
 

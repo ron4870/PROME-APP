@@ -40,6 +40,7 @@ interface ManagementReview {
   policyReviewSummary: string;
   processPerformanceProductConformitySummary: string;
   continualImprovementSummary: string;
+  purpose: string;
   cardOrder: string[] | null;
   cardOutputs: Record<string, string> | null;
   actionItems: ActionItem[];
@@ -381,7 +382,13 @@ const ManagementReviewDetails: React.FC = () => {
       const response = await fetch(`/api/management-reviews/${id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      if (response.ok) setReview(await response.json());
+      if (response.ok) {
+        const data = await response.json();
+        if (data && !data.purpose) {
+          data.purpose = 'To evaluate overall QMS effectiveness and to enable evidence-based decision-making and the establishment of actions to achieve desired results. Actions arising from the management review are recorded as Action Items.';
+        }
+        setReview(data);
+      }
       else navigate('/management-reviews');
     } catch (error) {
       console.error(error);
@@ -620,7 +627,35 @@ const ManagementReviewDetails: React.FC = () => {
         {/* Main Content Area: Draggable Cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem', color: '#1e293b' }}>
+          {/* Purpose of Management Review Meeting Section */}
+          <div 
+            className="card" 
+            style={{ 
+              backgroundColor: 'white', 
+              padding: '1.5rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}
+          >
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
+              Purpose of Management Review Meeting
+            </h2>
+            <div className="form-group" style={{ margin: 0 }}>
+              <textarea 
+                className="form-textarea"
+                rows={3}
+                value={review.purpose || ''}
+                onChange={e => setReview({ ...review, purpose: e.target.value })}
+                placeholder="To evaluate overall QMS effectiveness and to enable evidence-based decision-making and the establishment of actions to achieve desired results..."
+              />
+            </div>
+          </div>
+
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem', color: '#1e293b', marginTop: '1rem' }}>
             Review Inputs & Outputs (ISO 9001: 9.3)
           </h2>
 
