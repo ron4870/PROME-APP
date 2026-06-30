@@ -729,17 +729,25 @@ a:hover {
     font-size: 11pt;
   }
 
-  /* Add a formal header specifically for print */
-  body::before {
-    content: "PROME Information Management System - Official Record";
-    display: block;
-    text-align: center;
-    font-weight: bold;
-    font-size: 14pt;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #bb0a0a;
-    color: #881337;
+  /* Print table wrapper classes */
+  .print-table-wrapper {
+    display: table !important;
+    width: 100% !important;
+  }
+  .print-table-thead {
+    display: table-header-group !important;
+  }
+  .print-table-tbody {
+    display: table-row-group !important;
+  }
+  .print-table-tr {
+    display: table-row !important;
+  }
+  .print-table-td {
+    display: table-cell !important;
+  }
+  .main-grid-container {
+    display: block !important;
   }
 }
 

@@ -715,9 +715,68 @@ const ManagementReviewDetails: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
-        {/* Main Content Area: Draggable Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }} className="main-grid-container">
+        {/* Main Content Area wrapped in print table */}
+        <table className="print-table-wrapper" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead className="print-table-thead print-only">
+            <tr className="print-table-tr">
+              <td className="print-table-td" style={{ padding: 0 }}>
+                {/* PDF Header block matching the mockup image */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', marginBottom: '20px' }}>
+                  <tbody>
+                    <tr>
+                      <td rowSpan={3} style={{ width: '25%', border: '1px solid #000', padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <svg width="150" height="48" viewBox="0 0 150 48" style={{ display: 'block', margin: '0 auto' }}>
+                          <text x="5" y="25" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="#c00" letter-spacing="-1">pr</text>
+                          <polygon points="36,12 46,12 51,20 46,28 36,28 31,20" fill="#666" />
+                          <circle cx="41" cy="20" r="3.5" fill="#fff" />
+                          <text x="52" y="25" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="#c00" letter-spacing="-1">me</text>
+                          <text x="5" y="35" font-family="Arial, sans-serif" font-weight="bold" font-size="9" fill="#000">Consultants Ltd</text>
+                          <text x="5" y="44" font-family="Arial, sans-serif" font-style="italic" font-size="4.2" fill="#555">Project Management And Engineering Consultants Ltd</text>
+                        </svg>
+                      </td>
+                      <td style={{ width: '50%', border: '1px solid #000', padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', verticalAlign: 'middle', color: '#000' }}>
+                        PROME Consultants Ltd
+                      </td>
+                      <td style={{ width: '10%', border: '1px solid #000', padding: '6px', fontWeight: 'bold', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
+                        Doc:
+                      </td>
+                      <td style={{ width: '15%', border: '1px solid #000', padding: '6px', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
+                        PROME-IMSR-AFD-05
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', color: '#0369a1', verticalAlign: 'middle' }}>
+                        IMS (ISO 9001:2015 and ISO 45001:2018)
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '6px', fontWeight: 'bold', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
+                        Status:
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '6px', fontSize: '0.85rem', verticalAlign: 'middle', fontWeight: '600', color: '#000' }}>
+                        {review.status}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold', verticalAlign: 'middle', color: '#000' }}>
+                        Minutes of Management Review Meeting
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '6px', fontWeight: 'bold', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
+                        Date:
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '6px', fontSize: '0.85rem', verticalAlign: 'middle', color: '#000' }}>
+                        {review.conductedDate ? new Date(review.conductedDate).toLocaleDateString() : '-'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </thead>
+          <tbody className="print-table-tbody">
+            <tr className="print-table-tr">
+              <td className="print-table-td" style={{ padding: 0 }}>
+                {/* Main Content Area */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
           {/* Purpose of Management Review Meeting Section */}
           <div 
@@ -1146,7 +1205,11 @@ const ManagementReviewDetails: React.FC = () => {
             </div>
           </div>
 
-        </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* Right Sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
