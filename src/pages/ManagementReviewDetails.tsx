@@ -919,6 +919,53 @@ const ManagementReviewDetails: React.FC = () => {
         cardHeader.innerText = `${index + 1}. ${section.label}`;
         mainCard.appendChild(cardHeader);
 
+        // Guidance checklist
+        if (section.guidance) {
+          const guidanceContainer = document.createElement('div');
+          guidanceContainer.style.border = '1px solid #e2e8f0';
+          guidanceContainer.style.borderRadius = '6px';
+          guidanceContainer.style.overflow = 'hidden';
+          guidanceContainer.style.backgroundColor = '#fafafa';
+          guidanceContainer.style.marginBottom = '10px';
+
+          section.guidance.forEach((g, gIdx) => {
+            const block = document.createElement('div');
+            if (gIdx < (section.guidance?.length || 0) - 1) {
+              block.style.borderBottom = '1px solid #e2e8f0';
+            }
+
+            const header = document.createElement('div');
+            header.style.backgroundColor = '#f1f5f9';
+            header.style.padding = '6px 12px';
+            header.style.fontWeight = 'bold';
+            header.style.fontSize = '12px';
+            header.style.color = '#475569';
+            header.style.borderBottom = '1px solid #e2e8f0';
+            header.innerText = g.title;
+            block.appendChild(header);
+
+            const ul = document.createElement('ul');
+            ul.style.margin = '0';
+            ul.style.padding = '10px 24px';
+            ul.style.listStyleType = 'disc';
+            ul.style.fontSize = '12px';
+            ul.style.color = '#475569';
+            ul.style.lineHeight = '1.4';
+
+            g.items.forEach(itemText => {
+              const li = document.createElement('li');
+              li.style.marginBottom = '2px';
+              li.innerText = itemText;
+              ul.appendChild(li);
+            });
+
+            block.appendChild(ul);
+            guidanceContainer.appendChild(block);
+          });
+
+          mainCard.appendChild(guidanceContainer);
+        }
+
         // Inputs Section
         const inputDiv = document.createElement('div');
         const inputLabel = document.createElement('label');
