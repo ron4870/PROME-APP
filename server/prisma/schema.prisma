@@ -313,6 +313,12 @@ model ManagementReview {
   processPerformanceProductConformitySummary   String? @db.Text
   continualImprovementSummary                  String? @db.Text
 
+  organizationContextScope                    String? @db.Text
+  documentManagementStructure                 String? @db.Text
+  trainingCompetence                          String? @db.Text
+  emergencyPreparedness                       String? @db.Text
+  workerConsultationParticipation             String? @db.Text
+
   purpose                                      String? @db.Text
 
   conclusion                                   String? @db.Text

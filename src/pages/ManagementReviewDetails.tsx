@@ -40,6 +40,11 @@ interface ManagementReview {
   policyReviewSummary: string;
   processPerformanceProductConformitySummary: string;
   continualImprovementSummary: string;
+  organizationContextScope: string;
+  documentManagementStructure: string;
+  trainingCompetence: string;
+  emergencyPreparedness: string;
+  workerConsultationParticipation: string;
   purpose: string;
   conclusion: string;
   approvedByName: string;
@@ -342,6 +347,81 @@ const DEFAULT_SECTIONS: SectionDefinition[] = [
         title: 'Innovations:',
         items: [
           'Adoption of new design tools, AI planning copilots, or updated QMS guidelines.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'organizationContextScope',
+    label: 'Context and Scope of the Organization',
+    placeholderInput: 'Review context and scope of the organization, external/internal issues...',
+    placeholderOutput: 'Decisions/Actions on Organization Context & Scope...',
+    guidance: [
+      {
+        title: 'Organization Context Scope:',
+        items: [
+          'Review scope boundaries and applicability of QMS;',
+          'Review issues and conditions that affect organization strategic direction.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'documentManagementStructure',
+    label: 'Structure of Document Management System',
+    placeholderInput: 'Review structure, control, and update history of Document Management System...',
+    placeholderOutput: 'Decisions/Actions on Document Management System...',
+    guidance: [
+      {
+        title: 'DMS Structure & Control:',
+        items: [
+          'Adequacy and structure of QMS documentation;',
+          'Effectiveness of control, access, and storage of documents.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'trainingCompetence',
+    label: 'Training & Competence',
+    placeholderInput: 'Review training needs, competence assessments, and educational logs...',
+    placeholderOutput: 'Decisions/Actions on training & competence...',
+    guidance: [
+      {
+        title: 'Personnel Competence:',
+        items: [
+          'Assess requirements for education, training, and experience;',
+          'Status of training programs and skill matrix gaps.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'emergencyPreparedness',
+    label: 'Emergency Preparedness',
+    placeholderInput: 'Review emergency plans, drills feedback, and preparedness logs...',
+    placeholderOutput: 'Decisions/Actions on emergency preparedness...',
+    guidance: [
+      {
+        title: 'Emergency Plans & Response:',
+        items: [
+          'Verify currency of emergency plans and contact numbers;',
+          'Review reports from emergency drill exercises.'
+        ]
+      }
+    ]
+  },
+  {
+    key: 'workerConsultationParticipation',
+    label: 'Consultation and participation of workers',
+    placeholderInput: 'Consultation outcomes, worker feedback, safety committee minutes...',
+    placeholderOutput: 'Decisions/Actions on worker consultation & participation...',
+    guidance: [
+      {
+        title: 'Worker Consultation:',
+        items: [
+          'Effectiveness of feedback channels and safety committees;',
+          'Worker participation in hazard identification and audits.'
         ]
       }
     ]
