@@ -387,6 +387,35 @@ export const CesiumWorkspace: React.FC = () => {
           duration: 2.0
         });
         addLog('Loaded CZML timelapse coordinates. Site facilities mapped successfully.');
+      } else if (file.name.includes('design_alignment')) {
+        // Draw a simulated design alignment corridor
+        const corridor = [
+          32.285, 2.760, 1080,
+          32.290, 2.765, 1085,
+          32.295, 2.772, 1092,
+          32.305, 2.780, 1100
+        ];
+        viewer.entities.add({
+          layerName: file.name,
+          name: 'Highway Alignment corridor design (imported kml)',
+          description: 'Vector alignment corridor imported from project drive folder.',
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArrayHeights(corridor),
+            width: 5,
+            material: Cesium.Color.CYAN
+          }
+        });
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(32.295, 2.772, 5000.0),
+          duration: 2.0
+        });
+        addLog('Camera focused on imported highway alignment corridor design.');
+      } else if (file.name.includes('dem_elevation')) {
+        addLog('Visualizing imported digital elevation model (terrain meshes).');
+      } else if (file.name.includes('orthophoto')) {
+        addLog('Visualizing imported orthophoto raster overlay mask.');
+      } else if (file.name.includes('bridge_gantry')) {
+        addLog('Visualizing imported 3D bridge gantry model structure mesh.');
       }
     }
   };
@@ -411,23 +440,24 @@ export const CesiumWorkspace: React.FC = () => {
     }, 600);
   };
 
-  const handleImportCorridor = () => {
-    addLog('Initiating vector data upload to Google Drive folder...');
-    addLog('Uploading "highway_design_corridor.geojson" alignment line vector...');
+  const handleImportDesignFiles = () => {
+    addLog('Initiating design files upload to Google Drive project folder...');
+    addLog('Parsing file types: geojson, kml, kmz, shp, xml, dxf, xodr...');
+    addLog('Uploading "design_alignment.kml" vector corridor layout...');
     setTimeout(() => {
       const newFile: StreamFile = {
-        name: 'highway_design_corridor.geojson',
-        type: 'application/json',
-        size: '1.8 MB',
+        name: 'design_alignment.kml',
+        type: 'application/xml',
+        size: '2.4 MB',
         lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        layerType: 'GeoJSON',
+        layerType: 'KML',
         status: 'Ready'
       };
       setFiles(prev => {
         if (prev.some(f => f.name === newFile.name)) return prev;
         return [newFile, ...prev];
       });
-      addLog('Successfully imported "highway_design_corridor.geojson" vector corridor design to Google Drive folder.');
+      addLog('Successfully imported "design_alignment.kml" alignment file into Google Drive.');
     }, 600);
   };
 
@@ -469,6 +499,30 @@ export const CesiumWorkspace: React.FC = () => {
       });
       addLog('Successfully imported "bridge_gantry_model.glb" 3D mesh asset to Google Drive.');
     }, 600);
+  };
+
+  const handleDeleteFile = (file: StreamFile) => {
+    if (!window.confirm(`Are you sure you want to delete "${file.name}" from Google Drive and the stream registry?`)) return;
+
+    if (viewerRef.current) {
+      const viewer = viewerRef.current;
+      // Remove any matching entities from the map viewer
+      const entitiesToRemove: any[] = [];
+      viewer.entities.values.forEach((entity: any) => {
+        if (entity.layerName === file.name) {
+          entitiesToRemove.push(entity);
+        }
+      });
+      entitiesToRemove.forEach(e => viewer.entities.remove(e));
+    }
+
+    // Remove from activeLayers state
+    setActiveLayers(prev => prev.filter(name => name !== file.name));
+    
+    // Remove from files array
+    setFiles(prev => prev.filter(f => f.name !== file.name));
+
+    addLog(`Deleted "${file.name}" from connected Drive folder.`);
   };
 
   return (
@@ -675,7 +729,7 @@ export const CesiumWorkspace: React.FC = () => {
                   📥 Import Surface
                 </button>
                 <button 
-                  onClick={handleImportCorridor}
+                  onClick={handleImportDesignFiles}
                   style={{ 
                     backgroundColor: 'rgba(14, 165, 233, 0.1)', 
                     border: '1px solid rgba(14, 165, 233, 0.25)', 
@@ -689,7 +743,7 @@ export const CesiumWorkspace: React.FC = () => {
                     transition: 'all 0.2s'
                   }}
                 >
-                  📥 Import Corridor
+                  📥 Import Design Files
                 </button>
                 <button 
                   onClick={handleImportPNGs}
@@ -751,27 +805,48 @@ export const CesiumWorkspace: React.FC = () => {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, marginRight: '8px' }}>
                           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f1f5f9', wordBreak: 'break-all' }}>{file.name}</span>
                           <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Size: {file.size} | Type: {file.layerType}</span>
                         </div>
                         
-                        <button 
-                          onClick={() => toggleLayer(file)}
-                          style={{ 
-                            backgroundColor: isActive ? '#0284c7' : 'rgba(255,255,255,0.08)',
-                            border: 'none',
-                            borderRadius: '4px',
-                            color: '#ffffff',
-                            padding: '4px 8px',
-                            fontSize: '0.7rem',
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {isActive ? 'Hide Layer' : 'Stream'}
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'stretch' }}>
+                          <button 
+                            onClick={() => toggleLayer(file)}
+                            style={{ 
+                              backgroundColor: isActive ? '#0284c7' : 'rgba(255,255,255,0.08)',
+                              border: 'none',
+                              borderRadius: '4px',
+                              color: '#ffffff',
+                              padding: '4px 8px',
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {isActive ? 'Hide Layer' : 'Stream'}
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteFile(file)}
+                            style={{ 
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              border: 'none',
+                              borderRadius: '4px',
+                              color: '#f87171',
+                              padding: '4px 8px',
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
