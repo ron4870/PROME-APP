@@ -98,8 +98,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       { label: 'Roads & Highways', path: '/division/ped/roads-highways' },
       { label: 'Structures', path: '/division/ped/structures' },
       { label: 'Water & Sanitation', path: '/division/ped/water-sanitation' },
-      { label: 'Energy & Minerals', path: '/division/ped/energy-minerals' },
-      { label: 'PROME Design ↗', path: `https://design.promeconsult.com/?token=${localStorage.getItem('token') || ''}` }
+      { label: 'Energy & Minerals', path: '/division/ped/energy-minerals' }
     ];
   } else if (location.pathname.startsWith('/division/pdmd')) {
     navLinks = [
