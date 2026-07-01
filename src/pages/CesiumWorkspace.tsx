@@ -33,8 +33,8 @@ export const CesiumWorkspace: React.FC = () => {
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   const [gdriveStatus, setGdriveStatus] = useState<'connected' | 'syncing' | 'error'>('connected');
   const [baseLayer, setBaseLayer] = useState<'satellite' | 'google' | 'street'>('satellite');
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
-  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
   const [streamLog, setStreamLog] = useState<string[]>([
     'Initializing secure connection to Google Drive folder 1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO...',
     'Connected to Google Drive Master Registry.',
