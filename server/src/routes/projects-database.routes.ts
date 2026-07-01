@@ -18,10 +18,16 @@ const checkDatabaseProjectAccess = () => async (req: any, res: any, next: any) =
       return next();
     }
     
+    const projectId = parseInt(req.params.id);
+    const project = await prisma.databaseProject.findUnique({ where: { id: projectId } });
+    if (project && project.name === 'Master Database') {
+      return next();
+    }
+    
     const member = await prisma.databaseProjectMember.findUnique({
       where: {
         databaseProjectId_userId: {
-          databaseProjectId: parseInt(req.params.id),
+          databaseProjectId: projectId,
           userId: req.user!.userId
         }
       }
@@ -80,9 +86,16 @@ router.get('/', authenticate, async (req, res) => {
     } else {
       databaseProjects = await prisma.databaseProject.findMany({
         where: {
-          members: {
-            some: { userId: (req as any).user!.userId }
-          }
+          OR: [
+            {
+              members: {
+                some: { userId: (req as any).user!.userId }
+              }
+            },
+            {
+              name: 'Master Database'
+            }
+          ]
         },
         include: {
           members: {
