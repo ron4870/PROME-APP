@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload, X } from 'lucide-react';
+import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload, X, ChevronDown, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 declare global {
@@ -39,9 +39,25 @@ export const CesiumWorkspace: React.FC = () => {
     'Connected to Google Drive Master Registry.',
     'Discovered 4 streamable spatial layers in folder /PROME_3D_Master_Database.'
   ]);
-  const { token } = useAuth();
+  const { token, hasPermission, user } = useAuth();
+  const isAdmin = !!(user?.roles?.some((r: any) => r.name === 'Administrator' || r.name === 'Admin' || r.name === 'Super Admin') || hasPermission?.('admin_panel'));
   const [masterProjectId, setMasterProjectId] = useState<number | null>(null);
   const [files, setFiles] = useState<StreamFile[]>(mockStreamFiles);
+
+  // States for Project Selection, Dropdown, and Project Creation
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  
+  // New Project Form States
+  const [newProjName, setNewProjName] = useState('');
+  const [newProjClient, setNewProjClient] = useState('PROME');
+  const [newProjDate, setNewProjDate] = useState(new Date().toISOString().slice(0, 10));
+  const [newProjDesc, setNewProjDesc] = useState('');
+  const [selectedProjectMembers, setSelectedProjectMembers] = useState<number[]>([]);
+  const [isCreatingProj, setIsCreatingProj] = useState(false);
 
   // Modal states for PNG World File Georeference import
   const [isPngModalOpen, setIsPngModalOpen] = useState(false);
@@ -79,65 +95,114 @@ export const CesiumWorkspace: React.FC = () => {
     };
   }, []);
 
-  // Fetch Master Database and list files
+  const fetchProjectDocuments = async (projectId: number, customProjectsList?: any[]) => {
+    setGdriveStatus('syncing');
+    try {
+      const docsRes = await fetch(`/api/projects-database/${projectId}/documents`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (docsRes.ok) {
+        const docs = await docsRes.json();
+        const mappedDocs: StreamFile[] = docs.map((doc: any) => {
+          let size = '2.5 MB';
+          let coordinates: any = null;
+          try {
+            const urlInfo = JSON.parse(doc.fileUrl || '{}');
+            if (urlInfo.metadata && urlInfo.metadata.coordinates) {
+              coordinates = urlInfo.metadata.coordinates;
+            }
+          } catch(e) {}
+          
+          let layerType: any = 'GeoJSON';
+          if (doc.title.endsWith('.kml')) layerType = 'KML';
+          if (doc.title.endsWith('.czml')) layerType = 'CZML';
+          if (doc.title.endsWith('.glb') || doc.title.endsWith('.gltf')) layerType = 'Point Cloud';
+          
+          return {
+            id: doc.id,
+            name: doc.title,
+            type: doc.type,
+            size: size,
+            lastModified: new Date(doc.createdAt).toISOString().replace('T', ' ').slice(0, 16),
+            layerType: layerType,
+            status: 'Ready',
+            coordinates: coordinates
+          };
+        });
+
+        // Clear existing viewer layers on map switch
+        if (viewerRef.current) {
+          const viewer = viewerRef.current;
+          const entitiesToRemove: any[] = [];
+          viewer.entities.values.forEach((entity: any) => {
+            entitiesToRemove.push(entity);
+          });
+          entitiesToRemove.forEach(e => viewer.entities.remove(e));
+        }
+        setActiveLayers([]);
+
+        const currentList = customProjectsList || projects;
+        const activeProj = currentList.find(p => p.id === projectId) || selectedProject;
+        const isMaster = activeProj?.name === 'Master Database';
+
+        if (isMaster) {
+          const merged = [...mappedDocs];
+          mockStreamFiles.forEach(mock => {
+            if (!merged.some(f => f.name === mock.name)) {
+              merged.push(mock);
+            }
+          });
+          setFiles(merged);
+        } else {
+          setFiles(mappedDocs);
+        }
+        
+        setGdriveStatus('connected');
+        addLog(`Switched active workspace. Discovered ${mappedDocs.length} layers in folder "${activeProj?.name || 'Active Project'}".`);
+      }
+    } catch (err) {
+      console.error(err);
+      setGdriveStatus('error');
+      addLog('Error: Failed to fetch registry from Google Drive.');
+    }
+  };
+
+  // Fetch projects list, users list, and select Master Database on mount
   useEffect(() => {
     const initMasterDatabase = async () => {
       try {
         setGdriveStatus('syncing');
+        
+        // 1. Fetch available projects
         const projRes = await fetch('/api/projects-database', {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
+        let loadedProjects: any[] = [];
         if (projRes.ok) {
-          const projects = await projRes.json();
-          const masterProj = projects.find((p: any) => p.name === 'Master Database');
+          loadedProjects = await projRes.json();
+          setProjects(loadedProjects);
+          
+          const masterProj = loadedProjects.find((p: any) => p.name === 'Master Database');
           if (masterProj) {
             setMasterProjectId(masterProj.id);
+            setSelectedProject(masterProj);
             addLog(`Master Database Project resolved (ID: ${masterProj.id}).`);
             
-            const docsRes = await fetch(`/api/projects-database/${masterProj.id}/documents`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (docsRes.ok) {
-              const docs = await docsRes.json();
-              const mappedDocs: StreamFile[] = docs.map((doc: any) => {
-                let size = '2.5 MB';
-                let coordinates: any = null;
-                try {
-                  const urlInfo = JSON.parse(doc.fileUrl || '{}');
-                  if (urlInfo.metadata && urlInfo.metadata.coordinates) {
-                    coordinates = urlInfo.metadata.coordinates;
-                  }
-                } catch(e) {}
-                
-                let layerType: any = 'GeoJSON';
-                if (doc.title.endsWith('.kml')) layerType = 'KML';
-                if (doc.title.endsWith('.czml')) layerType = 'CZML';
-                if (doc.title.endsWith('.glb') || doc.title.endsWith('.gltf')) layerType = 'Point Cloud';
-                
-                return {
-                  id: doc.id,
-                  name: doc.title,
-                  type: doc.type,
-                  size: size,
-                  lastModified: new Date(doc.createdAt).toISOString().replace('T', ' ').slice(0, 16),
-                  layerType: layerType,
-                  status: 'Ready',
-                  coordinates: coordinates
-                };
-              });
-              
-              const merged = [...mappedDocs];
-              mockStreamFiles.forEach(mock => {
-                if (!merged.some(f => f.name === mock.name)) {
-                  merged.push(mock);
-                }
-              });
-              setFiles(merged);
-              setGdriveStatus('connected');
-              addLog(`Discovered ${mappedDocs.length} streamable spatial layers in Google Drive folder "Master Database".`);
-            }
+            // Fetch documents for Master Database
+            await fetchProjectDocuments(masterProj.id, loadedProjects);
           }
         }
+
+        // 2. Fetch users for project creation membership selection
+        const usersRes = await fetch('/api/users', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          setAvailableUsers(usersData);
+        }
+
       } catch (err) {
         console.error(err);
         setGdriveStatus('error');
@@ -539,14 +604,14 @@ export const CesiumWorkspace: React.FC = () => {
     }
   };
 
-  const uploadFileToMasterDatabase = async (fileName: string, mimeType: string, fileSize: string, layerType: 'GeoJSON' | 'CZML' | 'KML' | 'Point Cloud') => {
-    if (!masterProjectId) {
-      addLog('Error: Master Database project ID not resolved.');
+  const uploadFileToActiveProject = async (fileName: string, mimeType: string, fileSize: string, layerType: 'GeoJSON' | 'CZML' | 'KML' | 'Point Cloud') => {
+    if (!selectedProject?.id) {
+      addLog('Error: Active project ID not resolved.');
       return;
     }
     
-    addLog(`Initiating secure connection to Google Drive folder for Master Database...`);
-    addLog(`Uploading "${fileName}" to Master Database folder in Google Drive...`);
+    addLog(`Initiating secure connection to Google Drive folder for "${selectedProject.name}"...`);
+    addLog(`Uploading "${fileName}" to project folder in Google Drive...`);
     
     try {
       const formData = new FormData();
@@ -559,7 +624,7 @@ export const CesiumWorkspace: React.FC = () => {
       formData.append('status', 'Ready');
       formData.append('issueDate', new Date().toISOString());
 
-      const res = await fetch(`/api/projects-database/${masterProjectId}/documents`, {
+      const res = await fetch(`/api/projects-database/${selectedProject.id}/documents`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -580,9 +645,9 @@ export const CesiumWorkspace: React.FC = () => {
           if (prev.some(f => f.name === newFile.name)) return prev;
           return [newFile, ...prev];
         });
-        addLog(`Successfully imported "${fileName}" to Master Database project folder.`);
+        addLog(`Successfully imported "${fileName}" to "${selectedProject.name}" project folder.`);
       } else {
-        addLog(`Error: Failed to upload file metadata to Master Database API.`);
+        addLog(`Error: Failed to upload file metadata to database API.`);
       }
     } catch (err) {
       console.error(err);
@@ -688,9 +753,9 @@ export const CesiumWorkspace: React.FC = () => {
       formData.append('issueDate', new Date().toISOString());
       formData.append('metadata', JSON.stringify({ coordinates }));
 
-      addLog(`Uploading files to "Master Database" project folder...`);
+      addLog(`Uploading files to "${selectedProject?.name || 'Master Database'}" project folder...`);
 
-      const res = await fetch(`/api/projects-database/${masterProjectId}/documents`, {
+      const res = await fetch(`/api/projects-database/${selectedProject?.id}/documents`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -733,11 +798,11 @@ export const CesiumWorkspace: React.FC = () => {
   };
 
   const handleImportSurface = () => {
-    uploadFileToMasterDatabase('dem_elevation_uganda.tif', 'image/tiff', '8.4 MB', 'GeoJSON');
+    uploadFileToActiveProject('dem_elevation_uganda.tif', 'image/tiff', '8.4 MB', 'GeoJSON');
   };
 
   const handleImportDesignFiles = () => {
-    uploadFileToMasterDatabase('design_alignment.kml', 'application/xml', '2.4 MB', 'KML');
+    uploadFileToActiveProject('design_alignment.kml', 'application/xml', '2.4 MB', 'KML');
   };
 
   const handleImportPNGs = () => {
@@ -745,7 +810,7 @@ export const CesiumWorkspace: React.FC = () => {
   };
 
   const handleImportGLTF = () => {
-    uploadFileToMasterDatabase('bridge_gantry_model.glb', 'model/gltf-binary', '14.5 MB', 'Point Cloud');
+    uploadFileToActiveProject('bridge_gantry_model.glb', 'model/gltf-binary', '14.5 MB', 'Point Cloud');
   };
 
   const handleDeleteFile = async (file: StreamFile) => {
@@ -765,14 +830,14 @@ export const CesiumWorkspace: React.FC = () => {
     setActiveLayers(prev => prev.filter(name => name !== file.name));
     setFiles(prev => prev.filter(f => f.name !== file.name));
 
-    if (file.id && masterProjectId) {
+    if (file.id && selectedProject?.id) {
       try {
-        const res = await fetch(`/api/projects-database/${masterProjectId}/documents/${file.id}`, {
+        const res = await fetch(`/api/projects-database/${selectedProject.id}/documents/${file.id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
-          addLog(`Successfully deleted "${file.name}" from Google Drive folder "Master Database".`);
+          addLog(`Successfully deleted "${file.name}" from Google Drive folder "${selectedProject.name}".`);
         } else {
           addLog(`Error: Failed to delete "${file.name}" from Google Drive folder.`);
         }
@@ -782,6 +847,61 @@ export const CesiumWorkspace: React.FC = () => {
       }
     } else {
       addLog(`Deleted "${file.name}" from registry local cache.`);
+    }
+  };
+
+  const handleCreateDatabaseProject = async () => {
+    if (!newProjName.trim()) {
+      alert('Please enter a project name.');
+      return;
+    }
+    
+    setIsCreatingProj(true);
+    addLog(`Initiating folder creation structure in Google Drive for "${newProjName}"...`);
+    
+    try {
+      const res = await fetch('/api/projects-database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newProjName,
+          client: newProjClient || 'PROME',
+          description: newProjDesc,
+          startDate: newProjDate,
+          members: selectedProjectMembers.map(userId => ({ userId, role: 'Viewer' }))
+        })
+      });
+
+      if (res.ok) {
+        const createdProj = await res.json();
+        
+        // Append to current list and switch selection to this project
+        setProjects(prev => [createdProj, ...prev]);
+        setSelectedProject(createdProj);
+        setIsCreateProjectOpen(false);
+        
+        // Reset form fields
+        setNewProjName('');
+        setNewProjClient('PROME');
+        setNewProjDate(new Date().toISOString().slice(0, 10));
+        setNewProjDesc('');
+        setSelectedProjectMembers([]);
+        
+        // Reload documents for this project (starts empty)
+        await fetchProjectDocuments(createdProj.id, [createdProj, ...projects]);
+        addLog(`Database project and Google Drive folder created successfully.`);
+      } else {
+        const errData = await res.json();
+        alert(errData.message || 'Failed to create project');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error: Failed to create database project.');
+    } finally {
+      setIsCreatingProj(false);
     }
   };
 
@@ -798,6 +918,271 @@ export const CesiumWorkspace: React.FC = () => {
             <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#f8fafc' }}>Loading Cesium 3D Engine...</span>
           </div>
           <p style={{ color: '#64748b' }}>Streaming spatial assets & graphics configurations from global CDN...</p>
+        </div>
+      )}
+
+      {/* Top-Left Project Selector & Creation Bar */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '10px',
+        padding: '6px 12px',
+        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+        color: '#f8fafc',
+        fontFamily: 'sans-serif'
+      }}>
+        {/* Create Project Button (Admin only) */}
+        {isAdmin && (
+          <button
+            onClick={() => setIsCreateProjectOpen(!isCreateProjectOpen)}
+            style={{
+              backgroundColor: '#0ea5e9',
+              border: 'none',
+              borderRadius: '6px',
+              color: '#ffffff',
+              padding: '6px 12px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0284c7'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0ea5e9'}
+          >
+            <Plus size={14} />
+            Create Project
+          </button>
+        )}
+
+        {/* Separator line */}
+        {isAdmin && <div style={{ width: '1px', height: '16px', backgroundColor: 'rgba(255,255,255,0.15)' }} />}
+
+        {/* Active Project label and chevron dropdown select */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#f8fafc',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              outline: 'none'
+            }}
+          >
+            <span>{selectedProject ? selectedProject.name : 'Master Database'}</span>
+            <ChevronDown size={14} style={{ transform: isProjectDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+          </button>
+
+          {/* Project List Dropdown */}
+          {isProjectDropdownOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 10px)',
+              left: '-12px',
+              width: '240px',
+              backgroundColor: '#1e293b',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              padding: '4px',
+              zIndex: 9999,
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '260px',
+              overflowY: 'auto'
+            }}>
+              {projects.map((proj) => (
+                <button
+                  key={proj.id}
+                  onClick={() => {
+                    setSelectedProject(proj);
+                    setIsProjectDropdownOpen(false);
+                    fetchProjectDocuments(proj.id);
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    backgroundColor: selectedProject?.id === proj.id ? 'rgba(14, 165, 233, 0.15)' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: selectedProject?.id === proj.id ? '#38bdf8' : '#cbd5e1',
+                    padding: '8px 12px',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                  onMouseEnter={e => {
+                    if (selectedProject?.id !== proj.id) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.color = '#f8fafc';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (selectedProject?.id !== proj.id) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#cbd5e1';
+                    }
+                  }}
+                >
+                  <span>{proj.name}</span>
+                  {selectedProject?.id === proj.id && <span style={{ color: '#38bdf8', fontSize: '0.7rem' }}>●</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Create Project Panel (Under top selector bar) */}
+      {isCreateProjectOpen && isAdmin && (
+        <div style={{
+          position: 'absolute',
+          top: '68px',
+          left: '20px',
+          zIndex: 100,
+          width: '340px',
+          backgroundColor: 'rgba(15, 23, 42, 0.92)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px',
+          padding: '1.25rem',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+          color: '#f8fafc',
+          fontFamily: 'sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8' }}>Create New Database Project</span>
+            <button 
+              onClick={() => setIsCreateProjectOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Form Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Name */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>PROJECT NAME</label>
+              <input 
+                type="text" 
+                value={newProjName}
+                onChange={e => setNewProjName(e.target.value)}
+                placeholder="e.g. Kampala Flyover Lot 3"
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none' }}
+              />
+            </div>
+
+            {/* Client */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>CLIENT</label>
+              <input 
+                type="text" 
+                value={newProjClient}
+                onChange={e => setNewProjClient(e.target.value)}
+                placeholder="PROME"
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none' }}
+              />
+            </div>
+
+            {/* Start Date */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>START DATE</label>
+              <input 
+                type="date" 
+                value={newProjDate}
+                onChange={e => setNewProjDate(e.target.value)}
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none', colorScheme: 'dark' }}
+              />
+            </div>
+
+            {/* Description */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>DESCRIPTION</label>
+              <textarea 
+                value={newProjDesc}
+                onChange={e => setNewProjDesc(e.target.value)}
+                placeholder="Brief project details..."
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none', height: '60px', resize: 'none' }}
+              />
+            </div>
+
+            {/* Members checkboxes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>ASSIGN USERS / MEMBERS</label>
+              <div style={{ 
+                backgroundColor: 'rgba(0,0,0,0.2)', 
+                border: '1px solid rgba(255,255,255,0.06)', 
+                borderRadius: '6px', 
+                padding: '6px', 
+                maxHeight: '110px', 
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem'
+              }}>
+                {availableUsers.map(u => (
+                  <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', cursor: 'pointer', color: '#cbd5e1' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedProjectMembers.includes(u.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedProjectMembers([...selectedProjectMembers, u.id]);
+                        } else {
+                          setSelectedProjectMembers(selectedProjectMembers.filter(id => id !== u.id));
+                        }
+                      }}
+                    />
+                    <span>{u.name} ({u.email})</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
+            <button 
+              type="button" 
+              onClick={() => setIsCreateProjectOpen(false)}
+              style={{ backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#cbd5e1', padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              disabled={isCreatingProj}
+              onClick={handleCreateDatabaseProject}
+              style={{ backgroundColor: '#0ea5e9', border: 'none', borderRadius: '6px', color: '#ffffff', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, cursor: isCreatingProj ? 'not-allowed' : 'pointer', opacity: isCreatingProj ? 0.7 : 1 }}
+            >
+              {isCreatingProj ? 'Creating...' : 'Create Folder'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -861,7 +1246,7 @@ export const CesiumWorkspace: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Database color="#0ea5e9" size={22} />
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>PROME 3D Master DB</h2>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>{selectedProject ? selectedProject.name : 'PROME 3D Master DB'}</h2>
               </div>
               <button 
                 onClick={() => window.close()} 
@@ -871,7 +1256,7 @@ export const CesiumWorkspace: React.FC = () => {
               </button>
             </div>
             <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>
-              Geospatial project modeling environment. Google Drive linked storage database workspace.
+              {selectedProject ? selectedProject.description || 'Google Drive linked storage database workspace.' : 'Geospatial project modeling environment. Google Drive linked storage database workspace.'}
             </p>
           </div>
 
