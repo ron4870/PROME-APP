@@ -16,6 +16,27 @@ router.get('/', authenticate, async (req, res) => {
       include: { roles: true }
     });
 
+    // Auto-create Master Database project if not exists
+    const existingMasterDb = await prisma.project.findFirst({
+      where: { name: 'Master Database' }
+    });
+    if (!existingMasterDb) {
+      try {
+        const newProj = await prisma.project.create({
+          data: {
+            name: 'Master Database',
+            client: 'PROME',
+            description: 'System Master Database for GIS, terrain elevation data, design files, overlays, and 3D models.',
+            status: 'Active',
+            startDate: new Date('2026-01-01')
+          }
+        });
+        await getOrCreateProjectFolder(newProj.id, newProj.name, null);
+      } catch (err) {
+        console.error('Failed to auto-create Master Database project/folder:', err);
+      }
+    }
+
     let projects;
     // Admins see all projects
     if (user?.roles?.some(r => r.name === 'Administrator')) {
@@ -865,7 +886,7 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
           requestBody: { role: 'reader', type: 'anyone' },
           supportsAllDrives: true
         });
-        fileUrl = JSON.stringify({ view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
+        fileUrl = JSON.stringify({ id: fileId, view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
       }
     }
 
@@ -885,6 +906,47 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
     res.json(newDoc);
   } catch (error) {
     console.error('Error in documents post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE Project Document
+router.delete('/:id/documents/:docId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const docId = parseInt(req.params.docId);
+    
+    // Find the document to get the Google Drive file ID
+    const doc = await prisma.projectDocument.findUnique({
+      where: { id: docId }
+    });
+    
+    if (!doc) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+    
+    // Attempt to delete from Google Drive if fileUrl exists
+    if (doc.fileUrl) {
+      try {
+        const fileInfo = JSON.parse(doc.fileUrl);
+        if (fileInfo.id) {
+          await driveService.files.delete({
+            fileId: fileInfo.id,
+            supportsAllDrives: true
+          });
+        }
+      } catch (err) {
+        console.error('Failed to delete file from Google Drive:', err);
+      }
+    }
+    
+    // Delete from Prisma DB
+    await prisma.projectDocument.delete({
+      where: { id: docId }
+    });
+    
+    res.json({ message: 'Document deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting document:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

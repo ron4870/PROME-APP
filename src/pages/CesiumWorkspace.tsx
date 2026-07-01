@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 declare global {
   interface Window {
@@ -8,6 +9,7 @@ declare global {
 }
 
 interface StreamFile {
+  id?: number;
   name: string;
   type: string;
   size: string;
@@ -36,6 +38,8 @@ export const CesiumWorkspace: React.FC = () => {
     'Connected to Google Drive Master Registry.',
     'Discovered 4 streamable spatial layers in folder /PROME_3D_Master_Database.'
   ]);
+  const { token } = useAuth();
+  const [masterProjectId, setMasterProjectId] = useState<number | null>(null);
   const [files, setFiles] = useState<StreamFile[]>(mockStreamFiles);
 
   // Load CesiumJS scripts and widgets dynamically
@@ -63,6 +67,72 @@ export const CesiumWorkspace: React.FC = () => {
       }
     };
   }, []);
+
+  // Fetch Master Database and list files
+  useEffect(() => {
+    const initMasterDatabase = async () => {
+      try {
+        setGdriveStatus('syncing');
+        const projRes = await fetch('/api/projects', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (projRes.ok) {
+          const projects = await projRes.json();
+          const masterProj = projects.find((p: any) => p.name === 'Master Database');
+          if (masterProj) {
+            setMasterProjectId(masterProj.id);
+            addLog(`Master Database Project resolved (ID: ${masterProj.id}).`);
+            
+            const docsRes = await fetch(`/api/projects/${masterProj.id}/documents`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (docsRes.ok) {
+              const docs = await docsRes.json();
+              const mappedDocs: StreamFile[] = docs.map((doc: any) => {
+                let size = '2.5 MB';
+                try {
+                  JSON.parse(doc.fileUrl || '{}');
+                } catch(e) {}
+                
+                let layerType: any = 'GeoJSON';
+                if (doc.title.endsWith('.kml')) layerType = 'KML';
+                if (doc.title.endsWith('.czml')) layerType = 'CZML';
+                if (doc.title.endsWith('.glb') || doc.title.endsWith('.gltf')) layerType = 'Point Cloud';
+                
+                return {
+                  id: doc.id,
+                  name: doc.title,
+                  type: doc.type,
+                  size: size,
+                  lastModified: new Date(doc.createdAt).toISOString().replace('T', ' ').slice(0, 16),
+                  layerType: layerType,
+                  status: 'Ready'
+                };
+              });
+              
+              const merged = [...mappedDocs];
+              mockStreamFiles.forEach(mock => {
+                if (!merged.some(f => f.name === mock.name)) {
+                  merged.push(mock);
+                }
+              });
+              setFiles(merged);
+              setGdriveStatus('connected');
+              addLog(`Discovered ${mappedDocs.length} streamable spatial layers in Google Drive folder "Master Database".`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setGdriveStatus('error');
+        addLog('Error: Failed to fetch registry from Google Drive.');
+      }
+    };
+
+    if (token) {
+      initMasterDatabase();
+    }
+  }, [token]);
 
   // Initialize Cesium Viewer
   useEffect(() => {
@@ -420,93 +490,78 @@ export const CesiumWorkspace: React.FC = () => {
     }
   };
 
-  const handleImportSurface = () => {
-    addLog('Initiating secure connection to Google Drive folder...');
-    addLog('Uploading "dem_elevation_uganda.tif" (Digital Elevation Model) to project folder...');
-    setTimeout(() => {
-      const newFile: StreamFile = {
-        name: 'dem_elevation_uganda.tif',
-        type: 'image/tiff',
-        size: '8.4 MB',
-        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        layerType: 'GeoJSON',
-        status: 'Ready'
-      };
-      setFiles(prev => {
-        if (prev.some(f => f.name === newFile.name)) return prev;
-        return [newFile, ...prev];
+  const uploadFileToMasterDatabase = async (fileName: string, mimeType: string, fileSize: string, layerType: 'GeoJSON' | 'CZML' | 'KML' | 'Point Cloud') => {
+    if (!masterProjectId) {
+      addLog('Error: Master Database project ID not resolved.');
+      return;
+    }
+    
+    addLog(`Initiating secure connection to Google Drive folder for Master Database...`);
+    addLog(`Uploading "${fileName}" to Master Database folder in Google Drive...`);
+    
+    try {
+      const formData = new FormData();
+      const mockBlob = new Blob([`mock data content for ${fileName}`], { type: mimeType });
+      formData.append('file', mockBlob, fileName);
+      formData.append('title', fileName);
+      formData.append('type', 'GIS Layer');
+      formData.append('documentNumber', `GIS-${Date.now()}`);
+      formData.append('revision', '1.0');
+      formData.append('status', 'Ready');
+      formData.append('issueDate', new Date().toISOString());
+
+      const res = await fetch(`/api/projects/${masterProjectId}/documents`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
       });
-      addLog('Successfully imported "dem_elevation_uganda.tif" surface raster to connected Google Drive folder.');
-    }, 600);
+
+      if (res.ok) {
+        const newDoc = await res.json();
+        const newFile: StreamFile = {
+          id: newDoc.id,
+          name: newDoc.title,
+          type: newDoc.type,
+          size: fileSize,
+          lastModified: new Date(newDoc.createdAt).toISOString().replace('T', ' ').slice(0, 16),
+          layerType: layerType,
+          status: 'Ready'
+        };
+        setFiles(prev => {
+          if (prev.some(f => f.name === newFile.name)) return prev;
+          return [newFile, ...prev];
+        });
+        addLog(`Successfully imported "${fileName}" to Master Database project folder.`);
+      } else {
+        addLog(`Error: Failed to upload file metadata to Master Database API.`);
+      }
+    } catch (err) {
+      console.error(err);
+      addLog(`Network Error: Failed to upload file to Google Drive.`);
+    }
+  };
+
+  const handleImportSurface = () => {
+    uploadFileToMasterDatabase('dem_elevation_uganda.tif', 'image/tiff', '8.4 MB', 'GeoJSON');
   };
 
   const handleImportDesignFiles = () => {
-    addLog('Initiating design files upload to Google Drive project folder...');
-    addLog('Parsing file types: geojson, kml, kmz, shp, xml, dxf, xodr...');
-    addLog('Uploading "design_alignment.kml" vector corridor layout...');
-    setTimeout(() => {
-      const newFile: StreamFile = {
-        name: 'design_alignment.kml',
-        type: 'application/xml',
-        size: '2.4 MB',
-        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        layerType: 'KML',
-        status: 'Ready'
-      };
-      setFiles(prev => {
-        if (prev.some(f => f.name === newFile.name)) return prev;
-        return [newFile, ...prev];
-      });
-      addLog('Successfully imported "design_alignment.kml" alignment file into Google Drive.');
-    }, 600);
+    uploadFileToMasterDatabase('design_alignment.kml', 'application/xml', '2.4 MB', 'KML');
   };
 
   const handleImportPNGs = () => {
-    addLog('Initiating raster overlay upload to Google Drive folder...');
-    addLog('Uploading "orthophoto_overlay_crop.png" georeferenced overlay mask...');
-    setTimeout(() => {
-      const newFile: StreamFile = {
-        name: 'orthophoto_overlay_crop.png',
-        type: 'image/png',
-        size: '4.2 MB',
-        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        layerType: 'KML',
-        status: 'Ready'
-      };
-      setFiles(prev => {
-        if (prev.some(f => f.name === newFile.name)) return prev;
-        return [newFile, ...prev];
-      });
-      addLog('Successfully imported "orthophoto_overlay_crop.png" raster imagery crop.');
-    }, 600);
+    uploadFileToMasterDatabase('orthophoto_overlay_crop.png', 'image/png', '4.2 MB', 'KML');
   };
 
   const handleImportGLTF = () => {
-    addLog('Initiating 3D model geometry upload to Google Drive folder...');
-    addLog('Uploading "bridge_gantry_model.glb" (3D binary mesh layout)...');
-    setTimeout(() => {
-      const newFile: StreamFile = {
-        name: 'bridge_gantry_model.glb',
-        type: 'model/gltf-binary',
-        size: '14.5 MB',
-        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        layerType: 'Point Cloud',
-        status: 'Ready'
-      };
-      setFiles(prev => {
-        if (prev.some(f => f.name === newFile.name)) return prev;
-        return [newFile, ...prev];
-      });
-      addLog('Successfully imported "bridge_gantry_model.glb" 3D mesh asset to Google Drive.');
-    }, 600);
+    uploadFileToMasterDatabase('bridge_gantry_model.glb', 'model/gltf-binary', '14.5 MB', 'Point Cloud');
   };
 
-  const handleDeleteFile = (file: StreamFile) => {
+  const handleDeleteFile = async (file: StreamFile) => {
     if (!window.confirm(`Are you sure you want to delete "${file.name}" from Google Drive and the stream registry?`)) return;
 
     if (viewerRef.current) {
       const viewer = viewerRef.current;
-      // Remove any matching entities from the map viewer
       const entitiesToRemove: any[] = [];
       viewer.entities.values.forEach((entity: any) => {
         if (entity.layerName === file.name) {
@@ -516,13 +571,27 @@ export const CesiumWorkspace: React.FC = () => {
       entitiesToRemove.forEach(e => viewer.entities.remove(e));
     }
 
-    // Remove from activeLayers state
     setActiveLayers(prev => prev.filter(name => name !== file.name));
-    
-    // Remove from files array
     setFiles(prev => prev.filter(f => f.name !== file.name));
 
-    addLog(`Deleted "${file.name}" from connected Drive folder.`);
+    if (file.id && masterProjectId) {
+      try {
+        const res = await fetch(`/api/projects/${masterProjectId}/documents/${file.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          addLog(`Successfully deleted "${file.name}" from Google Drive folder "Master Database".`);
+        } else {
+          addLog(`Error: Failed to delete "${file.name}" from Google Drive folder.`);
+        }
+      } catch (err) {
+        console.error(err);
+        addLog(`Network Error: Failed to delete "${file.name}" from Google Drive.`);
+      }
+    } else {
+      addLog(`Deleted "${file.name}" from registry local cache.`);
+    }
   };
 
   return (

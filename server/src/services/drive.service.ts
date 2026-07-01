@@ -30,11 +30,14 @@ export const upload = multer({
 export async function getOrCreateProjectFolder(projectId: number, projectName: string, currentFolderId: string | null): Promise<string> {
     if (currentFolderId) return currentFolderId;
 
+    const parentId = projectName === 'Master Database' ? '1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO' : GOOGLE_DRIVE_FOLDER_ID;
+    const folderName = projectName === 'Master Database' ? 'Master Database' : `Project: ${projectName}`;
+
     // Create a new folder
     const folderMetadata = {
-        name: `Project: ${projectName}`,
+        name: folderName,
         mimeType: 'application/vnd.google-apps.folder',
-        parents: [GOOGLE_DRIVE_FOLDER_ID]
+        parents: [parentId]
     };
     
     const driveFolder = await driveService.files.create({
