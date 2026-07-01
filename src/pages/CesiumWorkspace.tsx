@@ -72,37 +72,81 @@ export const CesiumWorkspace: React.FC = () => {
     // Disable Cesium Ion access token request as requested
     Cesium.Ion.defaultAccessToken = '';
 
-    // Initialize with ArcGIS World Imagery Satellite tiles and ArcGIS Elevation Server (No Ion credentials needed)
-    const viewer = new Cesium.Viewer(containerId, {
-      geocoder: false,
-      homeButton: true,
-      sceneModePicker: true,
-      navigationHelpButton: false,
-      infoBox: true,
-      selectionIndicator: true,
-      baseLayerPicker: false, // Custom switcher is implemented in the sidebar UI
-      imageryProvider: new Cesium.UrlTemplateImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        credit: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-      }),
-      terrainProvider: new Cesium.ArcGISTiledElevationTerrainProvider({
-        url: 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'
-      }),
-      animation: false,
-      timeline: false,
-      fullscreenButton: false
-    });
+    const initViewer = async () => {
+      try {
+        let terrainProvider;
+        
+        // Try modern async factory first
+        if (Cesium.ArcGISTiledElevationTerrainProvider && typeof Cesium.ArcGISTiledElevationTerrainProvider.fromUrl === 'function') {
+          terrainProvider = await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(
+            'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'
+          );
+        } else {
+          // Fallback to legacy constructor
+          terrainProvider = new Cesium.ArcGISTiledElevationTerrainProvider({
+            url: 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'
+          });
+        }
 
-    // Configure lighting and camera view
-    viewer.scene.globe.enableLighting = true;
-    viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+        const viewer = new Cesium.Viewer(containerId, {
+          geocoder: false,
+          homeButton: true,
+          sceneModePicker: true,
+          navigationHelpButton: false,
+          infoBox: true,
+          selectionIndicator: true,
+          baseLayerPicker: false, // Custom switcher is implemented in the sidebar UI
+          imageryProvider: new Cesium.UrlTemplateImageryProvider({
+            url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            credit: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+          }),
+          terrainProvider: terrainProvider,
+          animation: false,
+          timeline: false,
+          fullscreenButton: false
+        });
 
-    viewerRef.current = viewer;
+        viewer.scene.globe.enableLighting = true;
+        viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+        viewerRef.current = viewer;
 
-    addLog('Loaded ArcGIS World Imagery (Satellite) & global 3D elevation server successfully.');
+        addLog('Loaded ArcGIS World Imagery (Satellite) & global 3D elevation server successfully.');
+        flyToUganda(true);
+      } catch (err) {
+        console.error('Failed to load terrain provider. Falling back to EllipsoidTerrainProvider.', err);
+        
+        try {
+          const viewer = new Cesium.Viewer(containerId, {
+            geocoder: false,
+            homeButton: true,
+            sceneModePicker: true,
+            navigationHelpButton: false,
+            infoBox: true,
+            selectionIndicator: true,
+            baseLayerPicker: false,
+            imageryProvider: new Cesium.UrlTemplateImageryProvider({
+              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              credit: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }),
+            terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+            animation: false,
+            timeline: false,
+            fullscreenButton: false
+          });
 
-    // Fly to Uganda as the default operational scope
-    flyToUganda(true);
+          viewer.scene.globe.enableLighting = true;
+          viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+          viewerRef.current = viewer;
+
+          addLog('Loaded ArcGIS World Imagery on Ellipsoid terrain fallback.');
+          flyToUganda(true);
+        } catch (fallbackErr) {
+          console.error('Final fallback viewer initialization failed', fallbackErr);
+        }
+      }
+    };
+
+    initViewer();
   }, [cesiumLoaded]);
 
   const addLog = (msg: string) => {
