@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 declare global {
@@ -16,6 +16,7 @@ interface StreamFile {
   lastModified: string;
   layerType: 'GeoJSON' | 'CZML' | 'KML' | 'Point Cloud';
   status: 'Ready' | 'Loaded' | 'Failed';
+  coordinates?: { west: number; south: number; east: number; north: number };
 }
 
 const mockStreamFiles: StreamFile[] = [
@@ -41,6 +42,16 @@ export const CesiumWorkspace: React.FC = () => {
   const { token } = useAuth();
   const [masterProjectId, setMasterProjectId] = useState<number | null>(null);
   const [files, setFiles] = useState<StreamFile[]>(mockStreamFiles);
+
+  // Modal states for PNG World File Georeference import
+  const [isPngModalOpen, setIsPngModalOpen] = useState(false);
+  const [pngFileName, setPngFileName] = useState('');
+  const [pgwFileName, setPgwFileName] = useState('');
+  const [prjFileName, setPrjFileName] = useState('');
+  const [pgwText, setPgwText] = useState('');
+  const [prjText, setPrjText] = useState('');
+  const [pngFileObj, setPngFileObj] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Load CesiumJS scripts and widgets dynamically
   useEffect(() => {
@@ -90,8 +101,12 @@ export const CesiumWorkspace: React.FC = () => {
               const docs = await docsRes.json();
               const mappedDocs: StreamFile[] = docs.map((doc: any) => {
                 let size = '2.5 MB';
+                let coordinates: any = null;
                 try {
-                  JSON.parse(doc.fileUrl || '{}');
+                  const urlInfo = JSON.parse(doc.fileUrl || '{}');
+                  if (urlInfo.metadata && urlInfo.metadata.coordinates) {
+                    coordinates = urlInfo.metadata.coordinates;
+                  }
                 } catch(e) {}
                 
                 let layerType: any = 'GeoJSON';
@@ -106,7 +121,8 @@ export const CesiumWorkspace: React.FC = () => {
                   size: size,
                   lastModified: new Date(doc.createdAt).toISOString().replace('T', ' ').slice(0, 16),
                   layerType: layerType,
-                  status: 'Ready'
+                  status: 'Ready',
+                  coordinates: coordinates
                 };
               });
               
@@ -482,8 +498,41 @@ export const CesiumWorkspace: React.FC = () => {
         addLog('Camera focused on imported highway alignment corridor design.');
       } else if (file.name.includes('dem_elevation')) {
         addLog('Visualizing imported digital elevation model (terrain meshes).');
-      } else if (file.name.includes('orthophoto')) {
-        addLog('Visualizing imported orthophoto raster overlay mask.');
+      } else if (file.name.includes('orthophoto') || file.name.endsWith('.png')) {
+        let west = 32.285;
+        let south = 2.760;
+        let east = 32.305;
+        let north = 2.780;
+        
+        if ((file as any).coordinates) {
+          west = (file as any).coordinates.west;
+          south = (file as any).coordinates.south;
+          east = (file as any).coordinates.east;
+          north = (file as any).coordinates.north;
+        }
+
+        viewer.entities.add({
+          layerName: file.name,
+          name: file.name,
+          rectangle: {
+            coordinates: Cesium.Rectangle.fromDegrees(west, south, east, north),
+            material: new Cesium.ImageMaterialProperty({
+              image: '/prome.png',
+              transparent: true
+            })
+          }
+        });
+        
+        viewer.camera.flyTo({
+          destination: Cesium.Rectangle.fromDegrees(west, south, east, north),
+          orientation: {
+            heading: Cesium.Math.toRadians(0.0),
+            pitch: Cesium.Math.toRadians(-30.0),
+            roll: 0.0
+          },
+          duration: 2.0
+        });
+        addLog(`Visualizing georeferenced orthophoto raster overlay mask at bounds [W: ${west.toFixed(5)}, S: ${south.toFixed(5)}, E: ${east.toFixed(5)}, N: ${north.toFixed(5)}].`);
       } else if (file.name.includes('bridge_gantry')) {
         addLog('Visualizing imported 3D bridge gantry model structure mesh.');
       }
@@ -541,6 +590,148 @@ export const CesiumWorkspace: React.FC = () => {
     }
   };
 
+  const handlePngFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPngFileObj(file);
+      setPngFileName(file.name);
+    }
+  };
+
+  const handlePgwFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPgwFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setPgwText(evt.target?.result as string || '');
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handlePrjFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPrjFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setPrjText(evt.target?.result as string || '');
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const loadDemoGeoreference = () => {
+    setPngFileName('uganda_orthophoto_lot2.png');
+    setPgwFileName('uganda_orthophoto_lot2.pgw');
+    setPrjFileName('uganda_orthophoto_lot2.prj');
+    setPgwText(`0.0000045\n0.0\n0.0\n-0.0000045\n32.285\n2.780`);
+    setPrjText(`GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]`);
+    const mockFile = new File(['mock_png_image_binary_data'], 'uganda_orthophoto_lot2.png', { type: 'image/png' });
+    setPngFileObj(mockFile);
+    addLog('Loaded Uganda orthophoto georeferencing demo coordinates.');
+  };
+
+  const handleImportAndGeoreference = async () => {
+    if (!pngFileObj) {
+      alert('Please select a PNG Image file.');
+      return;
+    }
+    if (!pgwText.trim()) {
+      alert('Please provide PGW World file coordinates.');
+      return;
+    }
+    if (!prjText.trim()) {
+      alert('Please provide PRJ Projection details.');
+      return;
+    }
+    if (!masterProjectId) {
+      alert('Master Database project not resolved.');
+      return;
+    }
+
+    setIsUploading(true);
+    addLog(`Initiating georeferencing calculations for "${pngFileName}"...`);
+    
+    try {
+      const lines = pgwText.trim().split('\n').map(l => l.trim());
+      if (lines.length < 6) {
+        alert('Invalid PGW file. Must contain exactly 6 lines.');
+        setIsUploading(false);
+        return;
+      }
+
+      const a = parseFloat(lines[0]);      
+      const eScale = parseFloat(lines[3]); 
+      const c = parseFloat(lines[4]);      
+      const f = parseFloat(lines[5]);      
+
+      const width = 2000;
+      const height = 2000;
+
+      const west = c;
+      const north = f;
+      const east = c + a * width;
+      const south = f + eScale * height; 
+
+      const coordinates = { west, south, east, north };
+      addLog(`Computed bounds: W:${west.toFixed(5)}, S:${south.toFixed(5)}, E:${east.toFixed(5)}, N:${north.toFixed(5)}`);
+
+      const formData = new FormData();
+      formData.append('file', pngFileObj);
+      formData.append('title', pngFileName);
+      formData.append('type', 'Georeferenced PNG');
+      formData.append('documentNumber', `PNG-${Date.now()}`);
+      formData.append('revision', '1.0');
+      formData.append('status', 'Ready');
+      formData.append('issueDate', new Date().toISOString());
+      formData.append('metadata', JSON.stringify({ coordinates }));
+
+      addLog(`Uploading files to "Master Database" project folder...`);
+
+      const res = await fetch(`/api/projects-database/${masterProjectId}/documents`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        const newDoc = await res.json();
+        const newFile: StreamFile = {
+          id: newDoc.id,
+          name: newDoc.title,
+          type: newDoc.type,
+          size: `${(pngFileObj.size / (1024 * 1024)).toFixed(1)} MB`,
+          lastModified: new Date(newDoc.createdAt).toISOString().replace('T', ' ').slice(0, 16),
+          layerType: 'GeoJSON',
+          status: 'Ready',
+          coordinates: coordinates
+        };
+
+        setFiles(prev => [newFile, ...prev]);
+        addLog(`Georeferenced PNG "${pngFileName}" successfully uploaded to Google Drive and registered.`);
+        setIsPngModalOpen(false);
+
+        // Reset
+        setPngFileObj(null);
+        setPngFileName('');
+        setPgwFileName('');
+        setPrjFileName('');
+        setPgwText('');
+        setPrjText('');
+      } else {
+        const data = await res.json();
+        addLog(`Error: ${data.message || 'Failed to upload'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      addLog('Error: Failed to upload georeferenced PNG.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleImportSurface = () => {
     uploadFileToMasterDatabase('dem_elevation_uganda.tif', 'image/tiff', '8.4 MB', 'GeoJSON');
   };
@@ -550,7 +741,7 @@ export const CesiumWorkspace: React.FC = () => {
   };
 
   const handleImportPNGs = () => {
-    uploadFileToMasterDatabase('orthophoto_overlay_crop.png', 'image/png', '4.2 MB', 'KML');
+    setIsPngModalOpen(true);
   };
 
   const handleImportGLTF = () => {
@@ -960,6 +1151,149 @@ export const CesiumWorkspace: React.FC = () => {
         </div>
 
       </div>
+
+      {isPngModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.8)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            width: '480px',
+            padding: '1.75rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            color: '#f8fafc',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}>
+            {/* Modal Title */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.15rem', fontWeight: 700, color: '#38bdf8' }}>
+                <Upload size={20} />
+                Georeference PNG Raster Import
+              </div>
+              <button 
+                onClick={() => setIsPngModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Selector Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+              
+              {/* PNG File Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>1. Select PNG Raster Image (.png)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <label className="btn btn-outline" style={{ margin: 0, padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    Browse...
+                    <input type="file" accept=".png" onChange={handlePngFileSelect} style={{ display: 'none' }} />
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: pngFileName ? '#38bdf8' : '#64748b', fontStyle: pngFileName ? 'normal' : 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+                    {pngFileName || 'No file chosen'}
+                  </span>
+                </div>
+              </div>
+
+              {/* PGW File Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>2. Select World File (.pgw / .wld)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <label className="btn btn-outline" style={{ margin: 0, padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    Browse...
+                    <input type="file" accept=".pgw,.wld,.txt" onChange={handlePgwFileSelect} style={{ display: 'none' }} />
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: pgwFileName ? '#38bdf8' : '#64748b', fontStyle: pgwFileName ? 'normal' : 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+                    {pgwFileName || 'No file chosen'}
+                  </span>
+                </div>
+                {pgwText && (
+                  <textarea 
+                    value={pgwText} 
+                    onChange={(e) => setPgwText(e.target.value)}
+                    style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', padding: '6px', fontSize: '0.7rem', color: '#10b981', fontFamily: 'monospace', height: '80px', resize: 'none' }}
+                  />
+                )}
+              </div>
+
+              {/* PRJ File Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>3. Select Projection File (.prj)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <label className="btn btn-outline" style={{ margin: 0, padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    Browse...
+                    <input type="file" accept=".prj,.txt" onChange={handlePrjFileSelect} style={{ display: 'none' }} />
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: prjFileName ? '#38bdf8' : '#64748b', fontStyle: prjFileName ? 'normal' : 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+                    {prjFileName || 'No file chosen'}
+                  </span>
+                </div>
+                {prjText && (
+                  <textarea 
+                    value={prjText} 
+                    onChange={(e) => setPrjText(e.target.value)}
+                    style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', padding: '6px', fontSize: '0.7rem', color: '#10b981', fontFamily: 'monospace', height: '50px', resize: 'none' }}
+                  />
+                )}
+              </div>
+
+            </div>
+
+            {/* Actions Panel */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+              <button 
+                type="button" 
+                onClick={loadDemoGeoreference}
+                style={{
+                  backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                  borderRadius: '6px',
+                  color: '#fbbf24',
+                  padding: '6px 12px',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                💡 Load Demo Files
+              </button>
+              
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsPngModalOpen(false)}
+                  className="btn btn-outline"
+                  style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  disabled={isUploading}
+                  onClick={handleImportAndGeoreference}
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.75rem', padding: '6px 12px', opacity: isUploading ? 0.7 : 1, cursor: isUploading ? 'not-allowed' : 'pointer' }}
+                >
+                  {isUploading ? 'Importing...' : 'Import & Georeference'}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

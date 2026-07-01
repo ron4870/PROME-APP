@@ -252,7 +252,7 @@ router.get('/:id/documents', authenticate, checkDatabaseProjectAccess(), async (
 router.post('/:id/documents', authenticate, checkDatabaseProjectAccess(), upload.single('file'), async (req, res) => {
   try {
     const projectId = req.params.id;
-    const { documentNumber, title, type, revision, status, issueDate } = req.body;
+    const { documentNumber, title, type, revision, status, issueDate, metadata } = req.body;
     const file = req.file;
     let fileUrl = null;
 
@@ -277,7 +277,21 @@ router.post('/:id/documents', authenticate, checkDatabaseProjectAccess(), upload
           requestBody: { role: 'reader', type: 'anyone' },
           supportsAllDrives: true
         });
-        fileUrl = JSON.stringify({ id: fileId, view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
+        
+        let parsedMetadata = null;
+        if (metadata) {
+          try {
+            parsedMetadata = JSON.parse(metadata);
+          } catch(e) {}
+        }
+        
+        fileUrl = JSON.stringify({ 
+          id: fileId, 
+          view: driveFile.data.webViewLink, 
+          download: driveFile.data.webContentLink, 
+          isPdf: file.mimetype === 'application/pdf',
+          metadata: parsedMetadata
+        });
       }
     }
 
