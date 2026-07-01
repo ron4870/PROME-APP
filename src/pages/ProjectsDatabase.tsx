@@ -91,7 +91,7 @@ export const ProjectsDatabase: React.FC = () => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/projects', {
+      const res = await fetch('/api/projects-database', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch');
@@ -127,7 +127,7 @@ export const ProjectsDatabase: React.FC = () => {
 
   const handleCreateProject = async () => {
     try {
-      const res = await fetch('/api/projects', {
+      const res = await fetch('/api/projects-database', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ export const ProjectsDatabase: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone and will delete all associated data.")) return;
     
     try {
-      const res = await fetch(`/api/projects/${id}`, {
+      const res = await fetch(`/api/projects-database/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });

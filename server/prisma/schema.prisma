@@ -101,6 +101,9 @@ model User {
   resourceAllocations         ProjectResource[]             @relation("ResourcePersonnel")
   uploadedProjectDocs         ProjectDocument[]             @relation("ProjectDocumentUploader")
   uploadedPaymentInvoices     ProjectPaymentInvoice[]       @relation("ProjectPaymentInvoiceUploader")
+  // Projects Database Relations
+  databaseProjectMemberships  DatabaseProjectMember[]
+  uploadedDatabaseProjectDocs DatabaseProjectDocument[]     @relation("DatabaseProjectDocumentUploader")
   // Advanced Project Module Relations
   projectMaterialRequisitions ProjectMaterialRequisition[]  @relation("ProjectRequisitioner")
   projectDailyReports         ProjectDailyReport[]          @relation("ProjectReportAuthor")
@@ -1701,4 +1704,51 @@ model FaqItem {
   category  String   @default("General")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DatabaseProject {
+  id                  Int       @id @default(autoincrement())
+  name                String
+  client              String
+  description         String?   @db.Text
+  status              String    @default("Planning") // Planning, Active, Completed, Suspended
+  startDate           DateTime
+  endDate             DateTime?
+  driveFolderId       String?
+  selectedSubProjects Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  members   DatabaseProjectMember[]
+  documents DatabaseProjectDocument[]
+}
+
+model DatabaseProjectMember {
+  id                Int             @id @default(autoincrement())
+  databaseProjectId Int
+  databaseProject   DatabaseProject @relation(fields: [databaseProjectId], references: [id], onDelete: Cascade)
+  userId            Int
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role              String          @default("Viewer")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([databaseProjectId, userId])
+}
+
+model DatabaseProjectDocument {
+  id                Int             @id @default(autoincrement())
+  databaseProjectId Int
+  databaseProject   DatabaseProject @relation(fields: [databaseProjectId], references: [id], onDelete: Cascade)
+  documentNumber    String          @unique
+  title             String
+  type              String
+  revision          String          @default("0")
+  status            String          @default("Draft")
+  fileUrl           String?         @db.Text
+  uploadedById      Int
+  uploadedBy        User            @relation("DatabaseProjectDocumentUploader", fields: [uploadedById], references: [id])
+  issueDate         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 }

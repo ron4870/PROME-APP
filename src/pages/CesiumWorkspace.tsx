@@ -73,7 +73,7 @@ export const CesiumWorkspace: React.FC = () => {
     const initMasterDatabase = async () => {
       try {
         setGdriveStatus('syncing');
-        const projRes = await fetch('/api/projects', {
+        const projRes = await fetch('/api/projects-database', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (projRes.ok) {
@@ -83,7 +83,7 @@ export const CesiumWorkspace: React.FC = () => {
             setMasterProjectId(masterProj.id);
             addLog(`Master Database Project resolved (ID: ${masterProj.id}).`);
             
-            const docsRes = await fetch(`/api/projects/${masterProj.id}/documents`, {
+            const docsRes = await fetch(`/api/projects-database/${masterProj.id}/documents`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             if (docsRes.ok) {
@@ -510,7 +510,7 @@ export const CesiumWorkspace: React.FC = () => {
       formData.append('status', 'Ready');
       formData.append('issueDate', new Date().toISOString());
 
-      const res = await fetch(`/api/projects/${masterProjectId}/documents`, {
+      const res = await fetch(`/api/projects-database/${masterProjectId}/documents`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -576,7 +576,7 @@ export const CesiumWorkspace: React.FC = () => {
 
     if (file.id && masterProjectId) {
       try {
-        const res = await fetch(`/api/projects/${masterProjectId}/documents/${file.id}`, {
+        const res = await fetch(`/api/projects-database/${masterProjectId}/documents/${file.id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });
