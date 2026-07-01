@@ -11,6 +11,7 @@ interface Project {
   membersCount: number;
   startDate: string;
   selectedSubProjects?: string[];
+  members?: { userId: number; role: string; user: { id: number; name: string; email: string } }[];
 }
 
 interface MasterProject {
@@ -33,7 +34,8 @@ const mockProjects: Project[] = [
 
 export const ProjectsDatabase: React.FC = () => {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, hasPermission, user } = useAuth();
+  const isAdmin = hasPermission('admin_panel');
   const [searchTerm, setSearchTerm] = useState('');
   
   const [projects, setProjects] = useState<Project[]>([]);
@@ -201,7 +203,14 @@ export const ProjectsDatabase: React.FC = () => {
   const filteredProjects = projects.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.client.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).filter(p => {
+    if (isAdmin) return true;
+    if (!p.members) {
+      // Offline fallback visibility simulation
+      return p.id === 1;
+    }
+    return p.members.some(member => member.userId === user?.id);
+  });
 
   return (
     <div className="layout-container" style={{ padding: '2rem 1rem' }}>
@@ -214,16 +223,18 @@ export const ProjectsDatabase: React.FC = () => {
           <p style={{ color: '#64748b' }}>Comprehensive database of engineering projects, contracts, and clients.</p>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-outline" onClick={() => window.open('/projects-database/3d', '_blank')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Database size={18} />
-            Open Master Database
-          </button>
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            <Plus size={18} style={{ marginRight: '8px' }} />
-            Add Project
-          </button>
-        </div>
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-outline" onClick={() => window.open('/projects-database/3d', '_blank')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Database size={18} />
+              Open Master Database
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+              <Plus size={18} style={{ marginRight: '8px' }} />
+              Add Project
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -281,17 +292,19 @@ export const ProjectsDatabase: React.FC = () => {
                   }}>
                     {project.status}
                   </span>
-                    <button 
-                      onClick={(e) => handleDeleteProject(project.id, e)}
-                      style={{ 
-                        background: 'none', border: 'none', cursor: 'pointer', 
-                        color: '#ef4444', padding: '4px', marginLeft: '0.5rem',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}
-                      title="Delete Project"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => handleDeleteProject(project.id, e)}
+                        style={{ 
+                          background: 'none', border: 'none', cursor: 'pointer', 
+                          color: '#ef4444', padding: '4px', marginLeft: '0.5rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                        title="Delete Project"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                 </div>
                 </div>
                 
