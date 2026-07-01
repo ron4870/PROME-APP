@@ -563,7 +563,7 @@ export const CesiumWorkspace: React.FC = () => {
         addLog('Camera focused on imported highway alignment corridor design.');
       } else if (file.name.includes('dem_elevation')) {
         addLog('Visualizing imported digital elevation model (terrain meshes).');
-      } else if (file.name.includes('orthophoto') || file.name.endsWith('.png')) {
+      } else if (file.name.includes('orthophoto') || file.name.toLowerCase().endsWith('.png') || file.type === 'Georeferenced PNG') {
         let west = 32.285;
         let south = 2.760;
         let east = 32.305;

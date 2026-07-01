@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken as authenticate } from '../middleware/auth';
-import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateProjectFolder } from '../services/drive.service';
+import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateDatabaseProjectFolder } from '../services/drive.service';
 import { Readable } from 'stream';
 
 const router = Router();
@@ -65,7 +65,7 @@ router.get('/', authenticate, async (req, res) => {
             startDate: new Date('2026-01-01')
           }
         });
-        await getOrCreateProjectFolder(newProj.id, newProj.name, null);
+        await getOrCreateDatabaseProjectFolder(newProj.id, newProj.name, null);
       } catch (err) {
         console.error('Failed to auto-create Database Master Database:', err);
       }
@@ -181,7 +181,7 @@ router.post('/', authenticate, async (req, res) => {
 
     // Create Drive folder asynchronously
     try {
-      await getOrCreateProjectFolder(project.id, project.name, null);
+      await getOrCreateDatabaseProjectFolder(project.id, project.name, null);
     } catch (e) {
       console.error('Failed to create Google Drive folder:', e);
     }
@@ -273,7 +273,7 @@ router.post('/:id/documents', authenticate, checkDatabaseProjectAccess(), upload
       const project = await prisma.databaseProject.findUnique({ where: { id: Number(projectId) } });
       if (!project) return res.status(404).json({ error: 'Database project not found' });
       
-      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+      const targetFolderId = await getOrCreateDatabaseProjectFolder(project.id, project.name, project.driveFolderId);
       const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
       const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
       

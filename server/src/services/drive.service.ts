@@ -134,3 +134,41 @@ export async function getOrCreateBookOfDrawingsFolder(projectId: number, project
     
     return newFolderId;
 }
+
+export async function getOrCreateDatabaseProjectFolder(projectId: number, projectName: string, currentFolderId: string | null): Promise<string> {
+    if (currentFolderId) return currentFolderId;
+
+    const parentId = projectName === 'Master Database' ? '1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO' : GOOGLE_DRIVE_FOLDER_ID;
+    const folderName = projectName === 'Master Database' ? 'Master Database' : `Project: ${projectName}`;
+
+    // Create a new folder
+    const folderMetadata = {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentId]
+    };
+    
+    const driveFolder = await driveService.files.create({
+        requestBody: folderMetadata,
+        fields: 'id',
+        supportsAllDrives: true
+    });
+    
+    const newFolderId = driveFolder.data.id;
+    if (!newFolderId) throw new Error("Failed to create Google Drive folder");
+    
+    // Set permissions to anyone with link can view
+    await driveService.permissions.create({
+        fileId: newFolderId,
+        requestBody: { role: 'reader', type: 'anyone' },
+        supportsAllDrives: true
+    });
+    
+    // Update the DatabaseProject database table
+    await prisma.databaseProject.update({
+        where: { id: projectId },
+        data: { driveFolderId: newFolderId }
+    });
+    
+    return newFolderId;
+}
