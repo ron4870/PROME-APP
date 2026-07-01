@@ -29,7 +29,7 @@ export const CesiumWorkspace: React.FC = () => {
   const [cesiumLoaded, setCesiumLoaded] = useState(false);
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   const [gdriveStatus, setGdriveStatus] = useState<'connected' | 'syncing' | 'error'>('connected');
-  const [baseLayer, setBaseLayer] = useState<'satellite' | 'street'>('satellite');
+  const [baseLayer, setBaseLayer] = useState<'satellite' | 'google' | 'street'>('satellite');
   const [streamLog, setStreamLog] = useState<string[]>([
     'Initializing secure connection to Google Drive folder 1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO...',
     'Connected to Google Drive Master Registry.',
@@ -166,7 +166,7 @@ export const CesiumWorkspace: React.FC = () => {
     setSelectedProjectLocation('Uganda');
   };
 
-  const changeBaseLayer = (type: 'satellite' | 'street') => {
+  const changeBaseLayer = (type: 'satellite' | 'google' | 'street') => {
     if (!viewerRef.current || !window.Cesium) return;
     const Cesium = window.Cesium;
     const layers = viewerRef.current.imageryLayers;
@@ -178,6 +178,12 @@ export const CesiumWorkspace: React.FC = () => {
         credit: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       }));
       addLog('Base imagery switched to ArcGIS World Imagery (Satellite View).');
+    } else if (type === 'google') {
+      layers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+        url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        credit: 'Map data © Google'
+      }));
+      addLog('Base imagery switched to Google Satellite View.');
     } else {
       layers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
         url: 'https://a.tile.openstreetmap.org/'
@@ -495,40 +501,60 @@ export const CesiumWorkspace: React.FC = () => {
             <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Layers size={14} /> Base Map Layer
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               <button 
                 onClick={() => changeBaseLayer('satellite')}
                 style={{ 
+                  width: '100%',
                   backgroundColor: baseLayer === 'satellite' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
                   border: '1px solid rgba(255,255,255,0.1)', 
                   borderRadius: '6px', 
                   color: '#f8fafc', 
-                  padding: '8px 6px', 
+                  padding: '8px 10px', 
                   fontSize: '0.75rem', 
                   cursor: 'pointer',
-                  textAlign: 'center',
+                  textAlign: 'left',
                   fontWeight: 600,
                   transition: 'all 0.2s'
                 }}
               >
-                🛰️ Satellite View
+                🛰️ ArcGIS Satellite View
+              </button>
+              <button 
+                onClick={() => changeBaseLayer('google')}
+                style={{ 
+                  width: '100%',
+                  backgroundColor: baseLayer === 'google' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
+                  border: '1px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '6px', 
+                  color: '#f8fafc', 
+                  padding: '8px 10px', 
+                  fontSize: '0.75rem', 
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                🌎 Google Satellite View
               </button>
               <button 
                 onClick={() => changeBaseLayer('street')}
                 style={{ 
+                  width: '100%',
                   backgroundColor: baseLayer === 'street' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
                   border: '1px solid rgba(255,255,255,0.1)', 
                   borderRadius: '6px', 
                   color: '#f8fafc', 
-                  padding: '8px 6px', 
+                  padding: '8px 10px', 
                   fontSize: '0.75rem', 
                   cursor: 'pointer',
-                  textAlign: 'center',
+                  textAlign: 'left',
                   fontWeight: 600,
                   transition: 'all 0.2s'
                 }}
               >
-                🗺️ Street Map View
+                🗺️ OpenStreetMap Street View
               </button>
             </div>
           </div>
@@ -567,11 +593,11 @@ export const CesiumWorkspace: React.FC = () => {
                     },
                     duration: 2.0
                   });
-                  setSelectedProjectLocation('Kampala Flyover');
+                  setSelectedProjectLocation('Campaign');
                   addLog('Camera focused on Kampala Flyover Lot 2.');
                 }}
                 style={{ 
-                  backgroundColor: selectedProjectLocation === 'Kampala Flyover' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
+                  backgroundColor: selectedProjectLocation === 'Campaign' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
                   border: '1px solid rgba(255,255,255,0.1)', 
                   borderRadius: '6px', 
                   color: '#f8fafc', 
