@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Database, Cloud, RefreshCw, Layers, Compass, FileText, ArrowLeft, Link as LinkIcon } from 'lucide-react';
+import { Database, Cloud, RefreshCw, Layers, Compass, FileText, ArrowLeft, Link as LinkIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -30,6 +30,7 @@ export const CesiumWorkspace: React.FC = () => {
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   const [gdriveStatus, setGdriveStatus] = useState<'connected' | 'syncing' | 'error'>('connected');
   const [baseLayer, setBaseLayer] = useState<'satellite' | 'google' | 'street'>('satellite');
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [streamLog, setStreamLog] = useState<string[]>([
     'Initializing secure connection to Google Drive folder 1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO...',
     'Connected to Google Drive Master Registry.',
@@ -247,7 +248,7 @@ export const CesiumWorkspace: React.FC = () => {
         // Add polyline path
         viewer.entities.add({
           layerName: file.name,
-          name: 'Kampala Flyover Lot 2 Corridor',
+          name: 'Campaign Flyover Lot 2 Corridor',
           description: 'Proposed highway flyover alignment surveyed in GRCh38 / WGS 84.',
           polyline: {
             positions: cartesianCoords,
@@ -284,7 +285,7 @@ export const CesiumWorkspace: React.FC = () => {
           },
           duration: 2.5
         });
-        setSelectedProjectLocation('Kampala Flyover');
+        setSelectedProjectLocation('Campaign');
         addLog('Camera focused on Kampala Flyover Project Lot 2 corridor.');
 
       } else if (file.name.includes('gulu_logistics')) {
@@ -420,11 +421,11 @@ export const CesiumWorkspace: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Left Control Panel (Glassmorphism Sidebar) */}
+      {/* Floating Right Control Panel (Glassmorphism Sidebar) */}
       <div style={{ 
         position: 'absolute', 
         top: '20px', 
-        left: '20px', 
+        right: isPanelOpen ? '20px' : '-390px', 
         width: '380px', 
         maxHeight: '92vh', 
         backgroundColor: 'rgba(15, 23, 42, 0.85)', 
@@ -436,311 +437,348 @@ export const CesiumWorkspace: React.FC = () => {
         flexDirection: 'column', 
         zIndex: 100, 
         color: '#f8fafc',
-        overflow: 'hidden'
+        transition: 'right 0.3s ease-in-out',
+        overflow: 'visible' // allow toggle button to float outside left border
       }}>
-        
-        {/* Header Block */}
-        <div style={{ padding: '1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+        {/* Floating Toggle Chevron Button on Left Edge */}
+        <button 
+          onClick={() => setIsPanelOpen(!isPanelOpen)}
+          style={{ 
+            position: 'absolute',
+            top: '50%',
+            left: '-32px',
+            transform: 'translateY(-50%)',
+            width: '32px',
+            height: '60px',
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRight: 'none',
+            borderTopLeftRadius: '8px',
+            borderBottomLeftRadius: '8px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            cursor: 'pointer',
+            zIndex: 101,
+            color: '#f8fafc',
+            boxShadow: '-4px 4px 10px rgba(0, 0, 0, 0.3)',
+            transition: 'color 0.2s',
+            outline: 'none'
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#0ea5e9'}
+          onMouseLeave={e => e.currentTarget.style.color = '#f8fafc'}
+          title={isPanelOpen ? "Collapse registry" : "Expand registry"}
+        >
+          {isPanelOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
+
+        {/* Panel Main Container */}
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', borderRadius: '16px' }}>
+          {/* Header Block */}
+          <div style={{ padding: '1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Database color="#0ea5e9" size={22} />
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>PROME 3D Master DB</h2>
+              </div>
+              <button 
+                onClick={() => window.close()} 
+                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '6px', color: '#94a3b8', padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer' }}
+              >
+                <ArrowLeft size={12} /> Exit
+              </button>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>
+              Geospatial project modeling environment. Google Drive linked storage database workspace.
+            </p>
+          </div>
+
+          {/* Google Drive Status Bar */}
+          <div style={{ 
+            padding: '0.75rem 1.25rem', 
+            backgroundColor: gdriveStatus === 'syncing' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.08)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between' 
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Database color="#0ea5e9" size={22} />
-              <h2 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>PROME 3D Master DB</h2>
+              <Cloud color={gdriveStatus === 'syncing' ? '#f59e0b' : '#10b981'} size={16} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                {gdriveStatus === 'syncing' ? 'Syncing Drive registry...' : 'Drive Connected'}
+              </span>
             </div>
-            <button 
-              onClick={() => window.close()} 
-              style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '6px', color: '#94a3b8', padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer' }}
-            >
-              <ArrowLeft size={12} /> Exit
-            </button>
-          </div>
-          <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>
-            Geospatial project modeling environment. Google Drive linked storage database workspace.
-          </p>
-        </div>
-
-        {/* Google Drive Status Bar */}
-        <div style={{ 
-          padding: '0.75rem 1.25rem', 
-          backgroundColor: gdriveStatus === 'syncing' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.08)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between' 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Cloud color={gdriveStatus === 'syncing' ? '#f59e0b' : '#10b981'} size={16} />
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-              {gdriveStatus === 'syncing' ? 'Syncing Drive registry...' : 'Drive Connected'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <a 
-              href="https://drive.google.com/drive/folders/1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO?usp=drive_link" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ color: '#0ea5e9', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
-              title="Open linked Google Drive folder"
-            >
-              <LinkIcon size={12} /> Drive Folder
-            </a>
-            <button 
-              onClick={handleSyncDrive}
-              disabled={gdriveStatus === 'syncing'}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
-            >
-              <RefreshCw size={12} className={gdriveStatus === 'syncing' ? 'animate-spin' : ''} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content scroll area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          
-          {/* Base Layer Switcher */}
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Layers size={14} /> Base Map Layer
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <button 
-                onClick={() => changeBaseLayer('satellite')}
-                style={{ 
-                  width: '100%',
-                  backgroundColor: baseLayer === 'satellite' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  borderRadius: '6px', 
-                  color: '#f8fafc', 
-                  padding: '8px 10px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
-                }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <a 
+                href="https://drive.google.com/drive/folders/1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO?usp=drive_link" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: '#0ea5e9', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
+                title="Open linked Google Drive folder"
               >
-                🛰️ ArcGIS Satellite View
-              </button>
+                <LinkIcon size={12} /> Drive Folder
+              </a>
               <button 
-                onClick={() => changeBaseLayer('google')}
-                style={{ 
-                  width: '100%',
-                  backgroundColor: baseLayer === 'google' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  borderRadius: '6px', 
-                  color: '#f8fafc', 
-                  padding: '8px 10px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
-                }}
+                onClick={handleSyncDrive}
+                disabled={gdriveStatus === 'syncing'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
               >
-                🌎 Google Satellite View
-              </button>
-              <button 
-                onClick={() => changeBaseLayer('street')}
-                style={{ 
-                  width: '100%',
-                  backgroundColor: baseLayer === 'street' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  borderRadius: '6px', 
-                  color: '#f8fafc', 
-                  padding: '8px 10px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
-                }}
-              >
-                🗺️ OpenStreetMap Street View
+                <RefreshCw size={12} className={gdriveStatus === 'syncing' ? 'animate-spin' : ''} />
               </button>
             </div>
           </div>
 
-          {/* Quick Camera Navigation */}
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Compass size={14} /> Quick Viewports (3D terrain focus)
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <button 
-                onClick={() => flyToUganda()}
-                style={{ 
-                  backgroundColor: selectedProjectLocation === 'Uganda' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  borderRadius: '6px', 
-                  color: '#f8fafc', 
-                  padding: '6px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                🇺🇬 Uganda Center
-              </button>
-              <button 
-                onClick={() => {
-                  if (!viewerRef.current || !window.Cesium) return;
-                  const Cesium = window.Cesium;
-                  viewerRef.current.camera.flyTo({
-                    destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3020, 1600.0),
-                    orientation: {
-                      heading: Cesium.Math.toRadians(0.0),
-                      pitch: Cesium.Math.toRadians(-25.0),
-                      roll: 0.0
-                    },
-                    duration: 2.0
-                  });
-                  setSelectedProjectLocation('Campaign');
-                  addLog('Camera focused on Kampala Flyover Lot 2.');
-                }}
-                style={{ 
-                  backgroundColor: selectedProjectLocation === 'Campaign' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  borderRadius: '6px', 
-                  color: '#f8fafc', 
-                  padding: '6px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                🌉 Kampala Flyover
-              </button>
-              <button 
-                onClick={() => {
-                  if (!viewerRef.current || !window.Cesium) return;
-                  const Cesium = window.Cesium;
-                  viewerRef.current.camera.flyTo({
-                    destination: Cesium.Cartesian3.fromDegrees(32.2920, 2.7620, 1800.0),
-                    orientation: {
-                      heading: Cesium.Math.toRadians(0.0),
-                      pitch: Cesium.Math.toRadians(-20.0),
-                      roll: 0.0
-                    },
-                    duration: 2.0
-                  });
-                  setSelectedProjectLocation('Gulu Hub');
-                  addLog('Camera focused on Gulu Logistics Hub.');
-                }}
-                style={{ 
-                  backgroundColor: selectedProjectLocation === 'Gulu Hub' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  borderRadius: '6px', 
-                  color: '#f8fafc', 
-                  padding: '6px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                🏭 Gulu Logistics Hub
-              </button>
-              <button 
-                onClick={clearAllLayers}
-                style={{ 
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                  border: '1px solid rgba(239, 68, 68, 0.2)', 
-                  borderRadius: '6px', 
-                  color: '#f87171', 
-                  padding: '6px', 
-                  fontSize: '0.75rem', 
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  fontWeight: 600
-                }}
-              >
-                🧹 Clear Map
-              </button>
-            </div>
-          </div>
-
-          {/* Drive Streamed Layers List */}
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Layers size={14} /> Drive Stream Registry
-            </div>
+          {/* Content scroll area */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {files.map(file => {
-                const isActive = activeLayers.includes(file.name);
-                return (
-                  <div 
-                    key={file.name} 
-                    style={{ 
-                      backgroundColor: 'rgba(255,255,255,0.02)', 
-                      border: `1px solid ${isActive ? 'rgba(14, 165, 233, 0.3)' : 'rgba(255,255,255,0.05)'}`, 
-                      borderRadius: '8px', 
-                      padding: '0.75rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.4rem'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f1f5f9', wordBreak: 'break-all' }}>{file.name}</span>
-                        <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Size: {file.size} | Type: {file.layerType}</span>
+            {/* Base Layer Switcher */}
+            <div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Layers size={14} /> Base Map Layer
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <button 
+                  onClick={() => changeBaseLayer('satellite')}
+                  style={{ 
+                    width: '100%',
+                    backgroundColor: baseLayer === 'satellite' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '6px', 
+                    color: '#f8fafc', 
+                    padding: '8px 10px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  🛰️ ArcGIS Satellite View
+                </button>
+                <button 
+                  onClick={() => changeBaseLayer('google')}
+                  style={{ 
+                    width: '100%',
+                    backgroundColor: baseLayer === 'google' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '6px', 
+                    color: '#f8fafc', 
+                    padding: '8px 10px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  🌎 Google Satellite View
+                </button>
+                <button 
+                  onClick={() => changeBaseLayer('street')}
+                  style={{ 
+                    width: '100%',
+                    backgroundColor: baseLayer === 'street' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '6px', 
+                    color: '#f8fafc', 
+                    padding: '8px 10px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  🗺️ OpenStreetMap Street View
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Camera Navigation */}
+            <div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Compass size={14} /> Quick Viewports (3D terrain focus)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => flyToUganda()}
+                  style={{ 
+                    backgroundColor: selectedProjectLocation === 'Uganda' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '6px', 
+                    color: '#f8fafc', 
+                    padding: '6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  🇺🇬 Uganda Center
+                </button>
+                <button 
+                  onClick={() => {
+                    if (!viewerRef.current || !window.Cesium) return;
+                    const Cesium = window.Cesium;
+                    viewerRef.current.camera.flyTo({
+                      destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3020, 1600.0),
+                      orientation: {
+                        heading: Cesium.Math.toRadians(0.0),
+                        pitch: Cesium.Math.toRadians(-25.0),
+                        roll: 0.0
+                      },
+                      duration: 2.0
+                    });
+                    setSelectedProjectLocation('Campaign');
+                    addLog('Camera focused on Kampala Flyover Lot 2.');
+                  }}
+                  style={{ 
+                    backgroundColor: selectedProjectLocation === 'Campaign' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '6px', 
+                    color: '#f8fafc', 
+                    padding: '6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  🌉 Kampala Flyover
+                </button>
+                <button 
+                  onClick={() => {
+                    if (!viewerRef.current || !window.Cesium) return;
+                    const Cesium = window.Cesium;
+                    viewerRef.current.camera.flyTo({
+                      destination: Cesium.Cartesian3.fromDegrees(32.2920, 2.7620, 1800.0),
+                      orientation: {
+                        heading: Cesium.Math.toRadians(0.0),
+                        pitch: Cesium.Math.toRadians(-20.0),
+                        roll: 0.0
+                      },
+                      duration: 2.0
+                    });
+                    setSelectedProjectLocation('Gulu Hub');
+                    addLog('Camera focused on Gulu Logistics Hub.');
+                  }}
+                  style={{ 
+                    backgroundColor: selectedProjectLocation === 'Gulu Hub' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: '6px', 
+                    color: '#f8fafc', 
+                    padding: '6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  🏭 Gulu Logistics Hub
+                </button>
+                <button 
+                  onClick={clearAllLayers}
+                  style={{ 
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                    border: '1px solid rgba(239, 68, 68, 0.2)', 
+                    borderRadius: '6px', 
+                    color: '#f87171', 
+                    padding: '6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    fontWeight: 600
+                  }}
+                >
+                  🧹 Clear Map
+                </button>
+              </div>
+            </div>
+
+            {/* Drive Streamed Layers List */}
+            <div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Layers size={14} /> Drive Stream Registry
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {files.map(file => {
+                  const isActive = activeLayers.includes(file.name);
+                  return (
+                    <div 
+                      key={file.name} 
+                      style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.02)', 
+                        border: `1px solid ${isActive ? 'rgba(14, 165, 233, 0.3)' : 'rgba(255,255,255,0.05)'}`, 
+                        borderRadius: '8px', 
+                        padding: '0.75rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f1f5f9', wordBreak: 'break-all' }}>{file.name}</span>
+                          <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Size: {file.size} | Type: {file.layerType}</span>
+                        </div>
+                        
+                        <button 
+                          onClick={() => toggleLayer(file)}
+                          style={{ 
+                            backgroundColor: isActive ? '#0284c7' : 'rgba(255,255,255,0.08)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            color: '#ffffff',
+                            padding: '4px 8px',
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {isActive ? 'Hide Layer' : 'Stream'}
+                        </button>
                       </div>
-                      
-                      <button 
-                        onClick={() => toggleLayer(file)}
-                        style={{ 
-                          backgroundColor: isActive ? '#0284c7' : 'rgba(255,255,255,0.08)',
-                          border: 'none',
-                          borderRadius: '4px',
-                          color: '#ffffff',
-                          padding: '4px 8px',
-                          fontSize: '0.7rem',
-                          cursor: 'pointer',
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {isActive ? 'Hide Layer' : 'Stream'}
-                      </button>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Drive Stream Real-time Log */}
+            <div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <FileText size={14} /> Drive Stream logs
+              </div>
+              <div style={{ 
+                backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+                borderRadius: '8px', 
+                padding: '0.75rem', 
+                border: '1px solid rgba(255,255,255,0.05)',
+                fontFamily: 'monospace',
+                fontSize: '0.68rem',
+                color: '#38bdf8',
+                maxHeight: '140px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem',
+                textAlign: 'left'
+              }}>
+                {streamLog.map((log, idx) => (
+                  <div key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '2px' }}>
+                    {log}
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
+
           </div>
 
-          {/* Drive Stream Real-time Log */}
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <FileText size={14} /> Drive Stream logs
-            </div>
-            <div style={{ 
-              backgroundColor: 'rgba(0, 0, 0, 0.3)', 
-              borderRadius: '8px', 
-              padding: '0.75rem', 
-              border: '1px solid rgba(255,255,255,0.05)',
-              fontFamily: 'monospace',
-              fontSize: '0.68rem',
-              color: '#38bdf8',
-              maxHeight: '140px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.3rem',
-              textAlign: 'left'
-            }}>
-              {streamLog.map((log, idx) => (
-                <div key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '2px' }}>
-                  {log}
-                </div>
-              ))}
-            </div>
+          {/* Footer block */}
+          <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.7rem', color: '#475569', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+            Spatial CRS: <span style={{ color: '#94a3b8', fontWeight: 600 }}>EPSG:4326 (WGS 84)</span>
           </div>
-
-        </div>
-
-        {/* Footer block */}
-        <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.7rem', color: '#475569', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-          Spatial CRS: <span style={{ color: '#94a3b8', fontWeight: 600 }}>EPSG:4326 (WGS 84)</span>
         </div>
 
       </div>
