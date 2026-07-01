@@ -424,10 +424,10 @@ export const CesiumWorkspace: React.FC = () => {
       {/* Floating Right Control Panel (Glassmorphism Sidebar) */}
       <div style={{ 
         position: 'absolute', 
-        top: '20px', 
+        top: '60px', 
         right: isPanelOpen ? '20px' : '-390px', 
         width: '380px', 
-        maxHeight: '92vh', 
+        maxHeight: '88vh', 
         backgroundColor: 'rgba(15, 23, 42, 0.85)', 
         backdropFilter: 'blur(12px)', 
         borderRadius: '16px', 
