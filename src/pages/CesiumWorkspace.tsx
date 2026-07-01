@@ -29,6 +29,7 @@ export const CesiumWorkspace: React.FC = () => {
   const [cesiumLoaded, setCesiumLoaded] = useState(false);
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   const [gdriveStatus, setGdriveStatus] = useState<'connected' | 'syncing' | 'error'>('connected');
+  const [baseLayer, setBaseLayer] = useState<'satellite' | 'street'>('satellite');
   const [streamLog, setStreamLog] = useState<string[]>([
     'Initializing secure connection to Google Drive folder 1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO...',
     'Connected to Google Drive Master Registry.',
@@ -71,7 +72,7 @@ export const CesiumWorkspace: React.FC = () => {
     // Disable Cesium Ion access token request as requested
     Cesium.Ion.defaultAccessToken = '';
 
-    // Initialize with standard OpenStreetMap imagery provider (No Ion account key needed)
+    // Initialize with ArcGIS World Imagery Satellite tiles and ArcGIS Elevation Server (No Ion credentials needed)
     const viewer = new Cesium.Viewer(containerId, {
       geocoder: false,
       homeButton: true,
@@ -79,11 +80,14 @@ export const CesiumWorkspace: React.FC = () => {
       navigationHelpButton: false,
       infoBox: true,
       selectionIndicator: true,
-      baseLayerPicker: false, // disable to use OSM exclusively
-      imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-        url: 'https://a.tile.openstreetmap.org/'
+      baseLayerPicker: false, // Custom switcher is implemented in the sidebar UI
+      imageryProvider: new Cesium.UrlTemplateImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        credit: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       }),
-      terrainProvider: new Cesium.EllipsoidTerrainProvider(), // offline ellipsoid terrain
+      terrainProvider: new Cesium.ArcGISTiledElevationTerrainProvider({
+        url: 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'
+      }),
       animation: false,
       timeline: false,
       fullscreenButton: false
@@ -94,6 +98,8 @@ export const CesiumWorkspace: React.FC = () => {
     viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
 
     viewerRef.current = viewer;
+
+    addLog('Loaded ArcGIS World Imagery (Satellite) & global 3D elevation server successfully.');
 
     // Fly to Uganda as the default operational scope
     flyToUganda(true);
@@ -114,6 +120,27 @@ export const CesiumWorkspace: React.FC = () => {
       duration: instant ? 0 : 3.0
     });
     setSelectedProjectLocation('Uganda');
+  };
+
+  const changeBaseLayer = (type: 'satellite' | 'street') => {
+    if (!viewerRef.current || !window.Cesium) return;
+    const Cesium = window.Cesium;
+    const layers = viewerRef.current.imageryLayers;
+    layers.removeAll();
+    
+    if (type === 'satellite') {
+      layers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        credit: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      }));
+      addLog('Base imagery switched to ArcGIS World Imagery (Satellite View).');
+    } else {
+      layers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
+        url: 'https://a.tile.openstreetmap.org/'
+      }));
+      addLog('Base imagery switched to OpenStreetMap (Street Map View).');
+    }
+    setBaseLayer(type);
   };
 
   const handleSyncDrive = () => {
@@ -197,9 +224,14 @@ export const CesiumWorkspace: React.FC = () => {
           }
         });
 
-        // Fly camera to Kampala
+        // Fly camera to Kampala (tilt camera to show 3D topography and road)
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3129, 3500.0),
+          destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3020, 1600.0),
+          orientation: {
+            heading: Cesium.Math.toRadians(0.0),
+            pitch: Cesium.Math.toRadians(-25.0), // Tilt for 3D terrain
+            roll: 0.0
+          },
           duration: 2.5
         });
         setSelectedProjectLocation('Kampala Flyover');
@@ -240,7 +272,12 @@ export const CesiumWorkspace: React.FC = () => {
         });
 
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(32.2920, 2.7715, 4000.0),
+          destination: Cesium.Cartesian3.fromDegrees(32.2920, 2.7620, 1800.0),
+          orientation: {
+            heading: Cesium.Math.toRadians(0.0),
+            pitch: Cesium.Math.toRadians(-20.0),
+            roll: 0.0
+          },
           duration: 2.5
         });
         setSelectedProjectLocation('Gulu Hub');
@@ -409,10 +446,53 @@ export const CesiumWorkspace: React.FC = () => {
         {/* Content scroll area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
+          {/* Base Layer Switcher */}
+          <div>
+            <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Layers size={14} /> Base Map Layer
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <button 
+                onClick={() => changeBaseLayer('satellite')}
+                style={{ 
+                  backgroundColor: baseLayer === 'satellite' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
+                  border: '1px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '6px', 
+                  color: '#f8fafc', 
+                  padding: '8px 6px', 
+                  fontSize: '0.75rem', 
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                🛰️ Satellite View
+              </button>
+              <button 
+                onClick={() => changeBaseLayer('street')}
+                style={{ 
+                  backgroundColor: baseLayer === 'street' ? '#0ea5e9' : 'rgba(255,255,255,0.05)', 
+                  border: '1px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '6px', 
+                  color: '#f8fafc', 
+                  padding: '8px 6px', 
+                  fontSize: '0.75rem', 
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                🗺️ Street Map View
+              </button>
+            </div>
+          </div>
+
           {/* Quick Camera Navigation */}
           <div>
             <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Compass size={14} /> Quick Viewports
+              <Compass size={14} /> Quick Viewports (3D terrain focus)
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <button 
@@ -433,8 +513,14 @@ export const CesiumWorkspace: React.FC = () => {
               <button 
                 onClick={() => {
                   if (!viewerRef.current || !window.Cesium) return;
+                  const Cesium = window.Cesium;
                   viewerRef.current.camera.flyTo({
-                    destination: window.Cesium.Cartesian3.fromDegrees(32.5841, 0.3129, 3500.0),
+                    destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3020, 1600.0),
+                    orientation: {
+                      heading: Cesium.Math.toRadians(0.0),
+                      pitch: Cesium.Math.toRadians(-25.0),
+                      roll: 0.0
+                    },
                     duration: 2.0
                   });
                   setSelectedProjectLocation('Kampala Flyover');
@@ -456,8 +542,14 @@ export const CesiumWorkspace: React.FC = () => {
               <button 
                 onClick={() => {
                   if (!viewerRef.current || !window.Cesium) return;
+                  const Cesium = window.Cesium;
                   viewerRef.current.camera.flyTo({
-                    destination: window.Cesium.Cartesian3.fromDegrees(32.2920, 2.7715, 4000.0),
+                    destination: Cesium.Cartesian3.fromDegrees(32.2920, 2.7620, 1800.0),
+                    orientation: {
+                      heading: Cesium.Math.toRadians(0.0),
+                      pitch: Cesium.Math.toRadians(-20.0),
+                      roll: 0.0
+                    },
                     duration: 2.0
                   });
                   setSelectedProjectLocation('Gulu Hub');
