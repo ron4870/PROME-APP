@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload, X, ChevronDown, Plus } from 'lucide-react';
+import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload, X, ChevronDown, Plus, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 declare global {
@@ -34,6 +34,7 @@ export const CesiumWorkspace: React.FC = () => {
   const [gdriveStatus, setGdriveStatus] = useState<'connected' | 'syncing' | 'error'>('connected');
   const [baseLayer, setBaseLayer] = useState<'satellite' | 'google' | 'street'>('satellite');
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [streamLog, setStreamLog] = useState<string[]>([
     'Initializing secure connection to Google Drive folder 1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO...',
     'Connected to Google Drive Master Registry.',
@@ -1521,6 +1522,79 @@ export const CesiumWorkspace: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Left Control Panel (Glassmorphism Sidebar - PROJECT EXPLORER) */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '120px', 
+        left: isLeftPanelOpen ? '20px' : '-390px', 
+        width: '380px', 
+        maxHeight: '80vh', 
+        backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+        backdropFilter: 'blur(12px)', 
+        borderRadius: '16px', 
+        border: '1px solid rgba(255, 255, 255, 0.1)', 
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+        display: 'flex', 
+        flexDirection: 'column', 
+        zIndex: 100, 
+        color: '#f8fafc',
+        transition: 'left 0.3s ease-in-out',
+        overflow: 'visible' // allow toggle button to float outside right border
+      }}>
+
+        {/* Floating Toggle Chevron Button on Right Edge */}
+        <button 
+          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+          style={{ 
+            position: 'absolute',
+            top: '50%',
+            right: '-32px',
+            transform: 'translateY(-50%)',
+            width: '32px',
+            height: '60px',
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderLeft: 'none',
+            borderTopRightRadius: '8px',
+            borderBottomRightRadius: '8px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            cursor: 'pointer',
+            zIndex: 101,
+            color: '#f8fafc',
+            boxShadow: '4px 4px 10px rgba(0, 0, 0, 0.3)',
+            transition: 'color 0.2s',
+            outline: 'none'
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#0ea5e9'}
+          onMouseLeave={e => e.currentTarget.style.color = '#f8fafc'}
+          title={isLeftPanelOpen ? "Collapse Explorer" : "Expand Explorer"}
+        >
+          {isLeftPanelOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+        </button>
+
+        {/* Panel Main Container */}
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', borderRadius: '16px' }}>
+          {/* Header Block */}
+          <div style={{ padding: '1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FolderOpen color="#0ea5e9" size={22} />
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>PROJECT EXPLORER</h2>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>
+              Structure view and node explorer metadata.
+            </p>
+          </div>
+
+          {/* Placeholder Content */}
+          <div style={{ padding: '2rem 1.25rem', color: '#94a3b8', fontSize: '0.8rem', textAlign: 'center', fontStyle: 'italic', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+            Project explorer content and structure metadata will be populated here.
+          </div>
+        </div>
+      </div>
 
       {/* Floating Right Control Panel (Glassmorphism Sidebar) */}
       <div style={{ 
