@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Database, Cloud, RefreshCw, Layers, Compass, FileText, ArrowLeft, Link as LinkIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Database, Cloud, RefreshCw, Layers, Compass, FileText, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -510,24 +510,13 @@ export const CesiumWorkspace: React.FC = () => {
                 {gdriveStatus === 'syncing' ? 'Syncing Drive registry...' : 'Drive Connected'}
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <a 
-                href="https://drive.google.com/drive/folders/1NiTtobaBBEgm0MbJz0mdVmJPO5TOKwKO?usp=drive_link" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{ color: '#0ea5e9', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
-                title="Open linked Google Drive folder"
-              >
-                <LinkIcon size={12} /> Drive Folder
-              </a>
-              <button 
-                onClick={handleSyncDrive}
-                disabled={gdriveStatus === 'syncing'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
-              >
-                <RefreshCw size={12} className={gdriveStatus === 'syncing' ? 'animate-spin' : ''} />
-              </button>
-            </div>
+            <button 
+              onClick={handleSyncDrive}
+              disabled={gdriveStatus === 'syncing'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
+            >
+              <RefreshCw size={12} className={gdriveStatus === 'syncing' ? 'animate-spin' : ''} />
+            </button>
           </div>
 
           {/* Content scroll area */}
