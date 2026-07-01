@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Database, Cloud, RefreshCw, Layers, Compass, FileText, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Database, Cloud, RefreshCw, Layers, FileText, ArrowLeft, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -37,7 +37,6 @@ export const CesiumWorkspace: React.FC = () => {
     'Discovered 4 streamable spatial layers in folder /PROME_3D_Master_Database.'
   ]);
   const [files, setFiles] = useState<StreamFile[]>(mockStreamFiles);
-  const [selectedProjectLocation, setSelectedProjectLocation] = useState<string>('World');
 
   // Load CesiumJS scripts and widgets dynamically
   useEffect(() => {
@@ -164,7 +163,6 @@ export const CesiumWorkspace: React.FC = () => {
       destination: Cesium.Cartesian3.fromDegrees(32.2903, 1.3733, 1200000.0), // Uganda bounding center
       duration: instant ? 0 : 3.0
     });
-    setSelectedProjectLocation('Uganda');
   };
 
   const changeBaseLayer = (type: 'satellite' | 'google' | 'street') => {
@@ -285,7 +283,6 @@ export const CesiumWorkspace: React.FC = () => {
           },
           duration: 2.5
         });
-        setSelectedProjectLocation('Campaign');
         addLog('Camera focused on Kampala Flyover Project Lot 2 corridor.');
 
       } else if (file.name.includes('gulu_logistics')) {
@@ -331,7 +328,6 @@ export const CesiumWorkspace: React.FC = () => {
           },
           duration: 2.5
         });
-        setSelectedProjectLocation('Gulu Hub');
         addLog('Camera focused on Gulu Logistics Hub perimeter boundaries.');
 
       } else if (file.name.includes('entebbe_expressway')) {
@@ -363,7 +359,6 @@ export const CesiumWorkspace: React.FC = () => {
           destination: Cesium.Cartesian3.fromDegrees(32.5200, 0.1500, 35000.0),
           duration: 3.0
         });
-        setSelectedProjectLocation('Entebbe Corridor');
         addLog('Camera viewport centered over Kampala-Entebbe Expressway bypass.');
       } else if (file.name.includes('timelapse')) {
         // Draw site planning markers
@@ -391,18 +386,89 @@ export const CesiumWorkspace: React.FC = () => {
           destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3129, 5000.0),
           duration: 2.0
         });
-        setSelectedProjectLocation('Construction Planning');
         addLog('Loaded CZML timelapse coordinates. Site facilities mapped successfully.');
       }
     }
   };
 
-  const clearAllLayers = () => {
-    if (!viewerRef.current) return;
-    viewerRef.current.entities.removeAll();
-    setActiveLayers([]);
-    setFiles(prev => prev.map(f => ({ ...f, status: 'Ready' })));
-    addLog('Removed all active layers. Map cleared.');
+  const handleImportSurface = () => {
+    addLog('Initiating secure connection to Google Drive folder...');
+    addLog('Uploading "dem_elevation_uganda.tif" (Digital Elevation Model) to project folder...');
+    setTimeout(() => {
+      const newFile: StreamFile = {
+        name: 'dem_elevation_uganda.tif',
+        type: 'image/tiff',
+        size: '8.4 MB',
+        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
+        layerType: 'GeoJSON',
+        status: 'Ready'
+      };
+      setFiles(prev => {
+        if (prev.some(f => f.name === newFile.name)) return prev;
+        return [newFile, ...prev];
+      });
+      addLog('Successfully imported "dem_elevation_uganda.tif" surface raster to connected Google Drive folder.');
+    }, 600);
+  };
+
+  const handleImportCorridor = () => {
+    addLog('Initiating vector data upload to Google Drive folder...');
+    addLog('Uploading "highway_design_corridor.geojson" alignment line vector...');
+    setTimeout(() => {
+      const newFile: StreamFile = {
+        name: 'highway_design_corridor.geojson',
+        type: 'application/json',
+        size: '1.8 MB',
+        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
+        layerType: 'GeoJSON',
+        status: 'Ready'
+      };
+      setFiles(prev => {
+        if (prev.some(f => f.name === newFile.name)) return prev;
+        return [newFile, ...prev];
+      });
+      addLog('Successfully imported "highway_design_corridor.geojson" vector corridor design to Google Drive folder.');
+    }, 600);
+  };
+
+  const handleImportPNGs = () => {
+    addLog('Initiating raster overlay upload to Google Drive folder...');
+    addLog('Uploading "orthophoto_overlay_crop.png" georeferenced overlay mask...');
+    setTimeout(() => {
+      const newFile: StreamFile = {
+        name: 'orthophoto_overlay_crop.png',
+        type: 'image/png',
+        size: '4.2 MB',
+        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
+        layerType: 'KML',
+        status: 'Ready'
+      };
+      setFiles(prev => {
+        if (prev.some(f => f.name === newFile.name)) return prev;
+        return [newFile, ...prev];
+      });
+      addLog('Successfully imported "orthophoto_overlay_crop.png" raster imagery crop.');
+    }, 600);
+  };
+
+  const handleImportGLTF = () => {
+    addLog('Initiating 3D model geometry upload to Google Drive folder...');
+    addLog('Uploading "bridge_gantry_model.glb" (3D binary mesh layout)...');
+    setTimeout(() => {
+      const newFile: StreamFile = {
+        name: 'bridge_gantry_model.glb',
+        type: 'model/gltf-binary',
+        size: '14.5 MB',
+        lastModified: new Date().toISOString().replace('T', ' ').slice(0, 16),
+        layerType: 'Point Cloud',
+        status: 'Ready'
+      };
+      setFiles(prev => {
+        if (prev.some(f => f.name === newFile.name)) return prev;
+        return [newFile, ...prev];
+      });
+      addLog('Successfully imported "bridge_gantry_model.glb" 3D mesh asset to Google Drive.');
+    }, 600);
   };
 
   return (
@@ -585,100 +651,79 @@ export const CesiumWorkspace: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Camera Navigation */}
+            {/* Import Data Layers Section */}
             <div>
               <div style={{ fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Compass size={14} /> Quick Viewports (3D terrain focus)
+                <Upload size={14} /> Import Data Layers
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <button 
-                  onClick={() => flyToUganda()}
+                  onClick={handleImportSurface}
                   style={{ 
-                    backgroundColor: selectedProjectLocation === 'Uganda' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)', 
+                    border: '1px solid rgba(14, 165, 233, 0.25)', 
                     borderRadius: '6px', 
-                    color: '#f8fafc', 
-                    padding: '6px', 
-                    fontSize: '0.75rem', 
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  🇺🇬 Uganda Center
-                </button>
-                <button 
-                  onClick={() => {
-                    if (!viewerRef.current || !window.Cesium) return;
-                    const Cesium = window.Cesium;
-                    viewerRef.current.camera.flyTo({
-                      destination: Cesium.Cartesian3.fromDegrees(32.5841, 0.3020, 1600.0),
-                      orientation: {
-                        heading: Cesium.Math.toRadians(0.0),
-                        pitch: Cesium.Math.toRadians(-25.0),
-                        roll: 0.0
-                      },
-                      duration: 2.0
-                    });
-                    setSelectedProjectLocation('Campaign');
-                    addLog('Camera focused on Kampala Flyover Lot 2.');
-                  }}
-                  style={{ 
-                    backgroundColor: selectedProjectLocation === 'Campaign' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    borderRadius: '6px', 
-                    color: '#f8fafc', 
-                    padding: '6px', 
-                    fontSize: '0.75rem', 
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  🌉 Kampala Flyover
-                </button>
-                <button 
-                  onClick={() => {
-                    if (!viewerRef.current || !window.Cesium) return;
-                    const Cesium = window.Cesium;
-                    viewerRef.current.camera.flyTo({
-                      destination: Cesium.Cartesian3.fromDegrees(32.2920, 2.7620, 1800.0),
-                      orientation: {
-                        heading: Cesium.Math.toRadians(0.0),
-                        pitch: Cesium.Math.toRadians(-20.0),
-                        roll: 0.0
-                      },
-                      duration: 2.0
-                    });
-                    setSelectedProjectLocation('Gulu Hub');
-                    addLog('Camera focused on Gulu Logistics Hub.');
-                  }}
-                  style={{ 
-                    backgroundColor: selectedProjectLocation === 'Gulu Hub' ? '#0f766e' : 'rgba(255,255,255,0.05)', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    borderRadius: '6px', 
-                    color: '#f8fafc', 
-                    padding: '6px', 
-                    fontSize: '0.75rem', 
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  🏭 Gulu Logistics Hub
-                </button>
-                <button 
-                  onClick={clearAllLayers}
-                  style={{ 
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                    border: '1px solid rgba(239, 68, 68, 0.2)', 
-                    borderRadius: '6px', 
-                    color: '#f87171', 
-                    padding: '6px', 
+                    color: '#38bdf8', 
+                    padding: '8px 6px', 
                     fontSize: '0.75rem', 
                     cursor: 'pointer',
                     textAlign: 'center',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
                   }}
                 >
-                  🧹 Clear Map
+                  📥 Import Surface
+                </button>
+                <button 
+                  onClick={handleImportCorridor}
+                  style={{ 
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)', 
+                    border: '1px solid rgba(14, 165, 233, 0.25)', 
+                    borderRadius: '6px', 
+                    color: '#38bdf8', 
+                    padding: '8px 6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📥 Import Corridor
+                </button>
+                <button 
+                  onClick={handleImportPNGs}
+                  style={{ 
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)', 
+                    border: '1px solid rgba(14, 165, 233, 0.25)', 
+                    borderRadius: '6px', 
+                    color: '#38bdf8', 
+                    padding: '8px 6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📥 Import PNGs
+                </button>
+                <button 
+                  onClick={handleImportGLTF}
+                  style={{ 
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)', 
+                    border: '1px solid rgba(14, 165, 233, 0.25)', 
+                    borderRadius: '6px', 
+                    color: '#38bdf8', 
+                    padding: '8px 6px', 
+                    fontSize: '0.75rem', 
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📥 Import GLTF/GLB
                 </button>
               </div>
             </div>
