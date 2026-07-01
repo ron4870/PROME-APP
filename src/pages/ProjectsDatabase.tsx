@@ -33,7 +33,7 @@ const mockProjects: Project[] = [
 
 export const ProjectsDatabase: React.FC = () => {
   const navigate = useNavigate();
-  const { hasPermission, token } = useAuth();
+  const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   
   const [projects, setProjects] = useState<Project[]>([]);
@@ -214,18 +214,16 @@ export const ProjectsDatabase: React.FC = () => {
           <p style={{ color: '#64748b' }}>Comprehensive database of engineering projects, contracts, and clients.</p>
         </div>
         
-        {hasPermission('admin_panel') && (
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn btn-outline" onClick={() => window.open('/projects-database/3d', '_blank')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Database size={18} />
-              Open Master Database
-            </button>
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-              <Plus size={18} style={{ marginRight: '8px' }} />
-              Add Project
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn btn-outline" onClick={() => window.open('/projects-database/3d', '_blank')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Database size={18} />
+            Open Master Database
+          </button>
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} style={{ marginRight: '8px' }} />
+            Add Project
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -283,19 +281,17 @@ export const ProjectsDatabase: React.FC = () => {
                   }}>
                     {project.status}
                   </span>
-                    {hasPermission('admin_panel') && (
-                      <button 
-                        onClick={(e) => handleDeleteProject(project.id, e)}
-                        style={{ 
-                          background: 'none', border: 'none', cursor: 'pointer', 
-                          color: '#ef4444', padding: '4px', marginLeft: '0.5rem',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}
-                        title="Delete Project"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    )}
+                    <button 
+                      onClick={(e) => handleDeleteProject(project.id, e)}
+                      style={{ 
+                        background: 'none', border: 'none', cursor: 'pointer', 
+                        color: '#ef4444', padding: '4px', marginLeft: '0.5rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                      title="Delete Project"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                 </div>
                 </div>
                 
