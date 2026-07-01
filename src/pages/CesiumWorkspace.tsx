@@ -59,6 +59,17 @@ export const CesiumWorkspace: React.FC = () => {
   const [selectedProjectMembers, setSelectedProjectMembers] = useState<number[]>([]);
   const [isCreatingProj, setIsCreatingProj] = useState(false);
 
+  // Edit Project Form States
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<any>(null);
+  const [editProjName, setEditProjName] = useState('');
+  const [editProjClient, setEditProjClient] = useState('PROME');
+  const [editProjDate, setEditProjDate] = useState('');
+  const [editProjDesc, setEditProjDesc] = useState('');
+  const [editProjectMembers, setEditProjectMembers] = useState<number[]>([]);
+  const [isSavingProj, setIsSavingProj] = useState(false);
+  const [isDeletingProj, setIsDeletingProj] = useState(false);
+
   // Modal states for PNG World File Georeference import
   const [isPngModalOpen, setIsPngModalOpen] = useState(false);
   const [pngFileName, setPngFileName] = useState('');
@@ -905,6 +916,109 @@ export const CesiumWorkspace: React.FC = () => {
     }
   };
 
+  const handleUpdateDatabaseProject = async () => {
+    if (!editProjName.trim()) {
+      alert('Please enter a project name.');
+      return;
+    }
+    if (!editingProject) return;
+    
+    setIsSavingProj(true);
+    addLog(`Saving changes for project "${editProjName}"...`);
+    
+    try {
+      const res = await fetch(`/api/projects-database/${editingProject.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: editProjName,
+          client: editProjClient || 'PROME',
+          description: editProjDesc,
+          startDate: editProjDate,
+          members: editProjectMembers.map(userId => ({ userId, role: 'Viewer' }))
+        })
+      });
+
+      if (res.ok) {
+        const updatedProj = await res.json();
+        
+        // Update local projects list state
+        setProjects(prev => prev.map(p => p.id === updatedProj.id ? updatedProj : p));
+        
+        // If the edited project was currently selected, update the selected project state too!
+        if (selectedProject?.id === updatedProj.id) {
+          setSelectedProject(updatedProj);
+        }
+        
+        setIsEditProjectOpen(false);
+        setEditingProject(null);
+        addLog(`Changes to database project "${editProjName}" saved successfully.`);
+      } else {
+        const errData = await res.json();
+        alert(errData.message || 'Failed to save changes');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error: Failed to save database project changes.');
+    } finally {
+      setIsSavingProj(false);
+    }
+  };
+
+  const handleDeleteDatabaseProject = async () => {
+    if (!editingProject) return;
+    if (editingProject.name === 'Master Database') {
+      alert('Deleting the system "Master Database" project is not allowed.');
+      return;
+    }
+    
+    if (!window.confirm(`Are you sure you want to permanently delete project "${editingProject.name}"? This will delete all registered documents and cannot be undone.`)) {
+      return;
+    }
+    
+    setIsDeletingProj(true);
+    addLog(`Initiating removal of project "${editingProject.name}" from database...`);
+    
+    try {
+      const res = await fetch(`/api/projects-database/${editingProject.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        // Remove from local projects list
+        setProjects(prev => prev.filter(p => p.id !== editingProject.id));
+        
+        // If the deleted project was currently selected, switch back to Master Database!
+        if (selectedProject?.id === editingProject.id) {
+          const masterProj = projects.find(p => p.name === 'Master Database');
+          if (masterProj) {
+            setSelectedProject(masterProj);
+            fetchProjectDocuments(masterProj.id);
+          } else {
+            setSelectedProject(null);
+            setFiles([]);
+          }
+        }
+        
+        setIsEditProjectOpen(false);
+        setEditingProject(null);
+        addLog(`Project "${editingProject.name}" deleted successfully.`);
+      } else {
+        const errData = await res.json();
+        alert(errData.message || 'Failed to delete project');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error: Failed to delete project.');
+    } finally {
+      setIsDeletingProj(false);
+    }
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', overflow: 'hidden', fontFamily: 'sans-serif', backgroundColor: '#0f172a', position: 'relative' }}>
       
@@ -1008,44 +1122,87 @@ export const CesiumWorkspace: React.FC = () => {
               overflowY: 'auto'
             }}>
               {projects.map((proj) => (
-                <button
+                <div
                   key={proj.id}
-                  onClick={() => {
-                    setSelectedProject(proj);
-                    setIsProjectDropdownOpen(false);
-                    fetchProjectDocuments(proj.id);
-                  }}
                   style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    backgroundColor: selectedProject?.id === proj.id ? 'rgba(14, 165, 233, 0.15)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    color: selectedProject?.id === proj.id ? '#38bdf8' : '#cbd5e1',
-                    padding: '8px 12px',
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    borderRadius: '6px',
+                    backgroundColor: selectedProject?.id === proj.id ? 'rgba(14, 165, 233, 0.15)' : 'transparent',
+                    transition: 'all 0.15s',
+                    paddingRight: '6px'
                   }}
                   onMouseEnter={e => {
                     if (selectedProject?.id !== proj.id) {
                       e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                      e.currentTarget.style.color = '#f8fafc';
                     }
                   }}
                   onMouseLeave={e => {
                     if (selectedProject?.id !== proj.id) {
                       e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#cbd5e1';
                     }
                   }}
                 >
-                  <span>{proj.name}</span>
-                  {selectedProject?.id === proj.id && <span style={{ color: '#38bdf8', fontSize: '0.7rem' }}>●</span>}
-                </button>
+                  <button
+                    onClick={() => {
+                      setSelectedProject(proj);
+                      setIsProjectDropdownOpen(false);
+                      fetchProjectDocuments(proj.id);
+                    }}
+                    style={{
+                      flex: 1,
+                      textAlign: 'left',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      color: selectedProject?.id === proj.id ? '#38bdf8' : '#cbd5e1',
+                      padding: '8px 12px',
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      outline: 'none'
+                    }}
+                  >
+                    <span>{proj.name}</span>
+                    {selectedProject?.id === proj.id && <span style={{ color: '#38bdf8', fontSize: '0.7rem' }}>●</span>}
+                  </button>
+
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingProject(proj);
+                        setEditProjName(proj.name);
+                        setEditProjClient(proj.client || 'PROME');
+                        setEditProjDate(proj.startDate ? new Date(proj.startDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+                        setEditProjDesc(proj.description || '');
+                        setEditProjectMembers(proj.members ? proj.members.map((m: any) => m.userId) : []);
+                        setIsEditProjectOpen(true);
+                        setIsProjectDropdownOpen(false);
+                      }}
+                      style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        color: '#38bdf8',
+                        padding: '4px 8px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s',
+                        marginLeft: '4px'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(14, 165, 233, 0.3)'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -1182,6 +1339,185 @@ export const CesiumWorkspace: React.FC = () => {
             >
               {isCreatingProj ? 'Creating...' : 'Create Folder'}
             </button>
+          </div>
+        </div>
+      )}
+      {/* Floating Edit Project Panel (Under top selector bar) */}
+      {isEditProjectOpen && isAdmin && editingProject && (
+        <div style={{
+          position: 'absolute',
+          top: '68px',
+          left: '20px',
+          zIndex: 100,
+          width: '340px',
+          backgroundColor: 'rgba(15, 23, 42, 0.92)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px',
+          padding: '1.25rem',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+          color: '#f8fafc',
+          fontFamily: 'sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8' }}>Edit Project: {editingProject.name}</span>
+            <button 
+              onClick={() => { setIsEditProjectOpen(false); setEditingProject(null); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Form Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Name */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>PROJECT NAME</label>
+              <input 
+                type="text" 
+                value={editProjName}
+                onChange={e => setEditProjName(e.target.value)}
+                disabled={editingProject.name === 'Master Database'}
+                style={{ 
+                  backgroundColor: 'rgba(0,0,0,0.3)', 
+                  border: '1px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '6px', 
+                  padding: '6px 10px', 
+                  fontSize: '0.78rem', 
+                  color: editingProject.name === 'Master Database' ? '#64748b' : '#f8fafc', 
+                  outline: 'none',
+                  cursor: editingProject.name === 'Master Database' ? 'not-allowed' : 'text'
+                }}
+              />
+            </div>
+
+            {/* Client */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>CLIENT</label>
+              <input 
+                type="text" 
+                value={editProjClient}
+                onChange={e => setEditProjClient(e.target.value)}
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none' }}
+              />
+            </div>
+
+            {/* Start Date */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>START DATE</label>
+              <input 
+                type="date" 
+                value={editProjDate}
+                onChange={e => setEditProjDate(e.target.value)}
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none', colorScheme: 'dark' }}
+              />
+            </div>
+
+            {/* Description */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>DESCRIPTION</label>
+              <textarea 
+                value={editProjDesc}
+                onChange={e => setEditProjDesc(e.target.value)}
+                placeholder="Brief project details..."
+                style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.78rem', color: '#f8fafc', outline: 'none', height: '60px', resize: 'none' }}
+              />
+            </div>
+
+            {/* Members checkboxes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>ASSIGN USERS / MEMBERS</label>
+              <div style={{ 
+                backgroundColor: 'rgba(0,0,0,0.2)', 
+                border: '1px solid rgba(255,255,255,0.06)', 
+                borderRadius: '6px', 
+                padding: '6px', 
+                maxHeight: '110px', 
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem'
+              }}>
+                {availableUsers.map(u => (
+                  <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', cursor: 'pointer', color: '#cbd5e1' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={editProjectMembers.includes(u.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setEditProjectMembers([...editProjectMembers, u.id]);
+                        } else {
+                          setEditProjectMembers(editProjectMembers.filter(id => id !== u.id));
+                        }
+                      }}
+                    />
+                    <span>{u.name} ({u.email})</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
+            {/* Delete Button on the left */}
+            {editingProject.name !== 'Master Database' ? (
+              <button
+                type="button"
+                disabled={isDeletingProj}
+                onClick={handleDeleteDatabaseProject}
+                style={{ 
+                  backgroundColor: '#ef4444', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  color: '#ffffff', 
+                  padding: '6px 12px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600,
+                  cursor: isDeletingProj ? 'not-allowed' : 'pointer',
+                  opacity: isDeletingProj ? 0.7 : 1
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#dc2626'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ef4444'}
+              >
+                {isDeletingProj ? 'Deleting...' : 'Delete Project'}
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                type="button" 
+                onClick={() => { setIsEditProjectOpen(false); setEditingProject(null); }}
+                style={{ backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#cbd5e1', padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                disabled={isSavingProj}
+                onClick={handleUpdateDatabaseProject}
+                style={{ 
+                  backgroundColor: '#0ea5e9', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  color: '#ffffff', 
+                  padding: '6px 12px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600, 
+                  cursor: isSavingProj ? 'not-allowed' : 'pointer', 
+                  opacity: isSavingProj ? 0.7 : 1 
+                }}
+              >
+                {isSavingProj ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}

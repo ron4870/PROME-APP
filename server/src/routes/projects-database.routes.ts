@@ -204,7 +204,7 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const { name, client, description, startDate, endDate, selectedSubProjects } = req.body;
+    const { name, client, description, startDate, endDate, selectedSubProjects, members } = req.body;
 
     const updated = await prisma.databaseProject.update({
       where: { id: parseInt(req.params.id) },
@@ -218,7 +218,31 @@ router.put('/:id', authenticate, async (req, res) => {
       }
     });
 
-    res.json(updated);
+    if (members && Array.isArray(members)) {
+      await prisma.databaseProjectMember.deleteMany({
+        where: { databaseProjectId: parseInt(req.params.id) }
+      });
+      if (members.length > 0) {
+        await prisma.databaseProjectMember.createMany({
+          data: members.map((m: any) => ({
+            databaseProjectId: parseInt(req.params.id),
+            userId: m.userId,
+            role: m.role || 'Viewer'
+          }))
+        });
+      }
+    }
+
+    const finalProject = await prisma.databaseProject.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        members: {
+          include: { user: { select: { id: true, name: true, email: true } } }
+        }
+      }
+    });
+
+    res.json(finalProject);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
