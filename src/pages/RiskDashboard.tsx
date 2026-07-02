@@ -14,7 +14,11 @@ interface Risk {
   likelihood: number | null;
   impact: number | null;
   score: number | null;
+  mitigationPlan?: string | null;
+  residualLikelihood?: number | null;
+  residualImpact?: number | null;
   residualScore: number | null;
+  actionDeadline?: string | null;
   createdAt: string;
   owner?: { id: number; name: string };
 }
@@ -206,8 +210,12 @@ const RiskDashboard: React.FC = () => {
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'center' }}>Initial Likelihood</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'center' }}>Initial Impact</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Initial Score</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Mitigation</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'center' }}>Residual Likelihood</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'center' }}>Residual Impact</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Residual</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Action Deadline</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -263,6 +271,15 @@ const RiskDashboard: React.FC = () => {
                         {risk.score || '-'}
                       </span>
                     </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#6b7280', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {risk.mitigationPlan || '-'}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#374151', textAlign: 'center' }}>
+                      {risk.residualLikelihood || '-'}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#374151', textAlign: 'center' }}>
+                      {risk.residualImpact || '-'}
+                    </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
                       <span 
                         className={getScoreTextClass(risk.residualScore)}
@@ -282,14 +299,17 @@ const RiskDashboard: React.FC = () => {
                         fontSize: '0.75rem',
                         fontWeight: '600',
                         backgroundColor: 
-                          risk.status === 'Closed' || risk.status === 'Mitigated' ? '#dcfce3' : 
-                          risk.status === 'Realized' ? '#fee2e2' : '#f3f4f6',
+                        risk.status === 'Closed' || risk.status === 'Mitigated' ? '#dcfce3' : 
+                        risk.status === 'Realized' ? '#fee2e2' : '#f3f4f6',
                         color: 
-                          risk.status === 'Closed' || risk.status === 'Mitigated' ? '#166534' : 
-                          risk.status === 'Realized' ? '#991b1b' : '#374151'
+                        risk.status === 'Closed' || risk.status === 'Mitigated' ? '#166534' : 
+                        risk.status === 'Realized' ? '#991b1b' : '#374151'
                       }}>
                         {risk.status}
                       </span>
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#6b7280' }}>
+                      {risk.actionDeadline ? new Date(risk.actionDeadline).toLocaleDateString() : '-'}
                     </td>
                     <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                       <button 
