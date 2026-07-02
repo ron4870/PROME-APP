@@ -9,7 +9,10 @@ interface Risk {
   title: string;
   type: string;
   category: string;
+  description: string;
   status: string;
+  likelihood: number | null;
+  impact: number | null;
   score: number | null;
   residualScore: number | null;
   createdAt: string;
@@ -198,7 +201,10 @@ const RiskDashboard: React.FC = () => {
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Number</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Type</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Title</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Description</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Owner</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'center' }}>Initial Likelihood</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'center' }}>Initial Impact</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Initial Score</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Residual</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
@@ -233,8 +239,17 @@ const RiskDashboard: React.FC = () => {
                       {risk.title}
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{risk.category}</div>
                     </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#6b7280', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {risk.description || '-'}
+                    </td>
                     <td style={{ padding: '1rem 1.5rem', color: '#6b7280' }}>
                       {risk.owner?.name || 'Unassigned'}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#374151', textAlign: 'center' }}>
+                      {risk.likelihood || '-'}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: '#374151', textAlign: 'center' }}>
+                      {risk.impact || '-'}
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
                       <span 
