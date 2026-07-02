@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, AlertTriangle, Target, Printer, Trash2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface Risk {
   id: number;
@@ -27,6 +29,7 @@ const RiskDashboard: React.FC = () => {
   const [risks, setRisks] = useState<Risk[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -117,6 +120,338 @@ const RiskDashboard: React.FC = () => {
     return 'text-green-700 font-bold';
   };
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const rowsPerPage = 12;
+      const totalPages = Math.ceil(filteredRisks.length / rowsPerPage) || 1;
+      const pagesToRender: HTMLDivElement[] = [];
+
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '1587px';
+      document.body.appendChild(container);
+
+      const logoUrl = '/prome.png';
+      const toBase64 = (url: string): Promise<string> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.setAttribute('crossOrigin', 'anonymous');
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL('image/png'));
+            } else {
+              resolve(url);
+            }
+          };
+          img.onerror = () => resolve(url);
+          img.src = url;
+        });
+      };
+
+      const base64Logo = await toBase64(logoUrl);
+
+      for (let i = 0; i < totalPages; i++) {
+        const page = document.createElement('div');
+        page.style.width = '1587px';
+        page.style.height = '1123px';
+        page.style.backgroundColor = '#ffffff';
+        page.style.padding = '40px';
+        page.style.boxSizing = 'border-box';
+        page.style.display = 'flex';
+        page.style.flexDirection = 'column';
+        page.style.fontFamily = 'Inter, sans-serif';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.borderBottom = '3px solid #b91c1c';
+        header.style.paddingBottom = '16px';
+        header.style.marginBottom = '24px';
+
+        const leftHeader = document.createElement('div');
+        leftHeader.style.display = 'flex';
+        leftHeader.style.alignItems = 'center';
+        leftHeader.style.gap = '20px';
+
+        const img = document.createElement('img');
+        img.src = base64Logo;
+        img.style.height = '50px';
+        leftHeader.appendChild(img);
+
+        const titleContainer = document.createElement('div');
+        const mainTitle = document.createElement('div');
+        mainTitle.innerText = 'PROME CONSULTANTS LTD';
+        mainTitle.style.fontSize = '20px';
+        mainTitle.style.fontWeight = 'bold';
+        mainTitle.style.color = '#1e293b';
+
+        const subTitle = document.createElement('div');
+        subTitle.innerText = 'INTEGRATED MANAGEMENT SYSTEM (IMS)';
+        subTitle.style.fontSize = '12px';
+        subTitle.style.fontWeight = '600';
+        subTitle.style.color = '#64748b';
+        subTitle.style.marginTop = '2px';
+
+        titleContainer.appendChild(mainTitle);
+        titleContainer.appendChild(subTitle);
+        leftHeader.appendChild(titleContainer);
+
+        const rightHeader = document.createElement('div');
+        rightHeader.style.textAlign = 'right';
+
+        const regTitle = document.createElement('div');
+        regTitle.innerText = 'RISK & OPPORTUNITY REGISTER';
+        regTitle.style.fontSize = '22px';
+        regTitle.style.fontWeight = '800';
+        regTitle.style.color = '#b91c1c';
+
+        const regMeta = document.createElement('div');
+        regMeta.innerText = 'ISO 9001:2015 Clause 6.1 Compliance';
+        regMeta.style.fontSize = '11px';
+        regMeta.style.fontWeight = '500';
+        regMeta.style.color = '#475569';
+        regMeta.style.marginTop = '4px';
+
+        rightHeader.appendChild(regTitle);
+        rightHeader.appendChild(regMeta);
+
+        header.appendChild(leftHeader);
+        header.appendChild(rightHeader);
+        page.appendChild(header);
+
+        const tableContainer = document.createElement('div');
+        tableContainer.style.flex = '1';
+        tableContainer.style.overflow = 'hidden';
+
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.fontSize = '11px';
+
+        const thead = document.createElement('thead');
+        thead.style.backgroundColor = '#f1f5f9';
+        thead.style.border = '1px solid #cbd5e1';
+
+        const headersList = [
+          { text: 'Number', w: '7%' },
+          { text: 'Type', w: '4%' },
+          { text: 'Title & Category', w: '12%' },
+          { text: 'Description', w: '17%' },
+          { text: 'Owner', w: '7%' },
+          { text: 'Ini L', w: '3.5%', center: true },
+          { text: 'Ini I', w: '3.5%', center: true },
+          { text: 'Ini S', w: '4%', center: true },
+          { text: 'Action Plan', w: '17%' },
+          { text: 'Res L', w: '3.5%', center: true },
+          { text: 'Res I', w: '3.5%', center: true },
+          { text: 'Res S', w: '4%', center: true },
+          { text: 'Status', w: '5%' },
+          { text: 'Deadline', w: '9%' }
+        ];
+
+        const trHead = document.createElement('tr');
+        headersList.forEach(h => {
+          const th = document.createElement('th');
+          th.innerText = h.text;
+          th.style.width = h.w;
+          th.style.padding = '8px 6px';
+          th.style.fontWeight = '700';
+          th.style.color = '#334155';
+          th.style.textTransform = 'uppercase';
+          th.style.fontSize = '9px';
+          th.style.border = '1px solid #cbd5e1';
+          if (h.center) {
+            th.style.textAlign = 'center';
+          } else {
+            th.style.textAlign = 'left';
+          }
+          trHead.appendChild(th);
+        });
+        thead.appendChild(trHead);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        const startIdx = i * rowsPerPage;
+        const pageRisks = filteredRisks.slice(startIdx, startIdx + rowsPerPage);
+
+        pageRisks.forEach(risk => {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid #e2e8f0';
+
+          const cells = [
+            { text: risk.riskNumber || '-', bold: true, color: '#0f172a' },
+            { text: risk.type || '-', badge: true, isType: true },
+            { text: risk.title || '-', category: risk.category },
+            { text: risk.description || '-', truncate: true },
+            { text: risk.owner?.name || 'Unassigned' },
+            { text: String(risk.likelihood ?? '-'), center: true },
+            { text: String(risk.impact ?? '-'), center: true },
+            { text: String(risk.score ?? '-'), scoreBadge: true, score: risk.score },
+            { text: risk.mitigationPlan || '-', truncate: true },
+            { text: String(risk.residualLikelihood ?? '-'), center: true },
+            { text: String(risk.residualImpact ?? '-'), center: true },
+            { text: String(risk.residualScore ?? '-'), scoreBadge: true, score: risk.residualScore },
+            { text: risk.status || '-', badge: true, isStatus: true },
+            { text: risk.actionDeadline ? new Date(risk.actionDeadline).toLocaleDateString() : '-' }
+          ];
+
+          cells.forEach((cell) => {
+            const td = document.createElement('td');
+            td.style.padding = '8px 6px';
+            td.style.border = '1px solid #e2e8f0';
+            td.style.verticalAlign = 'top';
+
+            if (cell.bold) {
+              td.style.fontWeight = '600';
+            }
+            if (cell.color) {
+              td.style.color = cell.color;
+            }
+            if (cell.center) {
+              td.style.textAlign = 'center';
+            }
+
+            if (cell.badge) {
+              const span = document.createElement('span');
+              span.innerText = cell.text;
+              span.style.padding = '2px 6px';
+              span.style.borderRadius = '4px';
+              span.style.fontSize = '8px';
+              span.style.fontWeight = 'bold';
+
+              if (cell.isType) {
+                span.style.backgroundColor = cell.text === 'Risk' ? '#fee2e2' : '#e0f2fe';
+                span.style.color = cell.text === 'Risk' ? '#991b1b' : '#0369a1';
+              } else if (cell.isStatus) {
+                span.style.backgroundColor = 
+                  cell.text === 'Closed' || cell.text === 'Mitigated' ? '#dcfce3' : 
+                  cell.text === 'Realized' ? '#fee2e2' : '#f3f4f6';
+                span.style.color = 
+                  cell.text === 'Closed' || cell.text === 'Mitigated' ? '#166534' : 
+                  cell.text === 'Realized' ? '#991b1b' : '#374151';
+              }
+              td.appendChild(span);
+            } else if (cell.scoreBadge) {
+              const val = cell.score;
+              const span = document.createElement('span');
+              span.innerText = cell.text;
+              span.style.display = 'inline-block';
+              span.style.padding = '2px 8px';
+              span.style.borderRadius = '4px';
+              span.style.fontWeight = 'bold';
+              span.style.fontSize = '9px';
+
+              const getScoreColorAndClass = (s: number | null) => {
+                if (!s) return { bg: '#f3f4f6', text: '#64748b' };
+                if (s >= 15) return { bg: '#fee2e2', text: '#b91c1c' };
+                if (s >= 8) return { bg: '#fef9c3', text: '#a16207' };
+                return { bg: '#dcfce3', text: '#15803d' };
+              };
+
+              const styling = getScoreColorAndClass(val);
+              span.style.backgroundColor = styling.bg;
+              span.style.color = styling.text;
+              td.appendChild(span);
+            } else if (cell.category) {
+              const textNode = document.createTextNode(cell.text);
+              const catDiv = document.createElement('div');
+              catDiv.innerText = cell.category;
+              catDiv.style.fontSize = '8px';
+              catDiv.style.color = '#64748b';
+              catDiv.style.marginTop = '2px';
+              td.appendChild(textNode);
+              td.appendChild(catDiv);
+            } else if (cell.truncate) {
+              const textDiv = document.createElement('div');
+              textDiv.innerText = cell.text;
+              textDiv.style.maxWidth = '240px';
+              textDiv.style.whiteSpace = 'normal';
+              textDiv.style.wordBreak = 'break-word';
+              textDiv.style.display = '-webkit-box';
+              textDiv.style.webkitLineClamp = '3';
+              textDiv.style.webkitBoxOrient = 'vertical';
+              textDiv.style.overflow = 'hidden';
+              td.appendChild(textDiv);
+            } else {
+              td.innerText = cell.text;
+            }
+
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tableContainer.appendChild(table);
+        page.appendChild(tableContainer);
+
+        const footer = document.createElement('div');
+        footer.style.display = 'flex';
+        footer.style.justifyContent = 'space-between';
+        footer.style.alignItems = 'center';
+        footer.style.borderTop = '1px solid #cbd5e1';
+        footer.style.paddingTop = '12px';
+        footer.style.marginTop = '16px';
+        footer.style.fontSize = '10px';
+        footer.style.color = '#64748b';
+
+        const leftFooter = document.createElement('div');
+        leftFooter.innerText = `Report Date: ${new Date().toLocaleDateString()} | Confidential`;
+
+        const centerFooter = document.createElement('div');
+        centerFooter.innerText = 'PROME Consultants Ltd. - ISO Certified Quality Management System';
+
+        const rightFooter = document.createElement('div');
+        rightFooter.innerText = `Page ${i + 1} of ${totalPages}`;
+
+        footer.appendChild(leftFooter);
+        footer.appendChild(centerFooter);
+        footer.appendChild(rightFooter);
+        page.appendChild(footer);
+
+        container.appendChild(page);
+        pagesToRender.push(page);
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a3'
+      });
+
+      for (let i = 0; i < pagesToRender.length; i++) {
+        if (i > 0) {
+          pdf.addPage('a3', 'landscape');
+        }
+
+        const canvas = await html2canvas(pagesToRender[i], {
+          scale: 2,
+          useCORS: true,
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
+      }
+
+      pdf.save(`PROME_Risk_Register_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.removeChild(container);
+    } catch (err) {
+      console.error('Error generating risk register PDF:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="layout-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -130,9 +465,10 @@ const RiskDashboard: React.FC = () => {
           <button 
             className="btn btn-outline no-print"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            onClick={() => window.print()}
+            onClick={handleExportPDF}
+            disabled={isExporting}
           >
-            <Printer size={18} /> Export PDF
+            <Printer size={18} /> {isExporting ? 'Exporting...' : 'Export PDF'}
           </button>
           <button 
             className="btn btn-outline no-print"
@@ -324,7 +660,7 @@ const RiskDashboard: React.FC = () => {
                 ))}
                 {filteredRisks.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={15} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       No risks or opportunities found.
                     </td>
                   </tr>
@@ -334,6 +670,53 @@ const RiskDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {isExporting && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          color: 'white',
+          fontSize: '1.25rem',
+          fontWeight: '600',
+          fontFamily: 'Inter, sans-serif'
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            padding: '2rem 3rem',
+            borderRadius: '12px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid rgba(255, 255, 255, 0.1)',
+              borderTopColor: '#ef4444',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+            <style>{`
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <span>Generating A3 Landscape PDF...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
