@@ -145,6 +145,7 @@ export const CesiumWorkspace: React.FC = () => {
   const [terrainExportFormat, setTerrainExportFormat] = useState<'dem_asc' | 'dxf_tin' | 'dxf_contour'>('dxf_tin');
   const [terrainGridResolution, setTerrainGridResolution] = useState<number>(10);
   const [terrainContourInterval, setTerrainContourInterval] = useState<number>(5);
+  const [terrainCrs, setTerrainCrs] = useState<string>('EPSG:32636');
   const [isExportingTerrain, setIsExportingTerrain] = useState(false);
   const [terrainSelectionStatus, setTerrainSelectionStatus] = useState<string>('');
 
@@ -1254,6 +1255,43 @@ export const CesiumWorkspace: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Coordinate Reference System (CRS) projection helper for Area Surface Exporter
+  const getProjectedCoord = (
+    lon: number,
+    lat: number,
+    crs: string,
+    origin: { minLon: number; minLat: number; metersPerDegLon: number; metersPerDegLat: number }
+  ): { x: number; y: number } => {
+    if (crs === 'LOCAL') {
+      return {
+        x: (lon - origin.minLon) * origin.metersPerDegLon,
+        y: (lat - origin.minLat) * origin.metersPerDegLat
+      };
+    }
+    if (crs === 'EPSG:4326') {
+      return { x: lon, y: lat };
+    }
+
+    try {
+      if (typeof proj4 !== 'undefined') {
+        proj4.defs('EPSG:32636', '+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs');
+        proj4.defs('EPSG:32736', '+proj=utm +zone=36 +south +datum=WGS84 +units=m +no_defs');
+        proj4.defs('EPSG:32635', '+proj=utm +zone=35 +datum=WGS84 +units=m +no_defs');
+        proj4.defs('EPSG:21096', '+proj=utm +zone=36 +ellps=clrk80 +units=m +no_defs');
+
+        const res = proj4('EPSG:4326', crs, [lon, lat]);
+        return { x: res[0], y: res[1] };
+      }
+    } catch (err) {
+      console.warn('proj4 transformation error, fallback to local meters', err);
+    }
+
+    return {
+      x: (lon - origin.minLon) * origin.metersPerDegLon,
+      y: (lat - origin.minLat) * origin.metersPerDegLat
+    };
+  };
+
   const handleDownloadTerrainSurface = async () => {
     if (!viewerRef.current || !window.Cesium) return;
     const Cesium = window.Cesium;
@@ -1266,7 +1304,7 @@ export const CesiumWorkspace: React.FC = () => {
     }
 
     setIsExportingTerrain(true);
-    addLog(`Initiating terrain surface elevation grid export (${terrainGridResolution}m resolution)...`);
+    addLog(`Initiating terrain surface elevation export in ${terrainCrs} (${terrainGridResolution}m resolution)...`);
 
     try {
       const cartographics = pts.map(p => Cesium.Cartographic.fromCartesian(p));
@@ -1281,6 +1319,7 @@ export const CesiumWorkspace: React.FC = () => {
       const centerLatRad = Cesium.Math.toRadians((minLat + maxLat) / 2);
       const metersPerDegLat = 111320.0;
       const metersPerDegLon = Math.max(1000.0, 111320.0 * Math.cos(centerLatRad));
+      const origin = { minLon, minLat, metersPerDegLon, metersPerDegLat };
 
       const gridStepDegLat = terrainGridResolution / metersPerDegLat;
       const gridStepDegLon = terrainGridResolution / metersPerDegLon;
@@ -1340,17 +1379,31 @@ export const CesiumWorkspace: React.FC = () => {
       }
 
       const totalPoints = numRows * numCols;
-      addLog(`Sampled ${totalPoints} terrain surface grid points (${numCols}×${numRows}). Min Z: ${minH}m, Max Z: ${maxH}m`);
+      addLog(`Sampled ${totalPoints} terrain grid points (${numCols}×${numRows}). Min Z: ${minH}m, Max Z: ${maxH}m`);
 
-      const filenamePrefix = `terrain_${terrainSelectMode || 'area'}_${Date.now()}`;
+      const crsTag = terrainCrs.replace(':', '').toLowerCase();
+      const filenamePrefix = `terrain_${terrainSelectMode || 'area'}_${crsTag}_${Date.now()}`;
 
       if (terrainExportFormat === 'dem_asc') {
         const chunks: string[] = [];
         chunks.push(`NCOLS ${numCols}\n`);
         chunks.push(`NROWS ${numRows}\n`);
-        chunks.push(`XLLCORNER ${minLon.toFixed(6)}\n`);
-        chunks.push(`YLLCORNER ${minLat.toFixed(6)}\n`);
-        chunks.push(`CELLSIZE ${gridStepDegLon.toFixed(8)}\n`);
+
+        if (terrainCrs === 'EPSG:4326') {
+          chunks.push(`XLLCORNER ${minLon.toFixed(6)}\n`);
+          chunks.push(`YLLCORNER ${minLat.toFixed(6)}\n`);
+          chunks.push(`CELLSIZE ${gridStepDegLon.toFixed(8)}\n`);
+        } else if (terrainCrs === 'LOCAL') {
+          chunks.push(`XLLCORNER 0.000\n`);
+          chunks.push(`YLLCORNER 0.000\n`);
+          chunks.push(`CELLSIZE ${terrainGridResolution.toFixed(2)}\n`);
+        } else {
+          const cornerPt = getProjectedCoord(minLon, minLat, terrainCrs, origin);
+          chunks.push(`XLLCORNER ${cornerPt.x.toFixed(3)}\n`);
+          chunks.push(`YLLCORNER ${cornerPt.y.toFixed(3)}\n`);
+          chunks.push(`CELLSIZE ${terrainGridResolution.toFixed(2)}\n`);
+        }
+
         chunks.push(`NODATA_VALUE -9999\n`);
 
         for (let r = 0; r < numRows; r++) {
@@ -1358,10 +1411,12 @@ export const CesiumWorkspace: React.FC = () => {
         }
 
         downloadBlob(chunks.join(''), `${filenamePrefix}.asc`, 'text/plain');
-        addLog(`Successfully exported & downloaded DEM ASCII Grid file "${filenamePrefix}.asc"`);
+        addLog(`Successfully exported DEM ASCII Grid (${terrainCrs}) to "${filenamePrefix}.asc"`);
       } else if (terrainExportFormat === 'dxf_tin') {
         const chunks: string[] = [];
         chunks.push(`0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`);
+
+        const prec = terrainCrs === 'EPSG:4326' ? 6 : 3;
 
         for (let r = 0; r < numRows - 1; r++) {
           for (let c = 0; c < numCols - 1; c++) {
@@ -1377,13 +1432,13 @@ export const CesiumWorkspace: React.FC = () => {
             const lat0 = maxLat - r * actualStepLat;
             const lat1 = maxLat - (r + 1) * actualStepLat;
 
-            const x0 = (lon0 - minLon) * metersPerDegLon;
-            const x1 = (lon1 - minLon) * metersPerDegLon;
-            const y0 = (lat0 - minLat) * metersPerDegLat;
-            const y1 = (lat1 - minLat) * metersPerDegLat;
+            const p00 = getProjectedCoord(lon0, lat0, terrainCrs, origin);
+            const p10 = getProjectedCoord(lon1, lat0, terrainCrs, origin);
+            const p11 = getProjectedCoord(lon1, lat1, terrainCrs, origin);
+            const p01 = getProjectedCoord(lon0, lat1, terrainCrs, origin);
 
-            chunks.push(`0\n3DFACE\n8\nTERRAIN_TIN\n10\n${x0.toFixed(3)}\n20\n${y0.toFixed(3)}\n30\n${h00.toFixed(3)}\n11\n${x1.toFixed(3)}\n21\n${y0.toFixed(3)}\n31\n${h10.toFixed(3)}\n12\n${x1.toFixed(3)}\n22\n${y1.toFixed(3)}\n32\n${h11.toFixed(3)}\n13\n${x1.toFixed(3)}\n23\n${y1.toFixed(3)}\n33\n${h11.toFixed(3)}\n`);
-            chunks.push(`0\n3DFACE\n8\nTERRAIN_TIN\n10\n${x0.toFixed(3)}\n20\n${y0.toFixed(3)}\n30\n${h00.toFixed(3)}\n11\n${x1.toFixed(3)}\n21\n${y1.toFixed(3)}\n31\n${h11.toFixed(3)}\n12\n${x0.toFixed(3)}\n22\n${y1.toFixed(3)}\n32\n${h01.toFixed(3)}\n13\n${x0.toFixed(3)}\n23\n${y1.toFixed(3)}\n33\n${h01.toFixed(3)}\n`);
+            chunks.push(`0\n3DFACE\n8\nTERRAIN_TIN\n10\n${p00.x.toFixed(prec)}\n20\n${p00.y.toFixed(prec)}\n30\n${h00.toFixed(3)}\n11\n${p10.x.toFixed(prec)}\n21\n${p10.y.toFixed(prec)}\n31\n${h10.toFixed(3)}\n12\n${p11.x.toFixed(prec)}\n22\n${p11.y.toFixed(prec)}\n32\n${h11.toFixed(3)}\n13\n${p11.x.toFixed(prec)}\n23\n${p11.y.toFixed(prec)}\n33\n${h11.toFixed(3)}\n`);
+            chunks.push(`0\n3DFACE\n8\nTERRAIN_TIN\n10\n${p00.x.toFixed(prec)}\n20\n${p00.y.toFixed(prec)}\n30\n${h00.toFixed(3)}\n11\n${p11.x.toFixed(prec)}\n21\n${p11.y.toFixed(prec)}\n31\n${h11.toFixed(3)}\n12\n${p01.x.toFixed(prec)}\n22\n${p01.y.toFixed(prec)}\n32\n${h01.toFixed(3)}\n13\n${p01.x.toFixed(prec)}\n23\n${p01.y.toFixed(prec)}\n33\n${h01.toFixed(3)}\n`);
           }
 
           if (r % 20 === 0) {
@@ -1393,7 +1448,7 @@ export const CesiumWorkspace: React.FC = () => {
 
         chunks.push(`0\nENDSEC\n0\nEOF\n`);
         downloadBlob(chunks.join(''), `${filenamePrefix}_tin.dxf`, 'application/dxf');
-        addLog(`Successfully exported & downloaded DXF TIN Surface file "${filenamePrefix}_tin.dxf"`);
+        addLog(`Successfully exported DXF TIN Surface (${terrainCrs}) to "${filenamePrefix}_tin.dxf"`);
       } else if (terrainExportFormat === 'dxf_contour') {
         const chunks: string[] = [];
         chunks.push(`0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`);
@@ -1401,6 +1456,7 @@ export const CesiumWorkspace: React.FC = () => {
         const interval = Math.max(1, terrainContourInterval || 5);
         const startZ = Math.ceil(minH / interval) * interval;
         const endZ = Math.floor(maxH / interval) * interval;
+        const prec = terrainCrs === 'EPSG:4326' ? 6 : 3;
 
         let contourCount = 0;
         let steps = 0;
@@ -1422,41 +1478,40 @@ export const CesiumWorkspace: React.FC = () => {
               const lat0 = maxLat - r * actualStepLat;
               const lat1 = maxLat - (r + 1) * actualStepLat;
 
-              const x0 = (lon0 - minLon) * metersPerDegLon;
-              const x1 = (lon1 - minLon) * metersPerDegLon;
-              const y0 = (lat0 - minLat) * metersPerDegLat;
-              const y1 = (lat1 - minLat) * metersPerDegLat;
-
               const points: { x: number; y: number }[] = [];
 
               if ((h00 <= targetZ && h10 >= targetZ) || (h10 <= targetZ && h00 >= targetZ)) {
                 if (h10 !== h00) {
                   const t = (targetZ - h00) / (h10 - h00);
-                  points.push({ x: x0 + t * (x1 - x0), y: y0 });
+                  const pt = getProjectedCoord(lon0 + t * (lon1 - lon0), lat0, terrainCrs, origin);
+                  points.push(pt);
                 }
               }
               if ((h10 <= targetZ && h11 >= targetZ) || (h11 <= targetZ && h10 >= targetZ)) {
                 if (h11 !== h10) {
                   const t = (targetZ - h10) / (h11 - h10);
-                  points.push({ x: x1, y: y0 + t * (y1 - y0) });
+                  const pt = getProjectedCoord(lon1, lat0 + t * (lat1 - lat0), terrainCrs, origin);
+                  points.push(pt);
                 }
               }
               if ((h11 <= targetZ && h01 >= targetZ) || (h01 <= targetZ && h11 >= targetZ)) {
                 if (h01 !== h11) {
                   const t = (targetZ - h11) / (h01 - h11);
-                  points.push({ x: x1 + t * (x0 - x1), y: y1 });
+                  const pt = getProjectedCoord(lon1 + t * (lon0 - lon1), lat1, terrainCrs, origin);
+                  points.push(pt);
                 }
               }
               if ((h01 <= targetZ && h00 >= targetZ) || (h00 <= targetZ && h01 >= targetZ)) {
                 if (h00 !== h01) {
                   const t = (targetZ - h01) / (h00 - h01);
-                  points.push({ x: x0, y: y1 + t * (y0 - y1) });
+                  const pt = getProjectedCoord(lon0, lat1 + t * (lat0 - lat1), terrainCrs, origin);
+                  points.push(pt);
                 }
               }
 
               if (points.length >= 2) {
                 contourCount++;
-                chunks.push(`0\nLINE\n8\nCONTOURS_${targetZ}M\n10\n${points[0].x.toFixed(3)}\n20\n${points[0].y.toFixed(3)}\n30\n${targetZ.toFixed(3)}\n11\n${points[1].x.toFixed(3)}\n21\n${points[1].y.toFixed(3)}\n31\n${targetZ.toFixed(3)}\n`);
+                chunks.push(`0\nLINE\n8\nCONTOURS_${targetZ}M\n10\n${points[0].x.toFixed(prec)}\n20\n${points[0].y.toFixed(prec)}\n30\n${targetZ.toFixed(3)}\n11\n${points[1].x.toFixed(prec)}\n21\n${points[1].y.toFixed(prec)}\n31\n${targetZ.toFixed(3)}\n`);
               }
             }
           }
@@ -1468,7 +1523,7 @@ export const CesiumWorkspace: React.FC = () => {
 
         chunks.push(`0\nENDSEC\n0\nEOF\n`);
         downloadBlob(chunks.join(''), `${filenamePrefix}_contours.dxf`, 'application/dxf');
-        addLog(`Successfully exported & downloaded ${contourCount} DXF Contour lines (${interval}m interval) to "${filenamePrefix}_contours.dxf"`);
+        addLog(`Successfully exported ${contourCount} DXF Contour lines (${terrainCrs}) to "${filenamePrefix}_contours.dxf"`);
       }
     } catch (err) {
       console.error('Terrain export error:', err);
@@ -4097,6 +4152,23 @@ export const CesiumWorkspace: React.FC = () => {
                           {terrainSelectionStatus}
                         </div>
                       )}
+
+                      {/* Coordinate System Selector */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8' }}>Target Coordinate System (CRS)</span>
+                        <select
+                          value={terrainCrs}
+                          onChange={(e: any) => setTerrainCrs(e.target.value)}
+                          style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f8fafc', fontSize: '0.72rem', padding: '4px' }}
+                        >
+                          <option value="EPSG:32636">WGS 84 / UTM Zone 36N (EPSG:32636) - Uganda Default</option>
+                          <option value="EPSG:32736">WGS 84 / UTM Zone 36S (EPSG:32736)</option>
+                          <option value="EPSG:32635">WGS 84 / UTM Zone 35N (EPSG:32635) - W. Uganda</option>
+                          <option value="EPSG:21096">Arc 1960 / UTM Zone 36N (EPSG:21096)</option>
+                          <option value="EPSG:4326">WGS 84 Geographic Lat/Lon (EPSG:4326)</option>
+                          <option value="LOCAL">Local Project (0,0 Origin)</option>
+                        </select>
+                      </div>
 
                       {/* Export Format Dropdown */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
