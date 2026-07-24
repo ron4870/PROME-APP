@@ -306,10 +306,128 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                     borderRadius: overlay.type === 'circle' ? '50%' : '0%',
                     pointerEvents: 'none'
                   }} />
-                ) : overlay.type === 'line' ? (
-                  <svg width="100%" height="100%" style={{ pointerEvents: 'none', overflow: 'visible' }}>
-                    <line x1="0" y1="0" x2="100%" y2="100%" stroke={overlay.strokeColor || '#000000'} strokeWidth={overlay.strokeWidth ?? 2} />
-                  </svg>
+                ) : overlay.type === 'line' || overlay.type === 'arrow' || overlay.type === 'leader-line' ? ((() => {
+                  const markerId = `arrowhead-${overlay.id}`;
+                  const strokeWidth = overlay.strokeWidth ?? 2;
+                  const strokeColor = overlay.strokeColor || '#000000';
+                  
+                  // Coordinate tail/head orientation based on direction
+                  let x1 = "0%", y1 = "0%", x2 = "100%", y2 = "100%";
+                  if (overlay.direction === 'bottom-left-to-top-right') {
+                    x1 = "0%"; y1 = "100%"; x2 = "100%"; y2 = "0%";
+                  } else if (overlay.direction === 'top-right-to-bottom-left') {
+                    x1 = "100%"; y1 = "0%"; x2 = "0%"; y2 = "100%";
+                  } else if (overlay.direction === 'bottom-right-to-top-left') {
+                    x1 = "100%"; y1 = "100%"; x2 = "0%"; y2 = "0%";
+                  }
+
+                  const showArrowhead = overlay.type === 'arrow' || overlay.type === 'leader-line';
+                  
+                  // Render the actual line element
+                  let pathElement = <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={strokeWidth} markerEnd={showArrowhead ? `url(#${markerId})` : undefined} />;
+                  
+                  if (showArrowhead && overlay.arrowType === 'curved') {
+                    // Draw Bezier Q curve
+                    // Calculate middle point for curve control
+                    const x1_n = overlay.direction?.includes('right') ? 100 : 0;
+                    const x2_n = overlay.direction?.includes('right') ? 0 : 100;
+                    const y1_n = overlay.direction?.startsWith('bottom') ? 100 : 0;
+                    const y2_n = overlay.direction?.startsWith('bottom') ? 0 : 100;
+                    
+                    const cx = (x1_n + x2_n) / 2;
+                    const cy = y1_n;
+                    const pathData = `M ${x1_n}% ${y1_n}% Q ${cx}% ${cy}% ${x2_n}% ${y2_n}%`;
+                    pathElement = <path d={pathData} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} markerEnd={`url(#${markerId})`} />;
+                  } else if (showArrowhead && overlay.arrowType === 'angled') {
+                    // Draw Polyline (L shape)
+                    const x1_n = overlay.direction?.includes('right') ? "100%" : "0%";
+                    const x2_n = overlay.direction?.includes('right') ? "0%" : "100%";
+                    const y1_n = overlay.direction?.startsWith('bottom') ? "100%" : "0%";
+                    const y2_n = overlay.direction?.startsWith('bottom') ? "0%" : "100%";
+                    const points = `${x1_n},${y1_n} ${x2_n},${y1_n} ${x2_n},${y2_n}`;
+                    pathElement = <polyline points={points} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} markerEnd={`url(#${markerId})`} />;
+                  }
+
+                  const isLeader = overlay.type === 'leader-line';
+
+                  return (
+                    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                      <svg width="100%" height="100%" style={{ pointerEvents: 'none', overflow: 'visible' }}>
+                        {showArrowhead && (
+                          <defs>
+                            <marker
+                              id={markerId}
+                              markerWidth="10"
+                              markerHeight="7"
+                              refX="8"
+                              refY="3.5"
+                              orient="auto"
+                              markerUnits="strokeWidth"
+                            >
+                              <polygon points="0 0, 10 3.5, 0 7" fill={strokeColor} />
+                            </marker>
+                          </defs>
+                        )}
+                        {pathElement}
+                      </svg>
+
+                      {/* Floating Text Label at the Tail of the Leader Line */}
+                      {isLeader && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: overlay.direction?.startsWith('bottom') ? 'auto' : '0px',
+                            bottom: overlay.direction?.startsWith('bottom') ? '0px' : 'auto',
+                            left: overlay.direction?.includes('right') ? 'auto' : '0px',
+                            right: overlay.direction?.includes('right') ? '0px' : 'auto',
+                            transform: 'translate(0, 0)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            border: '1px solid #94a3b8',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            pointerEvents: 'auto',
+                            zIndex: 10,
+                            display: 'flex',
+                            alignItems: 'center',
+                            minWidth: '80px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()} // Let user interact with text box
+                        >
+                          {isSelected ? (
+                            <input
+                              type="text"
+                              value={overlay.label || ''}
+                              placeholder="Text..."
+                              onChange={(e) => {
+                                if (onOverlaysChange) {
+                                  const updated = overlays.map(o => o.id === overlay.id ? { ...o, label: e.target.value } : o);
+                                  onOverlaysChange(updated);
+                                }
+                              }}
+                              style={{
+                                border: 'none',
+                                outline: 'none',
+                                background: 'transparent',
+                                fontSize: '11px',
+                                width: '100%',
+                                padding: 0,
+                                margin: 0,
+                                textAlign: 'center',
+                                fontWeight: 500,
+                                color: '#1e293b'
+                              }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: '11px', fontWeight: 500, color: '#1e293b', width: '100%', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              {overlay.label || 'Leader text'}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
                 ) : (
                   <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                     {isSelected && overlay.type === 'text' ? (

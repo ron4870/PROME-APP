@@ -437,7 +437,7 @@ router.post('/:id/pages/:pageId/import-cad', authenticate, upload.single('file')
           
           // Use scale(1, -1) to counter the parent <g> flipping the Y-axis
           // so the text renders upright.
-          textNodes += `<text transform="translate(${x}, ${y}) scale(1, -1)" fill="black" font-size="${height}" font-family="Arial">${textStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>\n  `;
+          textNodes += `<text transform="translate(${x}, ${y}) scale(1, -1)" fill="black" stroke="none" font-size="${height}" font-family="Arial">${textStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>\n  `;
         }
       });
       
@@ -445,6 +445,9 @@ router.post('/:id/pages/:pageId/import-cad', authenticate, upload.single('file')
         svgString = svgString.replace('</g>\n</svg>', `  ${textNodes}</g>\n</svg>`);
       }
     }
+
+    // Replace default dxf line thickness 0.1% with 0.03% to make lines thin and crisp
+    svgString = svgString.replace(/stroke-width="0\.1%"/g, 'stroke-width="0.03%"');
 
     res.json({ svg: svgString });
   } catch (error: any) {

@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken as authenticate } from '../middleware/auth';
 import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateDatabaseProjectFolder } from '../services/drive.service';
 import { Readable } from 'stream';
+import AdmZip from 'adm-zip';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -293,42 +296,133 @@ router.post('/:id/documents', authenticate, checkDatabaseProjectAccess(), upload
     const file = req.file;
     let fileUrl = null;
 
+    const user = (req as any).user;
+    const isAdmin = user?.roles?.some((r: any) => r.name === 'Administrator' || r.name === 'Admin' || r.name === 'Super Admin');
+    if (type === 'General Stream Registry' && !isAdmin) {
+      return res.status(403).json({ message: 'Only administrators can upload files to the GENERAL STREAM REGISTRY' });
+    }
+
     if (file) {
       const project = await prisma.databaseProject.findUnique({ where: { id: Number(projectId) } });
       if (!project) return res.status(404).json({ error: 'Database project not found' });
-      
-      const targetFolderId = await getOrCreateDatabaseProjectFolder(project.id, project.name, project.driveFolderId);
-      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink, webContentLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
+
+      let parsedMetadata = null;
+      if (metadata) {
+        try {
+          parsedMetadata = JSON.parse(metadata);
+        } catch(e) {}
+      }
+
+      const fileExt = file.originalname.split('.').pop()?.toLowerCase();
+      const uploadDir = path.join(__dirname, '../../uploads');
+      const tilesDir = path.join(uploadDir, '3d-tiles');
+      if (!fs.existsSync(tilesDir)) {
+        fs.mkdirSync(tilesDir, { recursive: true });
+      }
+
+      if (fileExt === 'zip') {
+        const uniqueId = `tiles-${Date.now()}`;
+        const destPath = path.join(tilesDir, uniqueId);
+        fs.mkdirSync(destPath, { recursive: true });
         
-        let parsedMetadata = null;
-        if (metadata) {
-          try {
-            parsedMetadata = JSON.parse(metadata);
-          } catch(e) {}
+        try {
+          const zip = new AdmZip(file.buffer);
+          zip.extractAllTo(destPath, true);
+          
+          const findTileset = (dir: string): string | null => {
+            const filesList = fs.readdirSync(dir);
+            for (const f of filesList) {
+              const fullPath = path.join(dir, f);
+              const stat = fs.statSync(fullPath);
+              if (stat.isDirectory()) {
+                const found = findTileset(fullPath);
+                if (found) return found;
+              } else if (f.toLowerCase() === 'tileset.json') {
+                return path.relative(destPath, fullPath);
+              }
+            }
+            return null;
+          };
+          
+          const tilesetRelPath = findTileset(destPath);
+          if (tilesetRelPath) {
+            const relativeUrlPath = `/uploads/3d-tiles/${uniqueId}/${tilesetRelPath.replace(/\\/g, '/')}`;
+            fileUrl = JSON.stringify({
+              id: uniqueId,
+              view: relativeUrlPath,
+              download: relativeUrlPath,
+              is3dTiles: true,
+              metadata: parsedMetadata
+            });
+          } else {
+            fs.rmSync(destPath, { recursive: true, force: true });
+            return res.status(400).json({ message: 'Invalid 3D Tileset zip. Must contain a tileset.json file.' });
+          }
+        } catch (zipErr) {
+          console.error('Error extracting 3D tileset zip:', zipErr);
+          return res.status(400).json({ message: 'Failed to extract 3D Tileset zip.' });
         }
+      } else if (fileExt === 'json' && file.originalname.toLowerCase().includes('tileset')) {
+        const uniqueId = `tiles-${Date.now()}`;
+        const destPath = path.join(tilesDir, uniqueId);
+        fs.mkdirSync(destPath, { recursive: true });
         
-        fileUrl = JSON.stringify({ 
-          id: fileId, 
-          view: driveFile.data.webViewLink, 
-          download: driveFile.data.webContentLink, 
-          isPdf: file.mimetype === 'application/pdf',
+        fs.writeFileSync(path.join(destPath, 'tileset.json'), file.buffer);
+        const relativeUrlPath = `/uploads/3d-tiles/${uniqueId}/tileset.json`;
+        
+        fileUrl = JSON.stringify({
+          id: uniqueId,
+          view: relativeUrlPath,
+          download: relativeUrlPath,
+          is3dTiles: true,
           metadata: parsedMetadata
         });
+      } else {
+        try {
+          const targetFolderId = await getOrCreateDatabaseProjectFolder(project.id, project.name, project.driveFolderId);
+          const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+          const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+          
+          const driveFile = await driveService.files.create({
+            requestBody: fileMetadata,
+            media: media,
+            fields: 'id, webViewLink, webContentLink',
+            supportsAllDrives: true
+          });
+          const fileId = driveFile.data.id;
+          if (fileId) {
+            try {
+              await driveService.permissions.create({
+                fileId: fileId,
+                requestBody: { role: 'reader', type: 'anyone' },
+                supportsAllDrives: true
+              });
+            } catch (permErr) {
+              console.warn('Drive permission setting warning:', permErr);
+            }
+            
+            fileUrl = JSON.stringify({ 
+              id: fileId, 
+              view: driveFile.data.webViewLink, 
+              download: driveFile.data.webContentLink, 
+              isPdf: file.mimetype === 'application/pdf',
+              metadata: parsedMetadata
+            });
+          }
+        } catch (driveErr) {
+          console.error('Google Drive upload error, falling back to local file storage:', driveErr);
+          const sanitizeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const localFilename = `doc-${Date.now()}-${sanitizeName}`;
+          const localUploadPath = path.join(__dirname, '../../uploads', localFilename);
+          fs.writeFileSync(localUploadPath, file.buffer);
+          const relativeUrlPath = `/uploads/${localFilename}`;
+          fileUrl = JSON.stringify({
+            id: `local-${Date.now()}`,
+            view: relativeUrlPath,
+            download: relativeUrlPath,
+            metadata: parsedMetadata
+          });
+        }
       }
     }
 
@@ -364,14 +458,19 @@ router.delete('/:id/documents/:docId', authenticate, checkDatabaseProjectAccess(
     if (doc.fileUrl) {
       try {
         const fileInfo = JSON.parse(doc.fileUrl);
-        if (fileInfo.id) {
+        if (fileInfo.is3dTiles && fileInfo.id) {
+          const folderPath = path.join(__dirname, '../../uploads/3d-tiles', fileInfo.id);
+          if (fs.existsSync(folderPath)) {
+            fs.rmSync(folderPath, { recursive: true, force: true });
+          }
+        } else if (fileInfo.id) {
           await driveService.files.delete({
             fileId: fileInfo.id,
             supportsAllDrives: true
           });
         }
       } catch (err) {
-        console.error('Failed to delete file from Google Drive:', err);
+        console.error('Failed to delete file/folder:', err);
       }
     }
 
@@ -410,6 +509,87 @@ router.post('/:id/members', authenticate, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET proxy endpoint to download/stream document from Google Drive or local uploads to bypass CORS
+router.get('/documents/:docId/file', authenticate, async (req, res) => {
+  try {
+    const docId = parseInt(req.params.docId);
+    const doc = await prisma.databaseProjectDocument.findUnique({
+      where: { id: docId }
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    let urlInfo: any = {};
+    try {
+      urlInfo = JSON.parse(doc.fileUrl || '{}');
+    } catch(e) {}
+
+    const viewOrDownload = urlInfo.view || urlInfo.download || doc.fileUrl || '';
+
+    // Determine mimeType from file extension or doc title
+    let mimeType = 'image/png';
+    const ext = doc.title.split('.').pop()?.toLowerCase();
+    if (ext === 'png') mimeType = 'image/png';
+    else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+    else if (ext === 'gif') mimeType = 'image/gif';
+    else if (ext === 'pdf') mimeType = 'application/pdf';
+    else if (ext === 'xml') mimeType = 'text/xml';
+    else mimeType = 'application/octet-stream';
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+
+    // 1. Check if stored locally in /uploads directory
+    if (viewOrDownload && viewOrDownload.includes('/uploads/')) {
+      const localRelativePath = viewOrDownload.substring(viewOrDownload.indexOf('/uploads/'));
+      const localFilePath = path.join(__dirname, '../..', localRelativePath);
+      if (fs.existsSync(localFilePath)) {
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `inline; filename="${doc.title}"`);
+        return fs.createReadStream(localFilePath).pipe(res);
+      }
+    }
+
+    // 2. Try to stream from Google Drive if a valid drive file ID exists
+    const driveFileId = urlInfo.id;
+    if (driveFileId && typeof driveFileId === 'string' && !driveFileId.startsWith('local-')) {
+      try {
+        const driveRes = await driveService.files.get(
+          { fileId: driveFileId, alt: 'media' },
+          { responseType: 'stream' }
+        );
+
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `inline; filename="${doc.title}"`);
+        return driveRes.data.pipe(res);
+      } catch (driveErr) {
+        console.warn('Drive file stream failed, checking local uploads fallback:', driveErr);
+      }
+    }
+
+    // 3. Fallback: search for file in uploads directory by document ID
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const filesList = fs.readdirSync(uploadsDir);
+      const matchedFile = filesList.find(f => f.includes(`doc-`) && (f.includes(`${doc.id}`) || f.includes(doc.title.replace(/[^a-zA-Z0-9.-]/g, '_'))));
+      if (matchedFile) {
+        const fallbackPath = path.join(uploadsDir, matchedFile);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `inline; filename="${doc.title}"`);
+        return fs.createReadStream(fallbackPath).pipe(res);
+      }
+    }
+
+    res.status(404).json({ error: 'File content not available.' });
+  } catch (error: any) {
+    console.error('Error streaming document:', error);
+    res.status(500).json({ error: 'Failed to stream file content' });
   }
 });
 

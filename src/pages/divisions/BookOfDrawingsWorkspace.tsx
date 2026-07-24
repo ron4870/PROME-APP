@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutTemplate, Type, Image as ImageIcon, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, Maximize, Edit2, Hand, Minus, Square, Circle } from 'lucide-react';
+import { LayoutTemplate, Type, Image as ImageIcon, Save, Download, Trash2, FolderPlus, FileText, Plus, ArrowLeft, Building2, Calendar, GripVertical, Maximize, Edit2, Hand, Minus, Square, Circle, ArrowUpRight, Tag } from 'lucide-react';
 import { DrawingCanvas } from '../../components/book-of-drawings/DrawingCanvas';
 import * as fabric from 'fabric';
 import jsPDF from 'jspdf';
@@ -10,7 +10,7 @@ import { Reorder } from 'framer-motion';
 // ISO Standard Paper Sizes (Landscape orientation dimensions in mm)
 export interface Overlay {
   id: string;
-  type: 'pageName' | 'sectionShortName' | 'pageNumber' | 'text' | 'image' | 'rect' | 'circle' | 'line';
+  type: 'pageName' | 'sectionShortName' | 'pageNumber' | 'text' | 'image' | 'rect' | 'circle' | 'line' | 'arrow' | 'leader-line';
   label: string; // Used for text content if type is text or placeholders
   src?: string;  // Used for base64 data url if type is image
   x: number;
@@ -24,6 +24,84 @@ export interface Overlay {
   strokeColor?: string;
   fillColor?: string;
   maxRows?: number;
+  direction?: 'top-left-to-bottom-right' | 'bottom-left-to-top-right' | 'top-right-to-bottom-left' | 'bottom-right-to-top-left';
+  arrowType?: 'straight' | 'angled' | 'curved';
+}
+
+function generateOverlaySvg(overlay: Overlay): string {
+  const width = overlay.width;
+  const height = overlay.height;
+  const strokeColor = overlay.strokeColor || '#000000';
+  const strokeWidth = overlay.strokeWidth ?? 2;
+  const fillColor = overlay.fillColor || 'transparent';
+  
+  if (overlay.type === 'rect') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${width - strokeWidth}" height="${height - strokeWidth}" stroke="${strokeColor}" stroke-width="${strokeWidth}" fill="${fillColor}" />
+    </svg>`;
+  }
+  
+  if (overlay.type === 'circle') {
+    const rx = (width - strokeWidth) / 2;
+    const ry = (height - strokeWidth) / 2;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <ellipse cx="${width/2}" cy="${height/2}" rx="${rx}" ry="${ry}" stroke="${strokeColor}" stroke-width="${strokeWidth}" fill="${fillColor}" />
+    </svg>`;
+  }
+
+  // Setup line coordinates based on direction
+  let x1 = 0, y1 = 0, x2 = width, y2 = height;
+  if (overlay.direction === 'bottom-left-to-top-right') {
+    x1 = 0; y1 = height; x2 = width; y2 = 0;
+  } else if (overlay.direction === 'top-right-to-bottom-left') {
+    x1 = width; y1 = 0; x2 = 0; y2 = height;
+  } else if (overlay.direction === 'bottom-right-to-top-left') {
+    x1 = width; y1 = height; x2 = 0; y2 = 0;
+  }
+
+  const markerId = `arrowhead-${overlay.id}`;
+  
+  // Marker definition for arrows
+  const defs = (overlay.type === 'arrow' || overlay.type === 'leader-line') ? `<defs>
+    <marker
+      id="${markerId}"
+      markerWidth="10"
+      markerHeight="7"
+      refX="8"
+      refY="3.5"
+      orient="auto"
+      markerUnits="strokeWidth"
+    >
+      <polygon points="0 0, 10 3.5, 0 7" fill="${strokeColor}" />
+    </marker>
+  </defs>` : '';
+
+  const markerEnd = (overlay.type === 'arrow' || overlay.type === 'leader-line') ? `marker-end="url(#${markerId})"` : '';
+
+  if (overlay.type === 'line' || overlay.type === 'arrow' || overlay.type === 'leader-line') {
+    if ((overlay.type === 'arrow' || overlay.type === 'leader-line') && overlay.arrowType === 'curved') {
+      const cx = (x1 + x2) / 2;
+      const cy = y1;
+      const pathData = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        ${defs}
+        <path d="${pathData}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" ${markerEnd} />
+      </svg>`;
+    } else if ((overlay.type === 'arrow' || overlay.type === 'leader-line') && overlay.arrowType === 'angled') {
+      const points = `${x1},${y1} ${x2},${y1} ${x2},${y2}`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        ${defs}
+        <polyline points="${points}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" ${markerEnd} />
+      </svg>`;
+    } else {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        ${defs}
+        <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${strokeColor}" stroke-width="${strokeWidth}" ${markerEnd} />
+      </svg>`;
+    }
+  }
+
+  return '';
 }
 
 export const PAPER_SIZES = {
@@ -75,6 +153,7 @@ export default function BookOfDrawingsWorkspace() {
   const lastOuterPosRef = useRef({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const svgInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
 
   const centerCanvas = () => {
@@ -387,21 +466,24 @@ export default function BookOfDrawingsWorkspace() {
     }
   };
 
-  const addShape = (type: 'rect' | 'circle' | 'line') => {
+  const addShape = (type: 'rect' | 'circle' | 'line' | 'arrow' | 'leader-line') => {
+    const isLineOrArrow = type === 'line' || type === 'arrow' || type === 'leader-line';
     const newOverlay: Overlay = {
       id: Math.random().toString(36).substring(2, 9),
       type,
-      label: '',
+      label: type === 'leader-line' ? 'Leader label' : '',
       x: 100,
       y: 100,
-      width: type === 'line' ? 200 : 100,
-      height: type === 'line' ? 4 : 100,
+      width: isLineOrArrow ? 200 : 100,
+      height: isLineOrArrow ? 100 : 100,
       fontSize: 14,
       fontFamily: 'Arial',
       textFill: '#000000',
-      strokeWidth: type === 'line' ? 4 : 2,
+      strokeWidth: isLineOrArrow ? 3 : 2,
       strokeColor: '#000000',
-      fillColor: type === 'line' ? undefined : 'transparent'
+      fillColor: isLineOrArrow ? undefined : 'transparent',
+      direction: isLineOrArrow ? 'top-left-to-bottom-right' : undefined,
+      arrowType: (type === 'arrow' || type === 'leader-line') ? 'straight' : undefined
     };
     setOverlays(prev => [...prev, newOverlay]);
     setSelectedOverlayId(newOverlay.id);
@@ -555,7 +637,44 @@ export default function BookOfDrawingsWorkspace() {
         throw new Error(resData.message || 'Failed to convert PDF');
       }
 
-      const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(resData.svg);
+      let processedSvg = resData.svg;
+      let ratio = 1.33; // Default 4:3
+      let originalWidth = 800;
+      let originalHeight = 600;
+
+      const viewBoxMatch = processedSvg.match(/viewBox="([^"]+)"/i);
+      if (viewBoxMatch) {
+        const parts = viewBoxMatch[1].trim().split(/\s+/);
+        if (parts.length >= 4) {
+          const w = parseFloat(parts[2]);
+          const h = parseFloat(parts[3]);
+          if (w > 0 && h > 0) {
+            ratio = w / h;
+            // Limit to max bounding box of 800px width/height while keeping aspect ratio
+            if (ratio > 1) { // Landscape
+              originalWidth = 800;
+              originalHeight = Math.round(800 / ratio);
+            } else { // Portrait
+              originalWidth = Math.round(800 * ratio);
+              originalHeight = 800;
+            }
+          }
+        }
+      }
+
+      // Convert width and height attributes in opening <svg> tag to 100% to make it scalable
+      const svgTagMatch = processedSvg.match(/<svg([^>]*)>/i);
+      if (svgTagMatch) {
+        let svgTagBody = svgTagMatch[1];
+        // Strip out existing absolute width/height attributes
+        svgTagBody = svgTagBody.replace(/\s+width="[^"]*"/gi, '');
+        svgTagBody = svgTagBody.replace(/\s+height="[^"]*"/gi, '');
+        // Append 100% width and height attributes
+        svgTagBody = ` width="100%" height="100%"${svgTagBody}`;
+        processedSvg = processedSvg.replace(/<svg[^>]*>/i, `<svg${svgTagBody}>`);
+      }
+
+      const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(processedSvg);
       
       const newOverlay: Overlay = {
         id: Math.random().toString(36).substring(2, 9),
@@ -564,8 +683,8 @@ export default function BookOfDrawingsWorkspace() {
         src: svgDataUrl,
         x: 100,
         y: 100,
-        width: 800,
-        height: 600,
+        width: originalWidth,
+        height: originalHeight,
         fontSize: 14,
         fontFamily: 'Arial',
         textFill: '#000000'
@@ -583,6 +702,115 @@ export default function BookOfDrawingsWorkspace() {
         pdfInputRef.current.value = '';
       }
     }
+  };
+
+  const handleSvgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePageId) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const svgContent = event.target?.result as string;
+        
+        let processedSvg = svgContent;
+        let ratio = 1.0;
+        let originalWidth = 400;
+        let originalHeight = 400;
+
+        // Try to parse aspect ratio from viewBox
+        const viewBoxMatch = processedSvg.match(/viewBox="([^"]+)"/i);
+        if (viewBoxMatch) {
+          const parts = viewBoxMatch[1].trim().split(/\s+/);
+          if (parts.length >= 4) {
+            const w = parseFloat(parts[2]);
+            const h = parseFloat(parts[3]);
+            if (w > 0 && h > 0) {
+              ratio = w / h;
+              if (ratio > 1) { // Landscape
+                originalWidth = 600;
+                originalHeight = Math.round(600 / ratio);
+              } else { // Portrait
+                originalWidth = Math.round(600 * ratio);
+                originalHeight = 600;
+              }
+            }
+          }
+        } else {
+          // If no viewBox, look for absolute width/height to get aspect ratio
+          const wMatch = processedSvg.match(/width="([^"]+)"/i);
+          const hMatch = processedSvg.match(/height="([^"]+)"/i);
+          if (wMatch && hMatch) {
+            const w = parseFloat(wMatch[1]);
+            const h = parseFloat(hMatch[1]);
+            if (w > 0 && h > 0) {
+              ratio = w / h;
+              if (ratio > 1) {
+                originalWidth = 600;
+                originalHeight = Math.round(600 / ratio);
+              } else {
+                originalWidth = Math.round(600 * ratio);
+                originalHeight = 600;
+              }
+            }
+          }
+        }
+
+        // Convert absolute width and height attributes in opening <svg> tag to 100% to make it scalable
+        const svgTagMatch = processedSvg.match(/<svg([^>]*)>/i);
+        if (svgTagMatch) {
+          let svgTagBody = svgTagMatch[1];
+          // Strip out existing absolute width/height attributes
+          svgTagBody = svgTagBody.replace(/\s+width="[^"]*"/gi, '');
+          svgTagBody = svgTagBody.replace(/\s+height="[^"]*"/gi, '');
+          // Ensure viewBox exists, construct it if missing
+          if (!svgTagBody.includes('viewBox') && ratio !== 1) {
+            const wMatch = svgContent.match(/width="([^"]+)"/i);
+            const hMatch = svgContent.match(/height="([^"]+)"/i);
+            if (wMatch && hMatch) {
+              svgTagBody = ` viewBox="0 0 ${parseFloat(wMatch[1])} ${parseFloat(hMatch[1])}"${svgTagBody}`;
+            }
+          }
+          // Append 100% width and height attributes
+          svgTagBody = ` width="100%" height="100%"${svgTagBody}`;
+          processedSvg = processedSvg.replace(/<svg[^>]*>/i, `<svg${svgTagBody}>`);
+        }
+
+        const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(processedSvg);
+
+        const newOverlay: Overlay = {
+          id: Math.random().toString(36).substring(2, 9),
+          type: 'image',
+          label: 'SVG Overlay',
+          src: svgDataUrl,
+          x: 150,
+          y: 150,
+          width: originalWidth,
+          height: originalHeight,
+          fontSize: 14,
+          fontFamily: 'Arial',
+          textFill: '#000000'
+        };
+
+        setOverlays(prev => [...prev, newOverlay]);
+        setSelectedOverlayId(newOverlay.id);
+
+      } catch (err) {
+        console.error(err);
+        alert('Failed to parse SVG file.');
+      } finally {
+        if (svgInputRef.current) {
+          svgInputRef.current.value = '';
+        }
+      }
+    };
+    reader.onerror = () => {
+      alert('Failed to read file.');
+      if (svgInputRef.current) {
+        svgInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleExportPDF = () => {
@@ -768,23 +996,55 @@ export default function BookOfDrawingsWorkspace() {
         const renderOverlays = async (overlaysToRender: Overlay[]) => {
           for (const p of overlaysToRender) {
             // Draw shapes
-            if (p.type === 'rect' || p.type === 'circle' || p.type === 'line') {
-              if (p.strokeColor) pdf.setDrawColor(p.strokeColor);
-              if (p.fillColor && p.fillColor !== 'transparent') pdf.setFillColor(p.fillColor);
-              if (p.strokeWidth !== undefined) pdf.setLineWidth(p.strokeWidth * 0.264583); // ~ convert px to mm
+            if (p.type === 'rect' || p.type === 'circle' || p.type === 'line' || p.type === 'arrow' || p.type === 'leader-line') {
+              if (p.type === 'rect' || p.type === 'circle') {
+                if (p.strokeColor) pdf.setDrawColor(p.strokeColor);
+                if (p.fillColor && p.fillColor !== 'transparent') pdf.setFillColor(p.fillColor);
+                if (p.strokeWidth !== undefined) pdf.setLineWidth(p.strokeWidth * 0.264583); // ~ convert px to mm
 
-              let drawStyle = '';
-              if (p.fillColor && p.fillColor !== 'transparent') drawStyle += 'F';
-              if (p.strokeWidth !== undefined && p.strokeWidth > 0) drawStyle = drawStyle ? 'DF' : 'S';
+                let drawStyle = '';
+                if (p.fillColor && p.fillColor !== 'transparent') drawStyle += 'F';
+                if (p.strokeWidth !== undefined && p.strokeWidth > 0) drawStyle = drawStyle ? 'DF' : 'S';
 
-              if (p.type === 'rect' && drawStyle) {
-                pdf.rect(p.x, p.y, p.width, p.height, drawStyle);
-              } else if (p.type === 'circle' && drawStyle) {
-                const rx = p.width / 2;
-                const ry = p.height / 2;
-                pdf.ellipse(p.x + rx, p.y + ry, rx, ry, drawStyle);
-              } else if (p.type === 'line') {
-                pdf.line(p.x, p.y, p.x + p.width, p.y + p.height);
+                if (p.type === 'rect' && drawStyle) {
+                  pdf.rect(p.x, p.y, p.width, p.height, drawStyle);
+                } else if (p.type === 'circle' && drawStyle) {
+                  const rx = p.width / 2;
+                  const ry = p.height / 2;
+                  pdf.ellipse(p.x + rx, p.y + ry, rx, ry, drawStyle);
+                }
+              } else {
+                // For line, arrow, and leader-line: render dynamic SVG to high-res PNG
+                const svgMarkup = generateOverlaySvg(p);
+                const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgMarkup);
+                const highResPng = await svgToPng(dataUrl, p.width, p.height);
+                if (highResPng) {
+                  pdf.addImage(highResPng, 'PNG', p.x, p.y, p.width, p.height);
+                }
+
+                // Render leader line text label natively in jsPDF
+                if (p.type === 'leader-line' && p.label) {
+                  let tailX = 0;
+                  let tailY = 0;
+                  if (p.direction === 'bottom-left-to-top-right') {
+                    tailY = p.height;
+                  } else if (p.direction === 'top-right-to-bottom-left') {
+                    tailX = p.width;
+                  } else if (p.direction === 'bottom-right-to-top-left') {
+                    tailX = p.width;
+                    tailY = p.height;
+                  }
+
+                  const textX = p.x + tailX;
+                  // Shift slightly vertically so text sits above/below the tail depending on direction
+                  const textY = p.y + tailY + (p.direction?.startsWith('bottom') ? -4 : 4);
+
+                  const fontSizePt = (p.fontSize || 11) * 2.83465;
+                  pdf.setFont(p.fontFamily || 'Arial');
+                  pdf.setFontSize(fontSizePt);
+                  pdf.setTextColor(p.textFill || '#1e293b');
+                  pdf.text(p.label, textX, textY, { align: 'center', baseline: 'middle' });
+                }
               }
               continue;
             }
@@ -1030,20 +1290,22 @@ export default function BookOfDrawingsWorkspace() {
                   <button onClick={() => alert("Drag and drop images directly onto the canvas.")} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <ImageIcon size={14} /> Image
                   </button>
-                  {activeSection === 'Page Layout' && (
-                    <>
-                      <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
-                      <button onClick={() => addShape('line')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Minus size={14} /> Line
-                      </button>
-                      <button onClick={() => addShape('rect')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Square size={14} /> Box
-                      </button>
-                      <button onClick={() => addShape('circle')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Circle size={14} /> Circle
-                      </button>
-                    </>
-                  )}
+                  <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
+                  <button onClick={() => addShape('line')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Minus size={14} /> Line
+                  </button>
+                  <button onClick={() => addShape('rect')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Square size={14} /> Box
+                  </button>
+                  <button onClick={() => addShape('circle')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Circle size={14} /> Circle
+                  </button>
+                  <button onClick={() => addShape('arrow')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <ArrowUpRight size={14} /> Arrow
+                  </button>
+                  <button onClick={() => addShape('leader-line')} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Tag size={14} /> Leader Line
+                  </button>
                   <input type="file" ref={fileInputRef} accept=".dwg,.dxf" onChange={handleCadUpload} style={{ display: 'none' }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingCad} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     {isUploadingCad ? <span className="spinner-small" /> : <Plus size={14} />} Import CAD
@@ -1051,6 +1313,10 @@ export default function BookOfDrawingsWorkspace() {
                   <input type="file" ref={pdfInputRef} accept=".pdf" onChange={handlePdfOverlayUpload} style={{ display: 'none' }} />
                   <button onClick={() => pdfInputRef.current?.click()} disabled={isUploadingPdf} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     {isUploadingPdf ? <span className="spinner-small" /> : <FileText size={14} />} Import PDF
+                  </button>
+                  <input type="file" ref={svgInputRef} accept=".svg" onChange={handleSvgUpload} style={{ display: 'none' }} />
+                  <button onClick={() => svgInputRef.current?.click()} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <ImageIcon size={14} /> Import SVG
                   </button>
                   <div style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 0.5rem' }}></div>
                   <button 
@@ -1095,8 +1361,8 @@ export default function BookOfDrawingsWorkspace() {
                 const activeFontSize = isOverlay ? overlay?.fontSize : ((selectedObject as any)?.fontSize || 40);
                 const activeColor = isOverlay ? overlay?.textFill : ((selectedObject as any)?.fill || '#000000');
                 
-                const isText = isOverlay && overlay?.type !== 'image' && overlay?.type !== 'rect' && overlay?.type !== 'circle' && overlay?.type !== 'line';
-                const isShape = isOverlay && (overlay?.type === 'rect' || overlay?.type === 'circle' || overlay?.type === 'line');
+                const isShape = isOverlay && (overlay?.type === 'rect' || overlay?.type === 'circle' || overlay?.type === 'line' || overlay?.type === 'arrow' || overlay?.type === 'leader-line');
+                const isText = isOverlay && overlay?.type !== 'image' && !isShape;
                 const activeStrokeWidth = isShape ? overlay?.strokeWidth : undefined;
                 const activeStrokeColor = isShape ? overlay?.strokeColor : undefined;
                 const activeFillColor = isShape ? overlay?.fillColor : undefined;
@@ -1105,12 +1371,12 @@ export default function BookOfDrawingsWorkspace() {
                 return (
                   <>
                     {isShape && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem', borderRight: '1px solid #e2e8f0', paddingRight: '1rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Stroke Width:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem', borderRight: '1px solid #e2e8f0', paddingRight: '1rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Thickness:</span>
                         <input
                           type="number"
-                          title="Stroke Width"
-                          min="0"
+                          title="Thickness"
+                          min="1"
                           max="50"
                           value={activeStrokeWidth ?? 2}
                           onChange={(e) => {
@@ -1121,7 +1387,7 @@ export default function BookOfDrawingsWorkspace() {
                           className="form-input"
                           style={{ width: '50px', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
                         />
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Stroke:</span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Color:</span>
                         <input 
                           type="color" 
                           title="Stroke Color"
@@ -1133,7 +1399,7 @@ export default function BookOfDrawingsWorkspace() {
                           }}
                           style={{ width: '24px', height: '24px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
                         />
-                        {overlay?.type !== 'line' && (
+                        {overlay?.type !== 'line' && overlay?.type !== 'arrow' && overlay?.type !== 'leader-line' && (
                           <>
                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Fill:</span>
                             <input 
@@ -1141,9 +1407,9 @@ export default function BookOfDrawingsWorkspace() {
                               title="Fill Color"
                               value={activeFillColor || '#ffffff'}
                               onChange={(e) => {
-                                if (isOverlay) {
-                                  setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fillColor: e.target.value } : o));
-                                }
+                                  if (isOverlay) {
+                                    setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, fillColor: e.target.value } : o));
+                                  }
                               }}
                               style={{ width: '24px', height: '24px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
                             />
@@ -1159,6 +1425,45 @@ export default function BookOfDrawingsWorkspace() {
                             >
                               Clear
                             </button>
+                          </>
+                        )}
+                        {(overlay?.type === 'line' || overlay?.type === 'arrow' || overlay?.type === 'leader-line') && (
+                          <>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.5rem' }}>Direction:</span>
+                            <select
+                              value={overlay.direction || 'top-left-to-bottom-right'}
+                              onChange={(e) => {
+                                if (isOverlay) {
+                                  setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, direction: e.target.value as any } : o));
+                                }
+                              }}
+                              className="form-input"
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', minWidth: '100px' }}
+                            >
+                              <option value="top-left-to-bottom-right">↘ Southeast</option>
+                              <option value="bottom-left-to-top-right">↗ Northeast</option>
+                              <option value="top-right-to-bottom-left">↙ Southwest</option>
+                              <option value="bottom-right-to-top-left">↖ Northwest</option>
+                            </select>
+                          </>
+                        )}
+                        {(overlay?.type === 'arrow' || overlay?.type === 'leader-line') && (
+                          <>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.5rem' }}>Type:</span>
+                            <select
+                              value={overlay.arrowType || 'straight'}
+                              onChange={(e) => {
+                                if (isOverlay) {
+                                  setOverlays(prev => prev.map(o => o.id === selectedOverlayId ? { ...o, arrowType: e.target.value as any } : o));
+                                }
+                              }}
+                              className="form-input"
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                            >
+                              <option value="straight">Straight</option>
+                              <option value="angled">L-Angled</option>
+                              <option value="curved">Curved</option>
+                            </select>
                           </>
                         )}
                       </div>
