@@ -429,7 +429,7 @@ export const CesiumWorkspace: React.FC = () => {
             const docType = doc.type || '';
             if (lowerTitle.endsWith('.kml')) layerType = 'KML';
             if (lowerTitle.endsWith('.czml')) layerType = 'CZML';
-            if (lowerTitle.endsWith('.glb') || lowerTitle.endsWith('.gltf') || docType === 'GLTF/GLB' || docType === 'Point Cloud') layerType = 'Point Cloud';
+            if (lowerTitle.endsWith('.glb') || lowerTitle.endsWith('.gltf') || lowerTitle.includes('.glb') || lowerTitle.includes('.gltf') || docType === 'GLTF/GLB' || docType.includes('GLTF') || docType.includes('GLB') || docType === 'Point Cloud') layerType = 'Point Cloud';
             if (lowerTitle.endsWith('.xml')) layerType = 'LandXML';
             if (lowerTitle.endsWith('.tif') || lowerTitle.endsWith('.tiff') || docType === 'GeoTIFF' || docType === 'Surface') layerType = 'GeoTIFF';
             if (lowerTitle.endsWith('.obj') || lowerTitle.endsWith('.fbx')) layerType = 'OBJ/FBX';
@@ -1872,12 +1872,10 @@ export const CesiumWorkspace: React.FC = () => {
     const layerTypeStr = ((file.layerType as string) || '').toLowerCase();
     const fileTypeStr = ((file.type as string) || '').toLowerCase();
 
-    // 1. PNGs
-    if (nameLower.includes('.png') || fileTypeStr.includes('png') || layerTypeStr.includes('png')) {
-      return 'PNGs';
-    }
-    // 2. GLTF/GLB
+    // 1. GLTF/GLB (Checked first)
     if (
+      nameLower.endsWith('.glb') || 
+      nameLower.endsWith('.gltf') || 
       nameLower.includes('.glb') || 
       nameLower.includes('.gltf') || 
       layerTypeStr.includes('point cloud') || 
@@ -1888,6 +1886,10 @@ export const CesiumWorkspace: React.FC = () => {
       fileTypeStr.includes('point cloud')
     ) {
       return 'GLTF/GLB';
+    }
+    // 2. PNGs
+    if (nameLower.includes('.png') || fileTypeStr.includes('png') || layerTypeStr.includes('png')) {
+      return 'PNGs';
     }
     // 3. Surfaces
     if (
@@ -2421,7 +2423,7 @@ export const CesiumWorkspace: React.FC = () => {
 
         let modelUrl = '';
         if (file.id) {
-          modelUrl = `/api/projects-database/documents/${file.id}/file?token=${token}`;
+          modelUrl = `/api/projects-database/documents/${file.id}/file?token=${encodeURIComponent(token || '')}`;
         } else if (file.fileUrl) {
           try {
             const urlInfo = JSON.parse(file.fileUrl);
@@ -2552,8 +2554,9 @@ export const CesiumWorkspace: React.FC = () => {
 
 
 
-  const uploadRealFileToActiveProject = async (fileObj: File, fileSize: string, layerType: 'GeoJSON' | 'CZML' | 'KML' | 'Point Cloud' | 'LandXML' | 'DXF' | 'DWG' | 'IFC' | 'SHP' | 'OpenDRIVE' | '3D Tiles' | 'GeoTIFF' | 'OBJ/FBX', customMetadata?: any, docType: string = 'GIS Layer') => {
-    if (uploadDestination === 'catalog') {
+  const uploadRealFileToActiveProject = async (fileObj: File, fileSize: string, layerType: 'GeoJSON' | 'CZML' | 'KML' | 'Point Cloud' | 'LandXML' | 'DXF' | 'DWG' | 'IFC' | 'SHP' | 'OpenDRIVE' | '3D Tiles' | 'GeoTIFF' | 'OBJ/FBX', customMetadata?: any, docType: string = 'GIS Layer', overrideDestination?: 'project' | 'catalog') => {
+    const dest = overrideDestination || uploadDestination;
+    if (dest === 'catalog') {
       if (!selectedUploadFolderId) {
         addLog('Error: Please select a folder in the Spatial Catalog first to upload the data to.');
         alert('Please select a folder in the Spatial Catalog first to upload the data to.');
@@ -2974,7 +2977,7 @@ export const CesiumWorkspace: React.FC = () => {
     setIsSurfaceModalOpen(false);
     setPendingSurfaceFile(null);
 
-    await uploadRealFileToActiveProject(file, sizeStr, layerType, metadata);
+    await uploadRealFileToActiveProject(file, sizeStr, layerType, metadata, 'GIS Layer', 'project');
   };
 
   const handleImportDesignFiles = () => {
@@ -3001,11 +3004,13 @@ export const CesiumWorkspace: React.FC = () => {
     if (ext === 'shp') layerType = 'SHP';
     if (ext === 'xodr') layerType = 'OpenDRIVE';
     if (ext === 'json' || ext === 'zip') layerType = '3D Tiles';
+    if (ext === 'glb' || ext === 'gltf') layerType = 'Point Cloud';
     
     // Clear the input value so the same file can be selected again
     e.target.value = '';
     
-    await uploadRealFileToActiveProject(file, sizeStr, layerType);
+    const docType = (ext === 'glb' || ext === 'gltf') ? 'GLTF/GLB' : 'GIS Layer';
+    await uploadRealFileToActiveProject(file, sizeStr, layerType, undefined, docType);
   };
 
   const handleImportPNGs = () => {
@@ -3079,7 +3084,7 @@ export const CesiumWorkspace: React.FC = () => {
         ? `${sizeInMB.toFixed(1)} MB` 
         : `${(file.size / 1024).toFixed(0)} KB`;
 
-      await uploadRealFileToActiveProject(file, sizeStr, 'Point Cloud', metadata, 'GLTF/GLB');
+      await uploadRealFileToActiveProject(file, sizeStr, 'Point Cloud', metadata, 'GLTF/GLB', 'project');
     }
   };
 

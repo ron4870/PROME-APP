@@ -539,6 +539,8 @@ router.get('/documents/:docId/file', authenticate, async (req, res) => {
     else if (ext === 'gif') mimeType = 'image/gif';
     else if (ext === 'pdf') mimeType = 'application/pdf';
     else if (ext === 'xml') mimeType = 'text/xml';
+    else if (ext === 'glb') mimeType = 'model/gltf-binary';
+    else if (ext === 'gltf') mimeType = 'model/gltf+json';
     else mimeType = 'application/octet-stream';
 
     res.setHeader('Access-Control-Allow-Origin', '*');
