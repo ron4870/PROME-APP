@@ -1266,7 +1266,7 @@ export const CesiumWorkspace: React.FC = () => {
     }
 
     setIsExportingTerrain(true);
-    addLog(`Sampling terrain surface elevation grid (${terrainGridResolution}m spacing)...`);
+    addLog(`Initiating terrain surface elevation grid export (${terrainGridResolution}m resolution)...`);
 
     try {
       const cartographics = pts.map(p => Cesium.Cartographic.fromCartesian(p));
@@ -1280,13 +1280,13 @@ export const CesiumWorkspace: React.FC = () => {
 
       const centerLatRad = Cesium.Math.toRadians((minLat + maxLat) / 2);
       const metersPerDegLat = 111320.0;
-      const metersPerDegLon = 111320.0 * Math.cos(centerLatRad);
+      const metersPerDegLon = Math.max(1000.0, 111320.0 * Math.cos(centerLatRad));
 
       const gridStepDegLat = terrainGridResolution / metersPerDegLat;
       const gridStepDegLon = terrainGridResolution / metersPerDegLon;
 
-      const numCols = Math.max(3, Math.min(150, Math.ceil((maxLon - minLon) / gridStepDegLon) + 1));
-      const numRows = Math.max(3, Math.min(150, Math.ceil((maxLat - minLat) / gridStepDegLat) + 1));
+      const numCols = Math.max(3, Math.min(100, Math.ceil((maxLon - minLon) / gridStepDegLon) + 1));
+      const numRows = Math.max(3, Math.min(100, Math.ceil((maxLat - minLat) / gridStepDegLat) + 1));
 
       const actualStepLon = (maxLon - minLon) / (numCols - 1 || 1);
       const actualStepLat = (maxLat - minLat) / (numRows - 1 || 1);
@@ -1320,33 +1320,48 @@ export const CesiumWorkspace: React.FC = () => {
 
           h = parseFloat(h.toFixed(2));
           rowHeights.push(h);
-          if (h < minH) minH = h;
-          if (h > maxH) maxH = h;
+
+          // Only track min/max for valid elevation values (exclude NODATA -9999)
+          if (h !== -9999 && h > -1000) {
+            if (h < minH) minH = h;
+            if (h > maxH) maxH = h;
+          }
         }
         gridData.push(rowHeights);
+
+        if (r % 15 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      if (minH === Infinity || maxH === -Infinity) {
+        minH = 0;
+        maxH = 100;
       }
 
       const totalPoints = numRows * numCols;
-      addLog(`Sampled ${totalPoints} terrain surface grid points (${numCols}x${numRows}). Min Z: ${minH === Infinity ? 0 : minH}m, Max Z: ${maxH === -Infinity ? 0 : maxH}m`);
+      addLog(`Sampled ${totalPoints} terrain surface grid points (${numCols}×${numRows}). Min Z: ${minH}m, Max Z: ${maxH}m`);
 
       const filenamePrefix = `terrain_${terrainSelectMode || 'area'}_${Date.now()}`;
 
       if (terrainExportFormat === 'dem_asc') {
-        let ascContent = `NCOLS ${numCols}\n`;
-        ascContent += `NROWS ${numRows}\n`;
-        ascContent += `XLLCORNER ${minLon.toFixed(6)}\n`;
-        ascContent += `YLLCORNER ${minLat.toFixed(6)}\n`;
-        ascContent += `CELLSIZE ${gridStepDegLon.toFixed(8)}\n`;
-        ascContent += `NODATA_VALUE -9999\n`;
+        const chunks: string[] = [];
+        chunks.push(`NCOLS ${numCols}\n`);
+        chunks.push(`NROWS ${numRows}\n`);
+        chunks.push(`XLLCORNER ${minLon.toFixed(6)}\n`);
+        chunks.push(`YLLCORNER ${minLat.toFixed(6)}\n`);
+        chunks.push(`CELLSIZE ${gridStepDegLon.toFixed(8)}\n`);
+        chunks.push(`NODATA_VALUE -9999\n`);
 
         for (let r = 0; r < numRows; r++) {
-          ascContent += gridData[r].join(' ') + '\n';
+          chunks.push(gridData[r].join(' ') + '\n');
         }
 
-        downloadBlob(ascContent, `${filenamePrefix}.asc`, 'text/plain');
+        downloadBlob(chunks.join(''), `${filenamePrefix}.asc`, 'text/plain');
         addLog(`Successfully exported & downloaded DEM ASCII Grid file "${filenamePrefix}.asc"`);
       } else if (terrainExportFormat === 'dxf_tin') {
-        let dxf = `0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`;
+        const chunks: string[] = [];
+        chunks.push(`0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`);
 
         for (let r = 0; r < numRows - 1; r++) {
           for (let c = 0; c < numCols - 1; c++) {
@@ -1367,34 +1382,32 @@ export const CesiumWorkspace: React.FC = () => {
             const y0 = (lat0 - minLat) * metersPerDegLat;
             const y1 = (lat1 - minLat) * metersPerDegLat;
 
-            dxf += `0\n3DFACE\n8\nTERRAIN_TIN\n`;
-            dxf += `10\n${x0.toFixed(3)}\n20\n${y0.toFixed(3)}\n30\n${h00.toFixed(3)}\n`;
-            dxf += `11\n${x1.toFixed(3)}\n21\n${y0.toFixed(3)}\n31\n${h10.toFixed(3)}\n`;
-            dxf += `12\n${x1.toFixed(3)}\n22\n${y1.toFixed(3)}\n33\n${h11.toFixed(3)}\n`;
-            dxf += `13\n${x1.toFixed(3)}\n23\n${y1.toFixed(3)}\n33\n${h11.toFixed(3)}\n`;
+            chunks.push(`0\n3DFACE\n8\nTERRAIN_TIN\n10\n${x0.toFixed(3)}\n20\n${y0.toFixed(3)}\n30\n${h00.toFixed(3)}\n11\n${x1.toFixed(3)}\n21\n${y0.toFixed(3)}\n31\n${h10.toFixed(3)}\n12\n${x1.toFixed(3)}\n22\n${y1.toFixed(3)}\n32\n${h11.toFixed(3)}\n13\n${x1.toFixed(3)}\n23\n${y1.toFixed(3)}\n33\n${h11.toFixed(3)}\n`);
+            chunks.push(`0\n3DFACE\n8\nTERRAIN_TIN\n10\n${x0.toFixed(3)}\n20\n${y0.toFixed(3)}\n30\n${h00.toFixed(3)}\n11\n${x1.toFixed(3)}\n21\n${y1.toFixed(3)}\n31\n${h11.toFixed(3)}\n12\n${x0.toFixed(3)}\n22\n${y1.toFixed(3)}\n32\n${h01.toFixed(3)}\n13\n${x0.toFixed(3)}\n23\n${y1.toFixed(3)}\n33\n${h01.toFixed(3)}\n`);
+          }
 
-            dxf += `0\n3DFACE\n8\nTERRAIN_TIN\n`;
-            dxf += `10\n${x0.toFixed(3)}\n20\n${y0.toFixed(3)}\n30\n${h00.toFixed(3)}\n`;
-            dxf += `11\n${x1.toFixed(3)}\n21\n${y1.toFixed(3)}\n31\n${h11.toFixed(3)}\n`;
-            dxf += `12\n${x0.toFixed(3)}\n22\n${y1.toFixed(3)}\n32\n${h01.toFixed(3)}\n`;
-            dxf += `13\n${x0.toFixed(3)}\n23\n${y1.toFixed(3)}\n33\n${h01.toFixed(3)}\n`;
+          if (r % 20 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
           }
         }
 
-        dxf += `0\nENDSEC\n0\nEOF\n`;
-
-        downloadBlob(dxf, `${filenamePrefix}_tin.dxf`, 'application/dxf');
+        chunks.push(`0\nENDSEC\n0\nEOF\n`);
+        downloadBlob(chunks.join(''), `${filenamePrefix}_tin.dxf`, 'application/dxf');
         addLog(`Successfully exported & downloaded DXF TIN Surface file "${filenamePrefix}_tin.dxf"`);
       } else if (terrainExportFormat === 'dxf_contour') {
-        let dxf = `0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`;
+        const chunks: string[] = [];
+        chunks.push(`0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`);
 
-        const interval = terrainContourInterval || 5;
+        const interval = Math.max(1, terrainContourInterval || 5);
         const startZ = Math.ceil(minH / interval) * interval;
         const endZ = Math.floor(maxH / interval) * interval;
 
         let contourCount = 0;
+        let steps = 0;
+        const maxSteps = 200;
 
-        for (let targetZ = startZ; targetZ <= endZ; targetZ += interval) {
+        for (let targetZ = startZ; targetZ <= endZ && steps < maxSteps; targetZ += interval) {
+          steps++;
           for (let r = 0; r < numRows - 1; r++) {
             for (let c = 0; c < numCols - 1; c++) {
               const h00 = gridData[r][c];
@@ -1443,17 +1456,18 @@ export const CesiumWorkspace: React.FC = () => {
 
               if (points.length >= 2) {
                 contourCount++;
-                dxf += `0\nLINE\n8\nCONTOURS_${targetZ}M\n`;
-                dxf += `10\n${points[0].x.toFixed(3)}\n20\n${points[0].y.toFixed(3)}\n30\n${targetZ.toFixed(3)}\n`;
-                dxf += `11\n${points[1].x.toFixed(3)}\n21\n${points[1].y.toFixed(3)}\n31\n${targetZ.toFixed(3)}\n`;
+                chunks.push(`0\nLINE\n8\nCONTOURS_${targetZ}M\n10\n${points[0].x.toFixed(3)}\n20\n${points[0].y.toFixed(3)}\n30\n${targetZ.toFixed(3)}\n11\n${points[1].x.toFixed(3)}\n21\n${points[1].y.toFixed(3)}\n31\n${targetZ.toFixed(3)}\n`);
               }
             }
           }
+
+          if (steps % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+          }
         }
 
-        dxf += `0\nENDSEC\n0\nEOF\n`;
-
-        downloadBlob(dxf, `${filenamePrefix}_contours.dxf`, 'application/dxf');
+        chunks.push(`0\nENDSEC\n0\nEOF\n`);
+        downloadBlob(chunks.join(''), `${filenamePrefix}_contours.dxf`, 'application/dxf');
         addLog(`Successfully exported & downloaded ${contourCount} DXF Contour lines (${interval}m interval) to "${filenamePrefix}_contours.dxf"`);
       }
     } catch (err) {
