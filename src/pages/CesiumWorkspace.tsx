@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Database, Cloud, RefreshCw, Layers, ArrowLeft, ChevronLeft, ChevronRight, Upload, X, ChevronDown, Plus, FolderOpen, Play, Pause, RotateCcw, Trash2, Activity, Settings, Wrench, Ruler, Hexagon, Columns2, AreaChart, Clock, Compass, Paintbrush, Box, Square, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import proj4 from 'proj4';
+import JSZip from 'jszip';
 
 declare global {
   interface Window {
@@ -142,7 +143,7 @@ export const CesiumWorkspace: React.FC = () => {
 
   // Terrain Area Surface Exporter states
   const [terrainSelectMode, setTerrainSelectMode] = useState<'box' | 'polygon' | null>(null);
-  const [terrainExportFormat, setTerrainExportFormat] = useState<'dem_asc' | 'dxf_tin' | 'dxf_contour'>('dxf_tin');
+  const [terrainExportFormat, setTerrainExportFormat] = useState<'dem_asc' | 'dxf_tin' | 'dxf_contour' | 'geotif_image'>('dxf_tin');
   const [terrainGridResolution, setTerrainGridResolution] = useState<number>(10);
   const [terrainContourInterval, setTerrainContourInterval] = useState<number>(5);
   const [terrainCrs, setTerrainCrs] = useState<string>('EPSG:32636');
@@ -1292,6 +1293,25 @@ export const CesiumWorkspace: React.FC = () => {
     };
   };
 
+  // Projection WKT file generator for georeferenced raster export
+  const getPrjContent = (crs: string): string => {
+    switch (crs) {
+      case 'EPSG:32636':
+        return `PROJCS["WGS_1984_UTM_Zone_36N",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",33.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]`;
+      case 'EPSG:32736':
+        return `PROJCS["WGS_1984_UTM_Zone_36S",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",10000000.0],PARAMETER["Central_Meridian",33.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]`;
+      case 'EPSG:32635':
+        return `PROJCS["WGS_1984_UTM_Zone_35N",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",27.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]`;
+      case 'EPSG:21096':
+        return `PROJCS["Arc_1960_UTM_Zone_36N",GEOGCS["GCS_Arc_1960",DATUM["D_Arc_1960",SPHEROID["Clarke_1880_RGS",6378249.145,293.465]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",33.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]`;
+      case 'EPSG:4326':
+        return `GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]`;
+      case 'LOCAL':
+      default:
+        return `LOCAL_CS["Local Cartesian",LOCAL_DATUM["Local Datum",0],UNIT["Meter",1.0],AXIS["X",EAST],AXIS["Y",NORTH]]`;
+    }
+  };
+
   const handleDownloadTerrainSurface = async () => {
     if (!viewerRef.current || !window.Cesium) return;
     const Cesium = window.Cesium;
@@ -1524,6 +1544,135 @@ export const CesiumWorkspace: React.FC = () => {
         chunks.push(`0\nENDSEC\n0\nEOF\n`);
         downloadBlob(chunks.join(''), `${filenamePrefix}_contours.dxf`, 'application/dxf');
         addLog(`Successfully exported ${contourCount} DXF Contour lines (${terrainCrs}) to "${filenamePrefix}_contours.dxf"`);
+      } else if (terrainExportFormat === 'geotif_image') {
+        addLog(`Capturing georeferenced raster map imagery for bounds [W: ${minLon.toFixed(5)}, S: ${minLat.toFixed(5)}, E: ${maxLon.toFixed(5)}, N: ${maxLat.toFixed(5)}] in ${terrainCrs}...`);
+
+        // Render current scene to ensure drawing buffer is fresh
+        viewer.render();
+        const canvas = viewer.scene.canvas;
+
+        // Convert corner cartographic positions to window (screen) coordinates
+        const ptTL = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
+          viewer.scene, 
+          Cesium.Cartesian3.fromDegrees(minLon, maxLat)
+        );
+        const ptBR = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
+          viewer.scene, 
+          Cesium.Cartesian3.fromDegrees(maxLon, minLat)
+        );
+        const ptTR = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
+          viewer.scene, 
+          Cesium.Cartesian3.fromDegrees(maxLon, maxLat)
+        );
+        const ptBL = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
+          viewer.scene, 
+          Cesium.Cartesian3.fromDegrees(minLon, minLat)
+        );
+
+        let screenXMin = 0;
+        let screenXMax = canvas.width;
+        let screenYMin = 0;
+        let screenYMax = canvas.height;
+
+        if (ptTL || ptBR || ptTR || ptBL) {
+          const xs = [ptTL?.x, ptBR?.x, ptTR?.x, ptBL?.x].filter((v): v is number => v !== undefined && !isNaN(v));
+          const ys = [ptTL?.y, ptBR?.y, ptTR?.y, ptBL?.y].filter((v): v is number => v !== undefined && !isNaN(v));
+
+          if (xs.length > 0 && ys.length > 0) {
+            screenXMin = Math.max(0, Math.min(...xs));
+            screenXMax = Math.min(canvas.width, Math.max(...xs));
+            screenYMin = Math.max(0, Math.min(...ys));
+            screenYMax = Math.min(canvas.height, Math.max(...ys));
+          }
+        }
+
+        const cropWidth = Math.max(50, Math.round(screenXMax - screenXMin));
+        const cropHeight = Math.max(50, Math.round(screenYMax - screenYMin));
+
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = cropWidth;
+        offCanvas.height = cropHeight;
+        const ctx = offCanvas.getContext('2d');
+
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            screenXMin, screenYMin, cropWidth, cropHeight,
+            0, 0, cropWidth, cropHeight
+          );
+
+          // Apply polygon clipping if polygon selection tool was used
+          if (terrainSelectMode === 'polygon' && polygonCoords.length >= 3) {
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            polygonCoords.forEach((coord, idx) => {
+              const winPt = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
+                viewer.scene, 
+                Cesium.Cartesian3.fromDegrees(coord.lon, coord.lat)
+              );
+              if (winPt) {
+                const x = winPt.x - screenXMin;
+                const y = winPt.y - screenYMin;
+                if (idx === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+              }
+            });
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+
+        // Convert cropped canvas to Blob
+        const imageBlob = await new Promise<Blob | null>(resolve => offCanvas.toBlob(resolve, 'image/png'));
+        
+        if (!imageBlob) {
+          throw new Error('Failed to generate map image blob.');
+        }
+
+        // Calculate projected coordinates of Top-Left and Bottom-Right for World File (.tfw)
+        const topLeft = getProjectedCoord(minLon, maxLat, terrainCrs, origin);
+        const bottomRight = getProjectedCoord(maxLon, minLat, terrainCrs, origin);
+
+        const widthInUnits = bottomRight.x - topLeft.x;
+        const heightInUnits = topLeft.y - bottomRight.y;
+
+        const scaleX = widthInUnits / cropWidth;
+        const scaleY = -(heightInUnits / cropHeight);
+
+        const originX = topLeft.x + (scaleX / 2.0);
+        const originY = topLeft.y - (Math.abs(scaleY) / 2.0);
+
+        // Construct World File (.tfw) content
+        const tfwContent = [
+          scaleX.toFixed(8),
+          '0.00000000',
+          '0.00000000',
+          scaleY.toFixed(8),
+          originX.toFixed(4),
+          originY.toFixed(4)
+        ].join('\n') + '\n';
+
+        // Construct Projection (.prj) content
+        const prjContent = getPrjContent(terrainCrs);
+
+        // Package TIF Map Image, TFW World File, and PRJ Projection File into a ZIP
+        const zip = new JSZip();
+        zip.file(`${filenamePrefix}.tif`, imageBlob);
+        zip.file(`${filenamePrefix}.tfw`, tfwContent);
+        zip.file(`${filenamePrefix}.prj`, prjContent);
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const zipUrl = URL.createObjectURL(zipBlob);
+
+        const link = document.createElement('a');
+        link.href = zipUrl;
+        link.download = `${filenamePrefix}_geotif.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(zipUrl);
+
+        addLog(`Successfully exported Georeferenced TIF Map Package (${terrainCrs}) with .tfw world file & .prj projection file to "${filenamePrefix}_geotif.zip"`);
       }
     } catch (err) {
       console.error('Terrain export error:', err);
@@ -4186,6 +4335,7 @@ export const CesiumWorkspace: React.FC = () => {
                           <option value="dxf_tin">DXF 3D TIN Mesh (.dxf)</option>
                           <option value="dem_asc">DEM ESRI ASCII Grid (.asc)</option>
                           <option value="dxf_contour">DXF Contour Lines (.dxf)</option>
+                          <option value="geotif_image">Georeferenced Map Image + World & PRJ (.tif, .tfw, .prj)</option>
                         </select>
                       </div>
 
