@@ -1545,13 +1545,45 @@ export const CesiumWorkspace: React.FC = () => {
         downloadBlob(chunks.join(''), `${filenamePrefix}_contours.dxf`, 'application/dxf');
         addLog(`Successfully exported ${contourCount} DXF Contour lines (${terrainCrs}) to "${filenamePrefix}_contours.dxf"`);
       } else if (terrainExportFormat === 'geotif_image') {
-        addLog(`Capturing georeferenced raster map imagery for bounds [W: ${minLon.toFixed(5)}, S: ${minLat.toFixed(5)}, E: ${maxLon.toFixed(5)}, N: ${maxLat.toFixed(5)}] in ${terrainCrs}...`);
+        addLog(`Preparing highest quality orthographic map image capture for bounds [W: ${minLon.toFixed(5)}, S: ${minLat.toFixed(5)}, E: ${maxLon.toFixed(5)}, N: ${maxLat.toFixed(5)}] in ${terrainCrs}...`);
 
-        // Render current scene to ensure drawing buffer is fresh
+        // 1. Temporarily save user's current camera state
+        const savedCameraPos = viewer.camera.position.clone();
+        const savedHeading = viewer.camera.heading;
+        const savedPitch = viewer.camera.pitch;
+        const savedRoll = viewer.camera.roll;
+
+        // 2. Temporarily hide translucent selection entities (box / polygon overlays & outlines)
+        const hiddenEntities: any[] = [];
+        terrainEntitiesRef.current.forEach((entity: any) => {
+          if (entity && entity.show !== false) {
+            entity.show = false;
+            hiddenEntities.push(entity);
+          }
+        });
+
+        // 3. Set camera to true top-down orthographic view (heading 0 = North up, pitch -90 = straight down)
+        const rect = Cesium.Rectangle.fromDegrees(minLon, minLat, maxLon, maxLat);
+        viewer.camera.setView({
+          destination: rect,
+          orientation: {
+            heading: 0.0,
+            pitch: Cesium.Math.toRadians(-90.0),
+            roll: 0.0
+          }
+        });
+
+        // 4. Force high resolution tile streaming
+        const originalSSE = viewer.scene.globe.maximumScreenSpaceError;
+        viewer.scene.globe.maximumScreenSpaceError = 0.8;
+
+        // Wait for high resolution imagery tiles to load & settle
+        await new Promise(resolve => setTimeout(resolve, 350));
         viewer.render();
+
         const canvas = viewer.scene.canvas;
 
-        // Convert corner cartographic positions to window (screen) coordinates
+        // 5. Convert Top-Left and Bottom-Right WGS84 coordinates to screen pixel coordinates
         const ptTL = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
           viewer.scene, 
           Cesium.Cartesian3.fromDegrees(minLon, maxLat)
@@ -1560,34 +1592,21 @@ export const CesiumWorkspace: React.FC = () => {
           viewer.scene, 
           Cesium.Cartesian3.fromDegrees(maxLon, minLat)
         );
-        const ptTR = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
-          viewer.scene, 
-          Cesium.Cartesian3.fromDegrees(maxLon, maxLat)
-        );
-        const ptBL = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
-          viewer.scene, 
-          Cesium.Cartesian3.fromDegrees(minLon, minLat)
-        );
 
         let screenXMin = 0;
         let screenXMax = canvas.width;
         let screenYMin = 0;
         let screenYMax = canvas.height;
 
-        if (ptTL || ptBR || ptTR || ptBL) {
-          const xs = [ptTL?.x, ptBR?.x, ptTR?.x, ptBL?.x].filter((v): v is number => v !== undefined && !isNaN(v));
-          const ys = [ptTL?.y, ptBR?.y, ptTR?.y, ptBL?.y].filter((v): v is number => v !== undefined && !isNaN(v));
-
-          if (xs.length > 0 && ys.length > 0) {
-            screenXMin = Math.max(0, Math.min(...xs));
-            screenXMax = Math.min(canvas.width, Math.max(...xs));
-            screenYMin = Math.max(0, Math.min(...ys));
-            screenYMax = Math.min(canvas.height, Math.max(...ys));
-          }
+        if (ptTL && ptBR) {
+          screenXMin = Math.max(0, Math.min(ptTL.x, ptBR.x));
+          screenXMax = Math.min(canvas.width, Math.max(ptTL.x, ptBR.x));
+          screenYMin = Math.max(0, Math.min(ptTL.y, ptBR.y));
+          screenYMax = Math.min(canvas.height, Math.max(ptTL.y, ptBR.y));
         }
 
-        const cropWidth = Math.max(50, Math.round(screenXMax - screenXMin));
-        const cropHeight = Math.max(50, Math.round(screenYMax - screenYMin));
+        const cropWidth = Math.max(100, Math.round(screenXMax - screenXMin));
+        const cropHeight = Math.max(100, Math.round(screenYMax - screenYMin));
 
         const offCanvas = document.createElement('canvas');
         offCanvas.width = cropWidth;
@@ -1622,14 +1641,29 @@ export const CesiumWorkspace: React.FC = () => {
           }
         }
 
-        // Convert cropped canvas to Blob
+        // 6. Restore hidden selection overlays, globe SSE, and user's original camera view
+        hiddenEntities.forEach(entity => {
+          entity.show = true;
+        });
+        viewer.scene.globe.maximumScreenSpaceError = originalSSE;
+        viewer.camera.setView({
+          destination: savedCameraPos,
+          orientation: {
+            heading: savedHeading,
+            pitch: savedPitch,
+            roll: savedRoll
+          }
+        });
+        viewer.render();
+
+        // 7. Convert cropped canvas to Blob
         const imageBlob = await new Promise<Blob | null>(resolve => offCanvas.toBlob(resolve, 'image/png'));
         
         if (!imageBlob) {
           throw new Error('Failed to generate map image blob.');
         }
 
-        // Calculate projected coordinates of Top-Left and Bottom-Right for World File (.tfw)
+        // 8. Calculate projected coordinates of Top-Left and Bottom-Right for World File (.tfw)
         const topLeft = getProjectedCoord(minLon, maxLat, terrainCrs, origin);
         const bottomRight = getProjectedCoord(maxLon, minLat, terrainCrs, origin);
 
@@ -1642,7 +1676,7 @@ export const CesiumWorkspace: React.FC = () => {
         const originX = topLeft.x + (scaleX / 2.0);
         const originY = topLeft.y - (Math.abs(scaleY) / 2.0);
 
-        // Construct World File (.tfw) content
+        // 9. Construct World File (.tfw) content
         const tfwContent = [
           scaleX.toFixed(8),
           '0.00000000',
@@ -1652,10 +1686,10 @@ export const CesiumWorkspace: React.FC = () => {
           originY.toFixed(4)
         ].join('\n') + '\n';
 
-        // Construct Projection (.prj) content
+        // 10. Construct Projection (.prj) content
         const prjContent = getPrjContent(terrainCrs);
 
-        // Package TIF Map Image, TFW World File, and PRJ Projection File into a ZIP
+        // 11. Package TIF Map Image, TFW World File, and PRJ Projection File into ZIP
         const zip = new JSZip();
         zip.file(`${filenamePrefix}.tif`, imageBlob);
         zip.file(`${filenamePrefix}.tfw`, tfwContent);
@@ -1672,7 +1706,7 @@ export const CesiumWorkspace: React.FC = () => {
         document.body.removeChild(link);
         URL.revokeObjectURL(zipUrl);
 
-        addLog(`Successfully exported Georeferenced TIF Map Package (${terrainCrs}) with .tfw world file & .prj projection file to "${filenamePrefix}_geotif.zip"`);
+        addLog(`Successfully exported high-quality orthographic TIF Map Package (${terrainCrs}) with .tfw world file & .prj projection file to "${filenamePrefix}_geotif.zip"`);
       }
     } catch (err) {
       console.error('Terrain export error:', err);
