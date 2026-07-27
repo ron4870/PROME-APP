@@ -330,16 +330,36 @@ router.post('/:id/documents', authenticate, checkDatabaseProjectAccess(), upload
           zip.extractAllTo(destPath, true);
           
           const findTileset = (dir: string): string | null => {
-            const filesList = fs.readdirSync(dir);
+            let filesList: string[] = [];
+            try {
+              filesList = fs.readdirSync(dir);
+            } catch (e) {
+              return null;
+            }
+
+            // First pass: look for exact tileset.json (case insensitive)
             for (const f of filesList) {
               const fullPath = path.join(dir, f);
-              const stat = fs.statSync(fullPath);
-              if (stat.isDirectory()) {
-                const found = findTileset(fullPath);
-                if (found) return found;
-              } else if (f.toLowerCase() === 'tileset.json') {
-                return path.relative(destPath, fullPath);
-              }
+              try {
+                const stat = fs.statSync(fullPath);
+                if (stat.isDirectory()) {
+                  const found = findTileset(fullPath);
+                  if (found) return found;
+                } else if (f.toLowerCase() === 'tileset.json') {
+                  return path.relative(destPath, fullPath);
+                }
+              } catch (e) {}
+            }
+
+            // Second pass: look for any .json file inside the extracted zip
+            for (const f of filesList) {
+              const fullPath = path.join(dir, f);
+              try {
+                const stat = fs.statSync(fullPath);
+                if (!stat.isDirectory() && f.toLowerCase().endsWith('.json')) {
+                  return path.relative(destPath, fullPath);
+                }
+              } catch (e) {}
             }
             return null;
           };
@@ -355,12 +375,12 @@ router.post('/:id/documents', authenticate, checkDatabaseProjectAccess(), upload
               metadata: parsedMetadata
             });
           } else {
+            // Clean up temporary tiles folder and fall back to standard document upload
             fs.rmSync(destPath, { recursive: true, force: true });
-            return res.status(400).json({ message: 'Invalid 3D Tileset zip. Must contain a tileset.json file.' });
           }
         } catch (zipErr) {
-          console.error('Error extracting 3D tileset zip:', zipErr);
-          return res.status(400).json({ message: 'Failed to extract 3D Tileset zip.' });
+          console.warn('Zip extraction attempt finished without 3d tiles json, falling back to document upload:', zipErr);
+          fs.rmSync(destPath, { recursive: true, force: true });
         }
       } else if (fileExt === 'json' && file.originalname.toLowerCase().includes('tileset')) {
         const uniqueId = `tiles-${Date.now()}`;

@@ -2081,8 +2081,10 @@ export const CesiumWorkspace: React.FC = () => {
       nameLower.includes('.geotiff') ||
       nameLower.includes('.fbx') ||
       nameLower.includes('.obj') ||
+      nameLower.endsWith('.zip') ||
       fileTypeStr.includes('surface') ||
       fileTypeStr.includes('geotiff') ||
+      fileTypeStr.includes('3d tiles') ||
       layerTypeStr.includes('geotiff') ||
       layerTypeStr.includes('landxml') ||
       layerTypeStr.includes('obj') ||
