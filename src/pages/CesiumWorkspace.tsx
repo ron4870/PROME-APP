@@ -423,7 +423,7 @@ export const CesiumWorkspace: React.FC = () => {
           } catch(e) {}
           
           let layerType: any = 'GeoJSON';
-          if (is3dTiles) {
+          if (is3dTiles || doc.type === '3D Tiles' || doc.title.toLowerCase().endsWith('.zip')) {
             layerType = '3D Tiles';
           } else {
             const lowerTitle = doc.title.toLowerCase();
@@ -2136,6 +2136,12 @@ export const CesiumWorkspace: React.FC = () => {
         viewer.imageryLayers.remove(viewer._customImageryLayers[file.name]);
         delete viewer._customImageryLayers[file.name];
       }
+
+      // Remove custom 3D Tileset primitives if present
+      if (viewer._customPrimitives && viewer._customPrimitives[file.name]) {
+        viewer.scene.primitives.remove(viewer._customPrimitives[file.name]);
+        delete viewer._customPrimitives[file.name];
+      }
       
       // Remove custom surface elements and restore terrain clipping
       if (viewer._customSurfaceElements && viewer._customSurfaceElements[file.name]) {
@@ -2156,29 +2162,53 @@ export const CesiumWorkspace: React.FC = () => {
       setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'Loaded' } : f));
       setActiveLayers(prev => [...prev, file.name]);
 
-      if (file.layerType === '3D Tiles') {
+      if (file.layerType === '3D Tiles' || file.type === '3D Tiles' || file.name.toLowerCase().endsWith('.zip')) {
         let tilesetUrl = '';
-        try {
-          const urlInfo = JSON.parse(file.fileUrl || '{}');
-          tilesetUrl = urlInfo.view || '';
-        } catch (e) {
-          tilesetUrl = file.fileUrl || '';
+        if (file.fileUrl) {
+          try {
+            const urlInfo = JSON.parse(file.fileUrl);
+            tilesetUrl = urlInfo.view || urlInfo.download || '';
+          } catch (e) {
+            tilesetUrl = file.fileUrl;
+          }
+        }
+        if (!tilesetUrl && file.id) {
+          tilesetUrl = `/api/projects-database/documents/${file.id}/file?token=${encodeURIComponent(token || '')}`;
         }
 
         if (tilesetUrl) {
-          addLog(`Loading 3D Tileset primitive: ${tilesetUrl}`);
-          Cesium.Cesium3DTileset.fromUrl(tilesetUrl).then((tileset: any) => {
+          addLog(`Streaming 3D Tileset primitive: ${tilesetUrl}`);
+          
+          const onTilesetLoaded = (tileset: any) => {
             viewer.scene.primitives.add(tileset);
             viewer._customPrimitives = viewer._customPrimitives || {};
             viewer._customPrimitives[file.name] = tileset;
             
-            // Fly to tileset
+            // Fly / zoom camera to 3D Tileset
             viewer.zoomTo(tileset);
-            addLog(`Successfully streamed 3D Tileset: ${file.name}`);
-          }).catch((err: any) => {
-            console.error('Error streaming 3D tileset:', err);
-            addLog(`Error: Failed to stream 3D tileset "${file.name}"`);
-          });
+            addLog(`Successfully streamed 3D Tileset "${file.name}" onto surface.`);
+          };
+
+          if (Cesium.Cesium3DTileset && typeof Cesium.Cesium3DTileset.fromUrl === 'function') {
+            Cesium.Cesium3DTileset.fromUrl(tilesetUrl).then(onTilesetLoaded).catch((err: any) => {
+              console.warn('Cesium3DTileset.fromUrl failed, trying fallback constructor:', err);
+              try {
+                const tileset = new Cesium.Cesium3DTileset({ url: tilesetUrl });
+                onTilesetLoaded(tileset);
+              } catch (e2) {
+                console.error('Error streaming 3D tileset:', e2);
+                addLog(`Error: Failed to stream 3D tileset "${file.name}"`);
+              }
+            });
+          } else {
+            try {
+              const tileset = new Cesium.Cesium3DTileset({ url: tilesetUrl });
+              onTilesetLoaded(tileset);
+            } catch (err) {
+              console.error('Error streaming 3D tileset:', err);
+              addLog(`Error: Failed to stream 3D tileset "${file.name}"`);
+            }
+          }
         }
       } else if (file.layerType === 'GeoTIFF' || file.layerType === 'LandXML' || file.layerType === 'OBJ/FBX' || file.name.endsWith('.xml') || file.name.endsWith('.tif') || file.name.endsWith('.tiff') || file.name.endsWith('.obj') || file.name.endsWith('.fbx')) {
         addLog(`Initiating dynamic terrain replacement at project site for surface: ${file.name}`);
@@ -3192,8 +3222,8 @@ export const CesiumWorkspace: React.FC = () => {
     // Clear the input value so the same file can be selected again
     e.target.value = '';
     
-    const docType = (ext === 'glb' || ext === 'gltf') ? 'GLTF/GLB' : 'GIS Layer';
-    await uploadRealFileToActiveProject(file, sizeStr, layerType, undefined, docType);
+    const docType = (ext === 'glb' || ext === 'gltf') ? 'GLTF/GLB' : ((ext === 'zip' || ext === 'json') ? '3D Tiles' : 'GIS Layer');
+    await uploadRealFileToActiveProject(file, sizeStr, layerType, undefined, docType, 'project');
   };
 
   const handleImportPNGs = () => {
@@ -5614,7 +5644,7 @@ export const CesiumWorkspace: React.FC = () => {
                 <input 
                   type="file" 
                   ref={designFileInputRef}
-                  accept=".geojson,.xml,.dxf,.dwg,.ifc,.shp,.xodr,.json,.zip"
+                  accept=".geojson,.xml,.dxf,.dwg,.ifc,.shp,.xodr,.json,.zip,.glb,.gltf"
                   onChange={handleDesignFileChange}
                   style={{ display: 'none' }}
                 />
