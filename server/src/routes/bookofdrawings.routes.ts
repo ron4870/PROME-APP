@@ -6,8 +6,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-// @ts-ignore
-const dxf = require('dxf');
+import { convertDxfToSvg } from '../utils/dxfToSvg';
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -412,42 +411,8 @@ router.post('/:id/pages/:pageId/import-cad', authenticate, upload.single('file')
     // Cleanup uploaded file
     fs.unlinkSync(filePath);
 
-    // Parse DXF and convert to SVG
-    const Helper = dxf.Helper;
-    const helper = new Helper(dxfContent);
-    let svgString = helper.toSVG();
-
-    // Inject text entities since dxf module ignores them
-    if (helper.parsed && helper.parsed.entities) {
-      let textNodes = '';
-      helper.parsed.entities.forEach((entity: any) => {
-        if (entity.type === 'TEXT' || entity.type === 'MTEXT') {
-          let textStr = entity.string || '';
-          
-          // Clean MTEXT formatting codes (e.g. \fArial|b0|i0|c0|p34;, \A1;, \P, etc)
-          textStr = textStr.replace(/\\[A-Za-z0-9|,-]+;/g, '');
-          textStr = textStr.replace(/\\P/g, ' '); // Replace newlines with spaces for now
-          textStr = textStr.replace(/[{}]/g, '');
-          
-          if (!textStr.trim()) return;
-
-          const x = entity.x || 0;
-          const y = entity.y || 0;
-          const height = entity.textHeight || entity.nominalTextHeight || 12;
-          
-          // Use scale(1, -1) to counter the parent <g> flipping the Y-axis
-          // so the text renders upright.
-          textNodes += `<text transform="translate(${x}, ${y}) scale(1, -1)" fill="black" stroke="none" font-size="${height}" font-family="Arial">${textStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>\n  `;
-        }
-      });
-      
-      if (textNodes) {
-        svgString = svgString.replace('</g>\n</svg>', `  ${textNodes}</g>\n</svg>`);
-      }
-    }
-
-    // Replace default dxf line thickness 0.1% with 0.03% to make lines thin and crisp
-    svgString = svgString.replace(/stroke-width="0\.1%"/g, 'stroke-width="0.03%"');
+    // Parse DXF and convert to SVG with CAD block & text rotation support
+    const svgString = convertDxfToSvg(dxfContent);
 
     res.json({ svg: svgString });
   } catch (error: any) {
