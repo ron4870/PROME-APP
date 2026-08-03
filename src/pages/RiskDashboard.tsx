@@ -373,12 +373,13 @@ const RiskDashboard: React.FC = () => {
       };
 
       let currentPage: HTMLDivElement | null = null;
+      let currentTable: HTMLTableElement | null = null;
       let currentTbody: HTMLTableSectionElement | null = null;
 
       const startNewPage = () => {
         const page = document.createElement('div');
         page.style.width = '1587px';
-        page.style.height = '1123px';
+        page.style.minHeight = '1123px';
         page.style.backgroundColor = '#ffffff';
         page.style.padding = '40px';
         page.style.boxSizing = 'border-box';
@@ -390,7 +391,6 @@ const RiskDashboard: React.FC = () => {
 
         const tableContainer = document.createElement('div');
         tableContainer.style.flex = '1';
-        tableContainer.style.overflow = 'hidden';
 
         const table = document.createElement('table');
         table.style.width = '100%';
@@ -408,6 +408,7 @@ const RiskDashboard: React.FC = () => {
         pagesToRender.push(page);
 
         currentPage = page;
+        currentTable = table;
         currentTbody = tbody;
       };
 
@@ -417,14 +418,19 @@ const RiskDashboard: React.FC = () => {
         const row = createRiskRow(risk);
         currentTbody!.appendChild(row);
 
-        // If table height exceeds printable vertical area (~1010px), start a new page
-        if (currentPage!.scrollHeight > 1030 && currentTbody!.rows.length > 1) {
+        // Check if table height exceeds printable vertical area for table (~870px)
+        if (currentTable!.offsetHeight > 870 && currentTbody!.rows.length > 1) {
           currentTbody!.removeChild(row);
+          currentPage!.style.height = '1123px';
 
           startNewPage();
           currentTbody!.appendChild(row);
         }
       });
+
+      if (currentPage) {
+        (currentPage as HTMLDivElement).style.height = '1123px';
+      }
 
       // Append footers with updated page numbers
       pagesToRender.forEach((page, index) => {
