@@ -156,6 +156,82 @@ const RiskDashboard: React.FC = () => {
 
       const base64Logo = await toBase64(logoUrl);
 
+      const generateBarcodeDataUrl = (text: string): string => {
+        const code128Patterns: { [key: number]: number[] } = {
+          0: [2,1,2,2,2,2], 1: [2,2,2,1,2,2], 2: [2,2,2,2,2,1], 3: [1,2,1,2,2,3], 4: [1,2,1,3,2,2],
+          5: [1,3,1,2,2,2], 6: [1,2,2,2,1,3], 7: [1,2,2,3,1,2], 8: [1,3,2,2,1,2], 9: [2,2,1,2,1,3],
+          10: [2,2,1,3,1,2], 11: [2,3,1,2,1,2], 12: [1,1,2,2,3,2], 13: [1,2,2,1,3,2], 14: [1,2,2,2,3,1],
+          15: [1,1,3,2,2,2], 16: [1,2,3,1,2,2], 17: [1,2,3,2,2,1], 18: [2,2,3,2,1,1], 19: [2,2,1,1,3,2],
+          20: [2,2,1,2,3,1], 21: [2,1,3,2,1,2], 22: [2,2,3,1,1,2], 23: [3,1,2,1,3,1], 24: [3,1,1,2,2,2],
+          25: [3,2,1,1,2,2], 26: [3,2,1,2,2,1], 27: [3,1,2,2,1,2], 28: [3,2,2,1,1,2], 29: [3,2,2,2,1,1],
+          30: [2,1,2,1,2,3], 31: [2,1,2,3,2,1], 32: [2,3,2,1,2,1], 33: [1,1,1,3,2,3], 34: [1,3,1,1,2,3],
+          35: [1,3,1,3,2,1], 36: [1,1,2,3,1,3], 37: [1,3,2,1,1,3], 38: [1,3,2,3,1,1], 39: [2,1,1,3,1,3],
+          40: [2,3,1,1,1,3], 41: [2,3,1,3,1,1], 42: [1,1,2,1,3,3], 43: [1,1,2,3,3,1], 44: [1,3,2,1,3,1],
+          45: [1,1,3,1,2,3], 46: [1,1,3,3,2,1], 47: [1,3,3,1,2,1], 48: [3,1,3,1,2,1], 49: [2,1,1,3,3,1],
+          50: [2,3,1,1,3,1], 51: [2,1,3,1,1,3], 52: [2,1,3,3,1,1], 53: [2,1,3,1,3,1], 54: [3,1,1,1,2,3],
+          55: [3,1,1,3,2,1], 56: [3,3,1,1,2,1], 57: [3,1,2,1,1,3], 58: [3,1,2,3,1,1], 59: [3,3,2,1,1,1],
+          60: [3,1,4,1,1,1], 61: [2,2,1,4,1,1], 62: [4,3,1,1,1,1], 63: [1,1,1,2,2,4], 64: [1,1,1,4,2,2],
+          65: [1,2,1,1,2,4], 66: [1,2,1,4,2,1], 67: [1,4,1,1,2,2], 68: [1,4,1,2,2,1], 69: [1,1,2,2,1,4],
+          70: [1,1,2,4,1,2], 71: [1,2,2,1,1,4], 72: [1,2,2,4,1,1], 73: [1,4,2,1,1,2], 74: [1,4,2,2,1,1],
+          75: [2,4,1,2,1,1], 76: [2,2,1,1,1,4], 77: [4,1,3,1,1,1], 78: [2,4,1,1,1,2], 79: [1,3,4,1,1,1],
+          80: [1,1,1,2,4,2], 81: [1,2,1,1,4,2], 82: [1,2,1,2,4,1], 83: [1,1,4,2,1,2], 84: [1,2,4,1,1,2],
+          85: [1,2,4,2,1,1], 86: [4,1,1,2,1,2], 87: [4,2,1,1,1,2], 88: [4,2,1,2,1,1], 89: [2,1,2,1,4,1],
+          90: [2,1,4,1,2,1], 91: [4,1,2,1,2,1], 92: [1,1,1,1,4,3], 93: [1,1,1,3,4,1], 94: [1,3,1,1,4,1],
+          95: [1,1,4,1,1,3], 96: [1,1,4,3,1,1], 97: [4,1,1,1,1,3], 98: [4,1,1,3,1,1], 99: [1,1,3,1,4,1],
+          100: [1,1,4,1,3,1], 101: [3,1,1,1,4,1], 102: [4,1,1,1,3,1], 103: [2,1,1,4,1,2], 104: [2,1,1,2,1,4],
+          105: [2,1,1,2,3,2], 106: [2,3,3,1,1,1,2]
+        };
+
+        const codes: number[] = [104];
+        let checksum = 104;
+
+        for (let i = 0; i < text.length; i++) {
+          const code = text.charCodeAt(i) - 32;
+          codes.push(code);
+          checksum += code * (i + 1);
+        }
+
+        codes.push(checksum % 103);
+        codes.push(106);
+
+        const quietZone = 10;
+        let totalWidth = quietZone * 2;
+        codes.forEach((code) => {
+          const pattern = code128Patterns[code] || code128Patterns[0];
+          pattern.forEach((w) => { totalWidth += w; });
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = totalWidth * 2;
+        canvas.height = 36;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return '';
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#000000';
+        let x = quietZone * 2;
+        const barHeight = 36;
+
+        codes.forEach((code) => {
+          const pattern = code128Patterns[code] || code128Patterns[0];
+          let isBar = true;
+          pattern.forEach((w) => {
+            const width = w * 2;
+            if (isBar) {
+              ctx.fillRect(x, 0, width, barHeight);
+            }
+            x += width;
+            isBar = !isBar;
+          });
+        });
+
+        return canvas.toDataURL('image/png');
+      };
+
+      const barcodeDataUrl = generateBarcodeDataUrl('PROME-QSR-TO-04');
+
       const createPageHeader = () => {
         const header = document.createElement('div');
         header.style.display = 'flex';
@@ -169,6 +245,7 @@ const RiskDashboard: React.FC = () => {
         leftHeader.style.display = 'flex';
         leftHeader.style.alignItems = 'center';
         leftHeader.style.gap = '16px';
+        leftHeader.style.flex = '1';
 
         const img = document.createElement('img');
         img.src = base64Logo;
@@ -193,8 +270,34 @@ const RiskDashboard: React.FC = () => {
         titleContainer.appendChild(subTitle);
         leftHeader.appendChild(titleContainer);
 
+        const middleHeader = document.createElement('div');
+        middleHeader.style.display = 'flex';
+        middleHeader.style.flexDirection = 'column';
+        middleHeader.style.alignItems = 'center';
+        middleHeader.style.justifyContent = 'center';
+        middleHeader.style.flex = '1';
+
+        const barcodeImg = document.createElement('img');
+        barcodeImg.src = barcodeDataUrl;
+        barcodeImg.style.height = '28px';
+        barcodeImg.style.width = 'auto';
+        barcodeImg.style.objectFit = 'contain';
+
+        const barcodeText = document.createElement('div');
+        barcodeText.innerText = 'PROME-QSR-TO-04';
+        barcodeText.style.fontSize = '10px';
+        barcodeText.style.fontWeight = '700';
+        barcodeText.style.color = '#334155';
+        barcodeText.style.marginTop = '3px';
+        barcodeText.style.letterSpacing = '1px';
+        barcodeText.style.fontFamily = 'monospace, sans-serif';
+
+        middleHeader.appendChild(barcodeImg);
+        middleHeader.appendChild(barcodeText);
+
         const rightHeader = document.createElement('div');
         rightHeader.style.textAlign = 'right';
+        rightHeader.style.flex = '1';
 
         const regTitle = document.createElement('div');
         regTitle.innerText = 'RISK & OPPORTUNITY REGISTER';
@@ -213,8 +316,57 @@ const RiskDashboard: React.FC = () => {
         rightHeader.appendChild(regMeta);
 
         header.appendChild(leftHeader);
+        header.appendChild(middleHeader);
         header.appendChild(rightHeader);
         return header;
+      };
+
+      const createSummaryCards = () => {
+        const cardsContainer = document.createElement('div');
+        cardsContainer.style.display = 'grid';
+        cardsContainer.style.gridTemplateColumns = 'repeat(5, 1fr)';
+        cardsContainer.style.gap = '14px';
+        cardsContainer.style.marginBottom = '16px';
+
+        const cardsData = [
+          { label: 'TOTAL RISKS', val: filteredRisks.filter(r => r.type === 'Risk').length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+          { label: 'TOTAL OPPORTUNITIES', val: filteredRisks.filter(r => r.type === 'Opportunity').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
+          { label: 'HIGH RISKS (SCORE ≥ 15)', val: filteredRisks.filter(r => r.type === 'Risk' && r.score && r.score >= 15).length, color: '#dc2626', border: '#f87171', bg: '#fff1f2' },
+          { label: 'MITIGATED', val: filteredRisks.filter(r => r.status === 'Mitigated').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
+          { label: 'CLOSED', val: filteredRisks.filter(r => r.status === 'Closed').length, color: '#334155', border: '#cbd5e1', bg: '#f8fafc' }
+        ];
+
+        cardsData.forEach(c => {
+          const card = document.createElement('div');
+          card.style.backgroundColor = c.bg;
+          card.style.border = `1px solid ${c.border}`;
+          card.style.borderRadius = '6px';
+          card.style.padding = '10px 14px';
+          card.style.boxSizing = 'border-box';
+          card.style.display = 'flex';
+          card.style.flexDirection = 'column';
+          card.style.justifyContent = 'center';
+
+          const labelDiv = document.createElement('div');
+          labelDiv.innerText = c.label;
+          labelDiv.style.fontSize = '8.5px';
+          labelDiv.style.fontWeight = '700';
+          labelDiv.style.color = '#475569';
+          labelDiv.style.letterSpacing = '0.5px';
+
+          const valDiv = document.createElement('div');
+          valDiv.innerText = String(c.val);
+          valDiv.style.fontSize = '22px';
+          valDiv.style.fontWeight = '800';
+          valDiv.style.color = c.color;
+          valDiv.style.marginTop = '4px';
+
+          card.appendChild(labelDiv);
+          card.appendChild(valDiv);
+          cardsContainer.appendChild(card);
+        });
+
+        return cardsContainer;
       };
 
       const headersList = [
@@ -377,6 +529,8 @@ const RiskDashboard: React.FC = () => {
       let currentTbody: HTMLTableSectionElement | null = null;
 
       const startNewPage = () => {
+        const isFirstPage = pagesToRender.length === 0;
+
         const page = document.createElement('div');
         page.style.width = '1587px';
         page.style.minHeight = '1123px';
@@ -388,6 +542,10 @@ const RiskDashboard: React.FC = () => {
         page.style.fontFamily = 'Inter, sans-serif';
 
         page.appendChild(createPageHeader());
+
+        if (isFirstPage) {
+          page.appendChild(createSummaryCards());
+        }
 
         const tableContainer = document.createElement('div');
         tableContainer.style.flex = '1';
@@ -418,8 +576,9 @@ const RiskDashboard: React.FC = () => {
         const row = createRiskRow(risk);
         currentTbody!.appendChild(row);
 
-        // Check if table height exceeds printable vertical area for table (~870px)
-        if (currentTable!.offsetHeight > 870 && currentTbody!.rows.length > 1) {
+        const maxTableHeight = (pagesToRender.length === 1) ? 800 : 870;
+
+        if (currentTable!.offsetHeight > maxTableHeight && currentTbody!.rows.length > 1) {
           currentTbody!.removeChild(row);
           currentPage!.style.height = '1123px';
 
