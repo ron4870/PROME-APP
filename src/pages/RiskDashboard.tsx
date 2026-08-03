@@ -123,8 +123,6 @@ const RiskDashboard: React.FC = () => {
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const rowsPerPage = 12;
-      const totalPages = Math.ceil(filteredRisks.length / rowsPerPage) || 1;
       const pagesToRender: HTMLDivElement[] = [];
 
       const container = document.createElement('div');
@@ -158,33 +156,23 @@ const RiskDashboard: React.FC = () => {
 
       const base64Logo = await toBase64(logoUrl);
 
-      for (let i = 0; i < totalPages; i++) {
-        const page = document.createElement('div');
-        page.style.width = '1587px';
-        page.style.height = '1123px';
-        page.style.backgroundColor = '#ffffff';
-        page.style.padding = '40px';
-        page.style.boxSizing = 'border-box';
-        page.style.display = 'flex';
-        page.style.flexDirection = 'column';
-        page.style.fontFamily = 'Inter, sans-serif';
-
+      const createPageHeader = () => {
         const header = document.createElement('div');
         header.style.display = 'flex';
         header.style.justifyContent = 'space-between';
         header.style.alignItems = 'center';
         header.style.borderBottom = '3px solid #b91c1c';
-        header.style.paddingBottom = '16px';
-        header.style.marginBottom = '24px';
+        header.style.paddingBottom = '14px';
+        header.style.marginBottom = '16px';
 
         const leftHeader = document.createElement('div');
         leftHeader.style.display = 'flex';
         leftHeader.style.alignItems = 'center';
-        leftHeader.style.gap = '20px';
+        leftHeader.style.gap = '16px';
 
         const img = document.createElement('img');
         img.src = base64Logo;
-        img.style.height = '50px';
+        img.style.height = '46px';
         leftHeader.appendChild(img);
 
         const titleContainer = document.createElement('div');
@@ -226,48 +214,42 @@ const RiskDashboard: React.FC = () => {
 
         header.appendChild(leftHeader);
         header.appendChild(rightHeader);
-        page.appendChild(header);
+        return header;
+      };
 
-        const tableContainer = document.createElement('div');
-        tableContainer.style.flex = '1';
-        tableContainer.style.overflow = 'hidden';
+      const headersList = [
+        { text: 'NUMBER', w: '6%' },
+        { text: 'TYPE', w: '4%' },
+        { text: 'TITLE &<br/>CATEGORY', w: '11%' },
+        { text: 'DESCRIPTION', w: '18%' },
+        { text: 'OWNER', w: '7%' },
+        { text: 'INITIAL<br/>LIKELIHOOD', w: '4.5%', center: true },
+        { text: 'INITIAL<br/>IMPACT', w: '4.5%', center: true },
+        { text: 'INITIAL<br/>SCORE', w: '4.5%', center: true },
+        { text: 'ACTION<br/>PLAN', w: '18%' },
+        { text: 'RESIDUAL<br/>LIKELIHOOD', w: '4.5%', center: true },
+        { text: 'RESIDUAL<br/>IMPACT', w: '4.5%', center: true },
+        { text: 'RESIDUAL<br/>SCORE', w: '4.5%', center: true },
+        { text: 'STATUS', w: '4.5%' },
+        { text: 'DEADLINE', w: '5.5%' }
+      ];
 
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.fontSize = '11px';
-
+      const createTableHead = () => {
         const thead = document.createElement('thead');
         thead.style.backgroundColor = '#f1f5f9';
         thead.style.border = '1px solid #cbd5e1';
 
-        const headersList = [
-          { text: 'Number', w: '7%' },
-          { text: 'Type', w: '4%' },
-          { text: 'Title & Category', w: '12%' },
-          { text: 'Description', w: '17%' },
-          { text: 'Owner', w: '7%' },
-          { text: 'Ini L', w: '3.5%', center: true },
-          { text: 'Ini I', w: '3.5%', center: true },
-          { text: 'Ini S', w: '4%', center: true },
-          { text: 'Action Plan', w: '17%' },
-          { text: 'Res L', w: '3.5%', center: true },
-          { text: 'Res I', w: '3.5%', center: true },
-          { text: 'Res S', w: '4%', center: true },
-          { text: 'Status', w: '5%' },
-          { text: 'Deadline', w: '9%' }
-        ];
-
         const trHead = document.createElement('tr');
         headersList.forEach(h => {
           const th = document.createElement('th');
-          th.innerText = h.text;
+          th.innerHTML = h.text;
           th.style.width = h.w;
-          th.style.padding = '8px 6px';
+          th.style.padding = '8px 4px';
           th.style.fontWeight = '700';
-          th.style.color = '#334155';
-          th.style.textTransform = 'uppercase';
-          th.style.fontSize = '9px';
+          th.style.color = '#1e293b';
+          th.style.fontSize = '8.5px';
+          th.style.lineHeight = '1.25';
+          th.style.verticalAlign = 'bottom';
           th.style.border = '1px solid #cbd5e1';
           if (h.center) {
             th.style.textAlign = 'center';
@@ -277,130 +259,182 @@ const RiskDashboard: React.FC = () => {
           trHead.appendChild(th);
         });
         thead.appendChild(trHead);
-        table.appendChild(thead);
+        return thead;
+      };
 
-        const tbody = document.createElement('tbody');
-        const startIdx = i * rowsPerPage;
-        const pageRisks = filteredRisks.slice(startIdx, startIdx + rowsPerPage);
+      const createRiskRow = (risk: any) => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #cbd5e1';
 
-        pageRisks.forEach(risk => {
-          const tr = document.createElement('tr');
-          tr.style.borderBottom = '1px solid #e2e8f0';
+        const cells = [
+          { text: risk.riskNumber || '-', bold: true, color: '#0f172a' },
+          { text: risk.type || '-', badge: true, isType: true },
+          { text: risk.title || '-', category: risk.category },
+          { text: risk.description || '-', fullText: true },
+          { text: risk.owner?.name || 'Unassigned' },
+          { text: String(risk.likelihood ?? '-'), center: true },
+          { text: String(risk.impact ?? '-'), center: true },
+          { text: String(risk.score ?? '-'), scoreBadge: true, score: risk.score },
+          { text: risk.mitigationPlan || '-', fullText: true },
+          { text: String(risk.residualLikelihood ?? '-'), center: true },
+          { text: String(risk.residualImpact ?? '-'), center: true },
+          { text: String(risk.residualScore ?? '-'), scoreBadge: true, score: risk.residualScore },
+          { text: risk.status || '-', badge: true, isStatus: true },
+          { text: risk.actionDeadline ? new Date(risk.actionDeadline).toLocaleDateString() : '-' }
+        ];
 
-          const cells = [
-            { text: risk.riskNumber || '-', bold: true, color: '#0f172a' },
-            { text: risk.type || '-', badge: true, isType: true },
-            { text: risk.title || '-', category: risk.category },
-            { text: risk.description || '-', truncate: true },
-            { text: risk.owner?.name || 'Unassigned' },
-            { text: String(risk.likelihood ?? '-'), center: true },
-            { text: String(risk.impact ?? '-'), center: true },
-            { text: String(risk.score ?? '-'), scoreBadge: true, score: risk.score },
-            { text: risk.mitigationPlan || '-', truncate: true },
-            { text: String(risk.residualLikelihood ?? '-'), center: true },
-            { text: String(risk.residualImpact ?? '-'), center: true },
-            { text: String(risk.residualScore ?? '-'), scoreBadge: true, score: risk.residualScore },
-            { text: risk.status || '-', badge: true, isStatus: true },
-            { text: risk.actionDeadline ? new Date(risk.actionDeadline).toLocaleDateString() : '-' }
-          ];
+        cells.forEach((cell) => {
+          const td = document.createElement('td');
+          td.style.padding = '6px 5px';
+          td.style.border = '1px solid #cbd5e1';
+          td.style.verticalAlign = 'top';
+          td.style.fontSize = '9px';
 
-          cells.forEach((cell) => {
-            const td = document.createElement('td');
-            td.style.padding = '8px 6px';
-            td.style.border = '1px solid #e2e8f0';
-            td.style.verticalAlign = 'top';
+          if (cell.bold) {
+            td.style.fontWeight = '600';
+          }
+          if (cell.color) {
+            td.style.color = cell.color;
+          }
+          if (cell.center) {
+            td.style.textAlign = 'center';
+          }
 
-            if (cell.bold) {
-              td.style.fontWeight = '600';
+          if (cell.badge) {
+            const span = document.createElement('span');
+            span.innerText = cell.text;
+            span.style.padding = '2px 5px';
+            span.style.borderRadius = '4px';
+            span.style.fontSize = '8px';
+            span.style.fontWeight = 'bold';
+
+            if (cell.isType) {
+              span.style.backgroundColor = cell.text === 'Risk' ? '#fee2e2' : '#e0f2fe';
+              span.style.color = cell.text === 'Risk' ? '#991b1b' : '#0369a1';
+            } else if (cell.isStatus) {
+              span.style.backgroundColor = 
+                cell.text === 'Closed' || cell.text === 'Mitigated' ? '#dcfce3' : 
+                cell.text === 'Realized' ? '#fee2e2' : '#f3f4f6';
+              span.style.color = 
+                cell.text === 'Closed' || cell.text === 'Mitigated' ? '#166534' : 
+                cell.text === 'Realized' ? '#991b1b' : '#374151';
             }
-            if (cell.color) {
-              td.style.color = cell.color;
-            }
-            if (cell.center) {
-              td.style.textAlign = 'center';
-            }
+            td.appendChild(span);
+          } else if (cell.scoreBadge) {
+            const val = cell.score;
+            const span = document.createElement('span');
+            span.innerText = cell.text;
+            span.style.display = 'inline-block';
+            span.style.padding = '2px 7px';
+            span.style.borderRadius = '4px';
+            span.style.fontWeight = 'bold';
+            span.style.fontSize = '9px';
 
-            if (cell.badge) {
-              const span = document.createElement('span');
-              span.innerText = cell.text;
-              span.style.padding = '2px 6px';
-              span.style.borderRadius = '4px';
-              span.style.fontSize = '8px';
-              span.style.fontWeight = 'bold';
+            const getScoreColorAndClass = (s: number | null) => {
+              if (!s) return { bg: '#f3f4f6', text: '#64748b' };
+              if (s >= 15) return { bg: '#fee2e2', text: '#b91c1c' };
+              if (s >= 8) return { bg: '#fef9c3', text: '#a16207' };
+              return { bg: '#dcfce3', text: '#15803d' };
+            };
 
-              if (cell.isType) {
-                span.style.backgroundColor = cell.text === 'Risk' ? '#fee2e2' : '#e0f2fe';
-                span.style.color = cell.text === 'Risk' ? '#991b1b' : '#0369a1';
-              } else if (cell.isStatus) {
-                span.style.backgroundColor = 
-                  cell.text === 'Closed' || cell.text === 'Mitigated' ? '#dcfce3' : 
-                  cell.text === 'Realized' ? '#fee2e2' : '#f3f4f6';
-                span.style.color = 
-                  cell.text === 'Closed' || cell.text === 'Mitigated' ? '#166534' : 
-                  cell.text === 'Realized' ? '#991b1b' : '#374151';
-              }
-              td.appendChild(span);
-            } else if (cell.scoreBadge) {
-              const val = cell.score;
-              const span = document.createElement('span');
-              span.innerText = cell.text;
-              span.style.display = 'inline-block';
-              span.style.padding = '2px 8px';
-              span.style.borderRadius = '4px';
-              span.style.fontWeight = 'bold';
-              span.style.fontSize = '9px';
+            const styling = getScoreColorAndClass(val);
+            span.style.backgroundColor = styling.bg;
+            span.style.color = styling.text;
+            td.appendChild(span);
+          } else if (cell.category) {
+            const textNode = document.createElement('div');
+            textNode.innerText = cell.text;
+            textNode.style.fontWeight = '600';
+            textNode.style.color = '#1e293b';
+            
+            const catDiv = document.createElement('div');
+            catDiv.innerText = cell.category;
+            catDiv.style.fontSize = '8px';
+            catDiv.style.color = '#64748b';
+            catDiv.style.marginTop = '2px';
+            td.appendChild(textNode);
+            td.appendChild(catDiv);
+          } else if (cell.fullText) {
+            const textDiv = document.createElement('div');
+            textDiv.innerText = cell.text;
+            textDiv.style.whiteSpace = 'pre-wrap';
+            textDiv.style.wordBreak = 'break-word';
+            textDiv.style.lineHeight = '1.35';
+            textDiv.style.color = '#334155';
+            td.appendChild(textDiv);
+          } else {
+            td.innerText = cell.text;
+          }
 
-              const getScoreColorAndClass = (s: number | null) => {
-                if (!s) return { bg: '#f3f4f6', text: '#64748b' };
-                if (s >= 15) return { bg: '#fee2e2', text: '#b91c1c' };
-                if (s >= 8) return { bg: '#fef9c3', text: '#a16207' };
-                return { bg: '#dcfce3', text: '#15803d' };
-              };
-
-              const styling = getScoreColorAndClass(val);
-              span.style.backgroundColor = styling.bg;
-              span.style.color = styling.text;
-              td.appendChild(span);
-            } else if (cell.category) {
-              const textNode = document.createTextNode(cell.text);
-              const catDiv = document.createElement('div');
-              catDiv.innerText = cell.category;
-              catDiv.style.fontSize = '8px';
-              catDiv.style.color = '#64748b';
-              catDiv.style.marginTop = '2px';
-              td.appendChild(textNode);
-              td.appendChild(catDiv);
-            } else if (cell.truncate) {
-              const textDiv = document.createElement('div');
-              textDiv.innerText = cell.text;
-              textDiv.style.maxWidth = '240px';
-              textDiv.style.whiteSpace = 'normal';
-              textDiv.style.wordBreak = 'break-word';
-              textDiv.style.display = '-webkit-box';
-              textDiv.style.webkitLineClamp = '3';
-              textDiv.style.webkitBoxOrient = 'vertical';
-              textDiv.style.overflow = 'hidden';
-              td.appendChild(textDiv);
-            } else {
-              td.innerText = cell.text;
-            }
-
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
+          tr.appendChild(td);
         });
 
+        return tr;
+      };
+
+      let currentPage: HTMLDivElement | null = null;
+      let currentTbody: HTMLTableSectionElement | null = null;
+
+      const startNewPage = () => {
+        const page = document.createElement('div');
+        page.style.width = '1587px';
+        page.style.height = '1123px';
+        page.style.backgroundColor = '#ffffff';
+        page.style.padding = '40px';
+        page.style.boxSizing = 'border-box';
+        page.style.display = 'flex';
+        page.style.flexDirection = 'column';
+        page.style.fontFamily = 'Inter, sans-serif';
+
+        page.appendChild(createPageHeader());
+
+        const tableContainer = document.createElement('div');
+        tableContainer.style.flex = '1';
+        tableContainer.style.overflow = 'hidden';
+
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.fontSize = '10px';
+
+        table.appendChild(createTableHead());
+
+        const tbody = document.createElement('tbody');
         table.appendChild(tbody);
         tableContainer.appendChild(table);
         page.appendChild(tableContainer);
 
+        container.appendChild(page);
+        pagesToRender.push(page);
+
+        currentPage = page;
+        currentTbody = tbody;
+      };
+
+      startNewPage();
+
+      filteredRisks.forEach((risk) => {
+        const row = createRiskRow(risk);
+        currentTbody!.appendChild(row);
+
+        // If table height exceeds printable vertical area (~1010px), start a new page
+        if (currentPage!.scrollHeight > 1030 && currentTbody!.rows.length > 1) {
+          currentTbody!.removeChild(row);
+
+          startNewPage();
+          currentTbody!.appendChild(row);
+        }
+      });
+
+      // Append footers with updated page numbers
+      pagesToRender.forEach((page, index) => {
         const footer = document.createElement('div');
         footer.style.display = 'flex';
         footer.style.justifyContent = 'space-between';
         footer.style.alignItems = 'center';
         footer.style.borderTop = '1px solid #cbd5e1';
-        footer.style.paddingTop = '12px';
-        footer.style.marginTop = '16px';
+        footer.style.paddingTop = '10px';
+        footer.style.marginTop = '12px';
         footer.style.fontSize = '10px';
         footer.style.color = '#64748b';
 
@@ -411,16 +445,14 @@ const RiskDashboard: React.FC = () => {
         centerFooter.innerText = 'PROME Consultants Ltd. - ISO Certified Quality Management System';
 
         const rightFooter = document.createElement('div');
-        rightFooter.innerText = `Page ${i + 1} of ${totalPages}`;
+        rightFooter.innerText = `Page ${index + 1} of ${pagesToRender.length}`;
 
         footer.appendChild(leftFooter);
         footer.appendChild(centerFooter);
         footer.appendChild(rightFooter);
-        page.appendChild(footer);
 
-        container.appendChild(page);
-        pagesToRender.push(page);
-      }
+        page.appendChild(footer);
+      });
 
       const pdf = new jsPDF({
         orientation: 'landscape',
