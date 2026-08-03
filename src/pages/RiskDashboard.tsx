@@ -230,7 +230,7 @@ const RiskDashboard: React.FC = () => {
         return canvas.toDataURL('image/png');
       };
 
-      const barcodeDataUrl = generateBarcodeDataUrl('PROME-QSR-TO-04');
+      const barcodeDataUrl = generateBarcodeDataUrl('PROME-IMSR-CPSD-02');
 
       const createPageHeader = () => {
         const header = document.createElement('div');
@@ -284,7 +284,7 @@ const RiskDashboard: React.FC = () => {
         barcodeImg.style.objectFit = 'contain';
 
         const barcodeText = document.createElement('div');
-        barcodeText.innerText = 'PROME-QSR-TO-04';
+        barcodeText.innerText = 'PROME-IMSR-CPSD-02';
         barcodeText.style.fontSize = '10px';
         barcodeText.style.fontWeight = '700';
         barcodeText.style.color = '#334155';
