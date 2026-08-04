@@ -280,7 +280,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
                   if (onOverlaySelect) onOverlaySelect(overlay.id);
                   if (fabricCanvasRef.current) fabricCanvasRef.current.discardActiveObject();
                 }}
-                bounds="parent"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
