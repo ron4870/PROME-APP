@@ -92,7 +92,7 @@ router.post('/webhook/email', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { temperature: 0.1 }
     });
@@ -129,7 +129,7 @@ router.post('/opportunities/ocr', authMiddleware, async (req, res) => {
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: [
         {
           role: 'user',
@@ -196,7 +196,7 @@ router.post('/opportunities/search', authMiddleware, async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { 
         temperature: 0.2,
@@ -262,7 +262,7 @@ router.post('/opportunities/:id/triage', authMiddleware, async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: {
         temperature: 0.2,
@@ -493,7 +493,7 @@ router.get('/:id/suggest-resources', authMiddleware, async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { temperature: 0.1 }
     });
@@ -581,7 +581,7 @@ router.post('/sections/:id/generate-checklist', authMiddleware, upload.single('d
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { 
         temperature: 0.2,
@@ -663,7 +663,7 @@ router.post(
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3.5-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -748,7 +748,7 @@ router.post('/sections/:id/evaluate-cv', authMiddleware, async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { 
         temperature: 0.2,
@@ -845,7 +845,7 @@ router.post('/sections/:id/draft', authMiddleware, async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { temperature: 0.3 }
     });
@@ -891,7 +891,7 @@ router.post('/:id/retrospective', authMiddleware, async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: {
         temperature: 0.7,

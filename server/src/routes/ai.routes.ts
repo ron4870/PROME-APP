@@ -256,7 +256,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
 
     // Initialize chat session with history
     const chat = ai.chats.create({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       config: {
         systemInstruction: systemInstruction.parts[0].text,
         tools: [{ functionDeclarations: systemTools }],
@@ -279,7 +279,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     const contents: any[] = [...history, { role: 'user', parts: userParts }];
 
     let response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: contents,
       config: {
         systemInstruction: systemInstruction.parts[0].text,
@@ -389,7 +389,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
       contents.push({ role: 'user', parts: [{ functionResponse: { name: call.name, response: functionResponse } }] });
 
       response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3.5-flash',
         contents: contents,
         config: {
           systemInstruction: systemInstruction.parts[0].text,
@@ -853,7 +853,7 @@ ALWAYS respond with a natural language explanation of what you did.`;
     const contents: any[] = [...history, { role: 'user', parts: [{ text: message }] }];
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.5-flash',
       contents: contents,
       config: {
         systemInstruction,
