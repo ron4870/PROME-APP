@@ -850,17 +850,17 @@ You control the 3D viewer by calling tools, and the results are executed on the 
 You can and should call multiple tools when the user's request requires multiple actions (e.g., "fly to Kampala and enable fog" means calling flyToLocation and setSceneFog). 
 ALWAYS respond with a natural language explanation of what you did.`;
 
-    const chat = ai.chats.create({
+    const contents: any[] = [...history, { role: 'user', parts: [{ text: message }] }];
+
+    const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
+      contents: contents,
       config: {
-        temperature: 0.7,
         systemInstruction,
         tools: [{ functionDeclarations: workspace3dTools }],
-      },
-      history
+        temperature: 0.7,
+      }
     });
-
-    const response = await chat.sendMessage(message);
 
     const commands: { tool: string, args: object }[] = [];
     
