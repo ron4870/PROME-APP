@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronUp, ChevronDown, Plus, Mic, Pencil, Send, X, Sparkles, Paperclip, Loader2, Check, AlertCircle } from 'lucide-react';
-import { CesiumCommandBridge, AICommand, CommandResult } from './CesiumCommandBridge';
+import { CesiumCommandBridge } from './CesiumCommandBridge';
+import type { AICommand, CommandResult } from './CesiumCommandBridge';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface AIAssistantPanelProps {
