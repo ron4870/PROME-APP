@@ -96,7 +96,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       });
 
       if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `Server error: ${res.status}`);
       }
 
       const data = await res.json();

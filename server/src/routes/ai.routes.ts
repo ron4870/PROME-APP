@@ -897,9 +897,10 @@ ALWAYS respond with a natural language explanation of what you did.`;
       response: aiMessageText,
       commands
     });
-  } catch (error) {
-    console.error('Error in 3D workspace AI:', error);
-    res.status(500).json({ error: 'Failed to process 3D workspace command' });
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    console.error('Error in 3D workspace AI:', errMsg);
+    res.status(500).json({ error: errMsg });
   }
 });
 
