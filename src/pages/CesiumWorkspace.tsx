@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Database, Cloud, RefreshCw, Layers, ArrowLeft, ChevronLeft, ChevronRight, Upload, X, ChevronDown, Plus, FolderOpen, Play, Pause, RotateCcw, Trash2, Activity, Settings, Wrench, Ruler, Hexagon, Columns2, AreaChart, Clock, Compass, Paintbrush, Box, Square, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import proj4 from 'proj4';
 import JSZip from 'jszip';
 import { AIAssistantPanel } from '../components/cesium/AIAssistantPanel';
+import { CesiumCommandBridge } from '../components/cesium/CesiumCommandBridge';
 
 declare global {
   interface Window {
@@ -3504,6 +3505,119 @@ export const CesiumWorkspace: React.FC = () => {
     }
   };
 
+  // ── AI Command Bridge ──
+  // Instantiate the bridge that maps AI commands to workspace operations
+  const cesiumCommandBridge = useMemo(() => {
+    return new CesiumCommandBridge({
+      getViewer: () => viewerRef.current,
+
+      // Camera
+      flyToUganda: () => flyToUganda(),
+
+      // Base Maps
+      changeBaseLayer: (type) => changeBaseLayer(type),
+
+      // Layers — adapter: AI sends layer name string, toggleLayer expects StreamFile
+      toggleLayer: (layerName: string) => {
+        const file = files.find(f => f.name === layerName);
+        if (file) toggleLayer(file);
+      },
+      toggleCategoryLayers: (category: string, show: boolean) => {
+        toggleCategoryLayers(category, show);
+      },
+      setLayerOpacity: (layerName: string, opacity: number) => {
+        setLayerOpacity(layerName, opacity);
+      },
+      getActiveLayers: () => activeLayers,
+      getFiles: () => files.map(f => ({ name: f.name, type: f.type })),
+
+      // Measurements
+      setMeasurementMode: (mode) => {
+        setMeasurementMode(mode);
+        measurementModeRef.current = mode;
+      },
+      clearMeasurements: () => clearMeasurements(),
+      getMeasurementResult: () => measurementResult,
+
+      // Scene settings
+      setSceneFog: (enabled) => {
+        setSceneFog(enabled);
+        if (viewerRef.current) viewerRef.current.scene.fog.enabled = enabled;
+      },
+      setAtmosphere: (enabled) => {
+        setSceneAtmosphere(enabled);
+        if (viewerRef.current) viewerRef.current.scene.skyAtmosphere.show = enabled;
+      },
+      setLighting: (enabled) => {
+        setSceneLighting(enabled);
+        if (viewerRef.current) viewerRef.current.scene.globe.enableLighting = enabled;
+      },
+      setShadows: (enabled) => {
+        setSceneShadows(enabled);
+        if (viewerRef.current) viewerRef.current.shadows = enabled;
+      },
+      setDepthTest: (enabled) => {
+        setSceneDepthTest(enabled);
+        if (viewerRef.current) viewerRef.current.scene.globe.depthTestAgainstTerrain = enabled;
+      },
+      setContrast: (value) => setSceneContrast(value),
+      setBrightness: (value) => setSceneBrightness(value),
+      getSceneSettings: () => ({
+        fog: sceneFog, atmosphere: sceneAtmosphere, lighting: sceneLighting,
+        shadows: sceneShadows, depthTest: sceneDepthTest, contrast: sceneContrast, brightness: sceneBrightness,
+      }),
+
+      // Terrain Export
+      setTerrainSelectMode: (mode) => {
+        setTerrainSelectMode(mode);
+        terrainSelectModeRef.current = mode;
+      },
+      clearTerrainSelection: () => clearTerrainSelection(),
+      setTerrainExportFormat: (format) => setTerrainExportFormat(format as any),
+      setTerrainCrs: (crs) => setTerrainCrs(crs),
+      downloadTerrainSurface: () => handleDownloadTerrainSurface(),
+
+      // Split Compare
+      toggleSplitCompare: () => setIsSplitActive(prev => !prev),
+      setSplitPosition: (percent) => setSplitPosition(percent),
+      getIsSplitActive: () => isSplitActive,
+
+      // Timeline
+      toggleTimeline: () => setIsTimelineActive(prev => !prev),
+      setTimelinePosition: (percent) => setTimelineTime(percent),
+      togglePlayback: () => setIsPlaybackPlaying(prev => !prev),
+      getIsTimelineActive: () => isTimelineActive,
+
+      // Pedestrian Mode
+      togglePedestrianMode: () => setIsPedestrianActive(prev => !prev),
+      setPedestrianSpeed: (speed) => setPedestrianSpeed(speed),
+      getIsPedestrianActive: () => isPedestrianActive,
+
+      // Projects
+      selectProject: (projectId) => {
+        const proj = projects.find((p: any) => p.id === projectId);
+        if (proj) setSelectedProject(proj);
+      },
+      getProjects: () => projects.map((p: any) => ({ id: p.id, name: p.name })),
+      getSelectedProject: () => selectedProject,
+
+      // Panels
+      setLeftPanelOpen: (open) => setIsLeftPanelOpen(open),
+      setRightPanelOpen: (open) => setIsPanelOpen(open),
+      selectSubModule: (name) => {
+        setSelectedSubModule(name as any);
+        if (name) {
+          setIsLeftPanelOpen(true);
+          setIsSubModulePanelOpen(true);
+        }
+      },
+      getSelectedSubModule: () => selectedSubModule,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cesiumLoaded, files, activeLayers, projects, selectedProject, selectedSubModule,
+      isSplitActive, isTimelineActive, isPedestrianActive, measurementResult,
+      sceneFog, sceneAtmosphere, sceneLighting, sceneShadows, sceneDepthTest, sceneContrast, sceneBrightness]);
+
   return (
     <div 
       onDragOver={(e) => {
@@ -6407,18 +6521,12 @@ export const CesiumWorkspace: React.FC = () => {
 
       {/* AI Assistant Panel */}
       <AIAssistantPanel
-        onSendPrompt={async (prompt, attachments) => {
-          console.log('AI Prompt:', prompt, 'Attachments:', attachments);
-          // AI integration will be developed gradually
-          await new Promise(r => setTimeout(r, 1500));
-        }}
+        commandBridge={cesiumCommandBridge}
         onToggleDraw={() => {
           console.log('Toggle draw mode');
-          // Draw-on-canvas integration will be developed gradually
         }}
         onToggleVoice={() => {
           console.log('Toggle voice input');
-          // Voice command integration will be developed gradually
         }}
       />
 

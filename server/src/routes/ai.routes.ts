@@ -423,4 +423,484 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
   }
 });
 
+const workspace3dTools: any[] = [
+  // Camera tools
+  {
+    name: 'flyToLocation',
+    description: 'Fly the camera to a specific latitude and longitude',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        lat: { type: Type.NUMBER, description: 'Latitude' },
+        lon: { type: Type.NUMBER, description: 'Longitude' },
+        altitude: { type: Type.NUMBER, description: 'Altitude in meters (default 5000)' }
+      },
+      required: ['lat', 'lon']
+    }
+  },
+  {
+    name: 'flyToUganda',
+    description: 'Fly the camera to default Uganda view',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'resetCameraView',
+    description: 'Reset camera to default view',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'setCameraView',
+    description: 'Set camera view with specific heading, pitch, and roll',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        heading: { type: Type.NUMBER, description: 'Heading in degrees' },
+        pitch: { type: Type.NUMBER, description: 'Pitch in degrees' },
+        roll: { type: Type.NUMBER, description: 'Roll in degrees' }
+      },
+      required: ['heading', 'pitch', 'roll']
+    }
+  },
+  // Base Map tools
+  {
+    name: 'changeBaseLayer',
+    description: 'Change the base map layer',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        type: { type: Type.STRING, description: 'Base layer type: satellite, google, or street' }
+      },
+      required: ['type']
+    }
+  },
+  // Layer tools
+  {
+    name: 'toggleLayer',
+    description: 'Toggle visibility of a specific layer/file',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        layerName: { type: Type.STRING, description: 'Name of the file/layer to toggle' }
+      },
+      required: ['layerName']
+    }
+  },
+  {
+    name: 'toggleAllLayers',
+    description: 'Toggle all layers in a category',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        category: { type: Type.STRING, description: 'Category: Surfaces, Design Files, PNGs, or GLTF-GLB' },
+        show: { type: Type.BOOLEAN, description: 'Whether to show or hide' }
+      },
+      required: ['category', 'show']
+    }
+  },
+  {
+    name: 'setLayerOpacity',
+    description: 'Set opacity of a specific layer',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        layerName: { type: Type.STRING, description: 'Name of the layer' },
+        opacity: { type: Type.NUMBER, description: 'Opacity from 0 to 100' }
+      },
+      required: ['layerName', 'opacity']
+    }
+  },
+  {
+    name: 'getActiveLayers',
+    description: 'Get list of currently active layers',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  // Measurement tools
+  {
+    name: 'startMeasurement',
+    description: 'Start a measurement tool',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        mode: { type: Type.STRING, description: 'Measurement mode: distance, area, or profile' }
+      },
+      required: ['mode']
+    }
+  },
+  {
+    name: 'clearMeasurements',
+    description: 'Clear all active measurements',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  // Scene tools
+  {
+    name: 'setSceneFog',
+    description: 'Toggle scene fog',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        enabled: { type: Type.BOOLEAN, description: 'Enable or disable fog' }
+      },
+      required: ['enabled']
+    }
+  },
+  {
+    name: 'setAtmosphere',
+    description: 'Toggle scene atmosphere',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        enabled: { type: Type.BOOLEAN, description: 'Enable or disable atmosphere' }
+      },
+      required: ['enabled']
+    }
+  },
+  {
+    name: 'setLighting',
+    description: 'Toggle scene lighting',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        enabled: { type: Type.BOOLEAN, description: 'Enable or disable lighting' }
+      },
+      required: ['enabled']
+    }
+  },
+  {
+    name: 'setShadows',
+    description: 'Toggle scene shadows',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        enabled: { type: Type.BOOLEAN, description: 'Enable or disable shadows' }
+      },
+      required: ['enabled']
+    }
+  },
+  {
+    name: 'setDepthTest',
+    description: 'Toggle depth testing against terrain',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        enabled: { type: Type.BOOLEAN, description: 'Enable or disable depth testing' }
+      },
+      required: ['enabled']
+    }
+  },
+  {
+    name: 'setContrast',
+    description: 'Set scene contrast',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        value: { type: Type.NUMBER, description: 'Contrast value (50-200)' }
+      },
+      required: ['value']
+    }
+  },
+  {
+    name: 'setBrightness',
+    description: 'Set scene brightness',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        value: { type: Type.NUMBER, description: 'Brightness value (50-150)' }
+      },
+      required: ['value']
+    }
+  },
+  // Terrain Export tools
+  {
+    name: 'startTerrainSelection',
+    description: 'Start terrain selection tool',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        mode: { type: Type.STRING, description: 'Selection mode: box or polygon' }
+      },
+      required: ['mode']
+    }
+  },
+  {
+    name: 'clearTerrainSelection',
+    description: 'Clear active terrain selection',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'setTerrainExportFormat',
+    description: 'Set terrain export format',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        format: { type: Type.STRING, description: 'Format: dem_asc, dxf_tin, dxf_contour, or geotif_image' }
+      },
+      required: ['format']
+    }
+  },
+  {
+    name: 'setTerrainCrs',
+    description: 'Set terrain coordinate reference system',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        crs: { type: Type.STRING, description: 'CRS, e.g. EPSG:32636' }
+      },
+      required: ['crs']
+    }
+  },
+  {
+    name: 'downloadTerrainSurface',
+    description: 'Download the selected terrain surface',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  // Split Compare tools
+  {
+    name: 'toggleSplitCompare',
+    description: 'Toggle split screen compare mode',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'setSplitPosition',
+    description: 'Set split screen slider position',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        percent: { type: Type.NUMBER, description: 'Slider position percentage (0-100)' }
+      },
+      required: ['percent']
+    }
+  },
+  // Timeline tools
+  {
+    name: 'toggleTimeline',
+    description: 'Toggle timeline visibility',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'setTimelinePosition',
+    description: 'Set timeline slider position',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        percent: { type: Type.NUMBER, description: 'Timeline position percentage (0-100)' }
+      },
+      required: ['percent']
+    }
+  },
+  {
+    name: 'togglePlayback',
+    description: 'Toggle timeline playback',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  // Pedestrian tools
+  {
+    name: 'togglePedestrianMode',
+    description: 'Toggle pedestrian/first-person mode',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'setPedestrianSpeed',
+    description: 'Set pedestrian movement speed',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        speed: { type: Type.NUMBER, description: 'Speed (1-100)' }
+      },
+      required: ['speed']
+    }
+  },
+  // Project tools
+  {
+    name: 'selectProject',
+    description: 'Select a project by ID',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        projectId: { type: Type.NUMBER, description: 'Project ID' }
+      },
+      required: ['projectId']
+    }
+  },
+  {
+    name: 'getProjects',
+    description: 'Get a list of available projects',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'getProjectFiles',
+    description: 'Get a list of files for the current project',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  // Panel tools
+  {
+    name: 'openLeftPanel',
+    description: 'Open the left UI panel',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'openRightPanel',
+    description: 'Open the right UI panel',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: 'selectSubModule',
+    description: 'Select a specific sub-module',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING, description: 'Module name: GeoTech, Terrain, Corridors, Hydrology, or Structures' }
+      },
+      required: ['name']
+    }
+  },
+  // Query tools
+  {
+    name: 'getViewerState',
+    description: 'Get the current state of the 3D viewer (camera position, active layers, scene settings)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  }
+];
+
+router.post('/3d-workspace', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const { message, sessionId } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Prepare history if session exists
+    let history: any[] = [];
+    let activeSession = null;
+
+    if (sessionId) {
+      activeSession = await prisma.aiChatSession.findUnique({
+        where: { id: Number(sessionId) },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' }
+          }
+        }
+      });
+
+      if (activeSession) {
+        history = activeSession.messages.map((msg: any) => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.content }]
+        }));
+      }
+
+      // Save user message to DB
+      await prisma.aiChatMessage.create({
+        data: {
+          sessionId: Number(sessionId),
+          role: 'user',
+          content: message
+        }
+      });
+    }
+
+    const systemInstruction = `You are the PROME 3D Workspace AI Assistant specialized in engineering geospatial operations on a CesiumJS globe. 
+You control the 3D viewer by calling tools, and the results are executed on the frontend. 
+You can and should call multiple tools when the user's request requires multiple actions (e.g., "fly to Kampala and enable fog" means calling flyToLocation and setSceneFog). 
+ALWAYS respond with a natural language explanation of what you did.`;
+
+    const chat = ai.chats.create({
+      model: 'gemini-2.5-flash',
+      config: {
+        temperature: 0.7,
+        systemInstruction,
+        tools: [{ functionDeclarations: workspace3dTools }],
+      },
+      history
+    });
+
+    const response = await chat.sendMessage(message);
+
+    const commands: { tool: string, args: object }[] = [];
+    
+    // Process function calls
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      for (const call of response.functionCalls) {
+        commands.push({
+          tool: call.name || '',
+          args: call.args as object || {}
+        });
+      }
+    }
+
+    const aiMessageText = response.text || "I have executed the commands as requested.";
+
+    // Save AI response to DB if session exists
+    if (sessionId && activeSession) {
+      await prisma.aiChatMessage.create({
+        data: {
+          sessionId: Number(sessionId),
+          role: 'model',
+          content: aiMessageText
+        }
+      });
+
+      // Update session timestamp
+      await prisma.aiChatSession.update({
+        where: { id: Number(sessionId) },
+        data: { updatedAt: new Date() }
+      });
+    }
+
+    res.json({
+      response: aiMessageText,
+      commands
+    });
+  } catch (error) {
+    console.error('Error in 3D workspace AI:', error);
+    res.status(500).json({ error: 'Failed to process 3D workspace command' });
+  }
+});
+
 export default router;
