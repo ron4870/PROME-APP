@@ -98,11 +98,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
     <div
       ref={panelRef}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         bottom: isExpanded ? '16px' : '0px',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 1000,
+        zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
