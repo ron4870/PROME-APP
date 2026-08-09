@@ -3,6 +3,7 @@ import { Database, Cloud, RefreshCw, Layers, ArrowLeft, ChevronLeft, ChevronRigh
 import { useAuth } from '../contexts/AuthContext';
 import proj4 from 'proj4';
 import JSZip from 'jszip';
+import { AIAssistantPanel } from '../components/cesium/AIAssistantPanel';
 
 declare global {
   interface Window {
@@ -6403,6 +6404,23 @@ export const CesiumWorkspace: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* AI Assistant Panel */}
+      <AIAssistantPanel
+        onSendPrompt={async (prompt, attachments) => {
+          console.log('AI Prompt:', prompt, 'Attachments:', attachments);
+          // AI integration will be developed gradually
+          await new Promise(r => setTimeout(r, 1500));
+        }}
+        onToggleDraw={() => {
+          console.log('Toggle draw mode');
+          // Draw-on-canvas integration will be developed gradually
+        }}
+        onToggleVoice={() => {
+          console.log('Toggle voice input');
+          // Voice command integration will be developed gradually
+        }}
+      />
 
     </div>
   );
