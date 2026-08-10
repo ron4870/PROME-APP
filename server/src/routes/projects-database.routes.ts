@@ -6,9 +6,18 @@ import { Readable } from 'stream';
 import AdmZip from 'adm-zip';
 import path from 'path';
 import fs from 'fs';
+import { XMLParser } from 'fast-xml-parser';
+import proj4 from 'proj4';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// CRS definitions for coordinate transformation
+proj4.defs('EPSG:32635', '+proj=utm +zone=35 +datum=WGS84 +units=m +no_defs');
+proj4.defs('EPSG:32636', '+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs');
+proj4.defs('EPSG:32637', '+proj=utm +zone=37 +datum=WGS84 +units=m +no_defs');
+proj4.defs('EPSG:32736', '+proj=utm +zone=36 +south +datum=WGS84 +units=m +no_defs');
+proj4.defs('EPSG:21096', '+proj=tmerc +lat_0=0 +lon_0=33 +k=0.9998 +x_0=500000 +y_0=0 +a=6378249.145 +rf=293.465 +towgs84=-160,-6,-302 +units=m +no_defs');
 
 // Local middleware to check Database Project access
 const checkDatabaseProjectAccess = () => async (req: any, res: any, next: any) => {
@@ -612,6 +621,215 @@ router.get('/documents/:docId/file', authenticate, async (req, res) => {
   } catch (error: any) {
     console.error('Error streaming document:', error);
     res.status(500).json({ error: 'Failed to stream file content' });
+  }
+});
+
+// Parse LandXML surface file and return TIN vertices + faces in WGS84
+router.post('/documents/:docId/parse-surface', authenticate, async (req: any, res: any) => {
+  try {
+    const docId = parseInt(req.params.docId);
+    const doc = await prisma.databaseProjectDocument.findUnique({
+      where: { id: docId }
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // 1. Resolve the file content (local or Google Drive)
+    let fileBuffer: Buffer | null = null;
+
+    let urlInfo: any = {};
+    try { urlInfo = JSON.parse(doc.fileUrl || '{}'); } catch(e) {}
+    const viewOrDownload = urlInfo.view || urlInfo.download || doc.fileUrl || '';
+
+    // Try local file first
+    if (viewOrDownload && viewOrDownload.includes('/uploads/')) {
+      const localRelativePath = viewOrDownload.substring(viewOrDownload.indexOf('/uploads/'));
+      const localFilePath = path.join(__dirname, '../..', localRelativePath);
+      if (fs.existsSync(localFilePath)) {
+        fileBuffer = fs.readFileSync(localFilePath);
+      }
+    }
+
+    // Try Google Drive
+    if (!fileBuffer) {
+      const driveFileId = urlInfo.id;
+      if (driveFileId && typeof driveFileId === 'string' && !driveFileId.startsWith('local-')) {
+        try {
+          const driveRes = await driveService.files.get(
+            { fileId: driveFileId, alt: 'media' },
+            { responseType: 'arraybuffer' }
+          );
+          fileBuffer = Buffer.from(driveRes.data as ArrayBuffer);
+        } catch (driveErr) {
+          console.warn('Drive file fetch failed for surface parsing:', driveErr);
+        }
+      }
+    }
+
+    // Fallback: search uploads directory
+    if (!fileBuffer) {
+      const uploadsDir = path.join(__dirname, '../../uploads');
+      if (fs.existsSync(uploadsDir)) {
+        const matchingFiles = fs.readdirSync(uploadsDir).filter(f => f.includes(doc.title.replace(/[^a-zA-Z0-9.-]/g, '_')));
+        if (matchingFiles.length > 0) {
+          fileBuffer = fs.readFileSync(path.join(uploadsDir, matchingFiles[0]));
+        }
+      }
+    }
+
+    if (!fileBuffer) {
+      return res.status(404).json({ error: 'Surface file content not available' });
+    }
+
+    // 2. Parse the XML
+    const xmlText = fileBuffer.toString('utf-8');
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '#text',
+    });
+    const parsed = parser.parse(xmlText);
+
+    // 3. Navigate to Surface > Definition > Pnts and Faces
+    // LandXML structure: <LandXML> <Surfaces> <Surface> <Definition> <Pnts> <P id="1">N E Z</P> ... </Pnts> <Faces> <F>1 2 3</F> ... </Faces>
+    const landxml = parsed.LandXML || parsed.landxml || parsed;
+    const surfaces = landxml.Surfaces || landxml.surfaces;
+    if (!surfaces) {
+      return res.status(400).json({ error: 'No <Surfaces> element found in LandXML file' });
+    }
+
+    const surface = surfaces.Surface || surfaces.surface;
+    if (!surface) {
+      return res.status(400).json({ error: 'No <Surface> element found' });
+    }
+
+    // Handle single surface or array of surfaces (take the first one)
+    const surfaceObj = Array.isArray(surface) ? surface[0] : surface;
+    const definition = surfaceObj.Definition || surfaceObj.definition;
+    if (!definition) {
+      return res.status(400).json({ error: 'No <Definition> element found in Surface' });
+    }
+
+    const pntsContainer = definition.Pnts || definition.pnts;
+    const facesContainer = definition.Faces || definition.faces;
+    if (!pntsContainer || !facesContainer) {
+      return res.status(400).json({ error: 'Surface is missing <Pnts> or <Faces> data' });
+    }
+
+    // 4. Parse points: <P id="1">northing easting elevation</P>
+    let rawPoints = pntsContainer.P || pntsContainer.p || [];
+    if (!Array.isArray(rawPoints)) rawPoints = [rawPoints];
+
+    // Determine CRS from metadata or default to EPSG:32636 (UTM 36N - Uganda)
+    const metadata = urlInfo.metadata || {};
+    const crs = metadata.crs || 'EPSG:32636';
+    const anchorLat = metadata.anchor?.lat;
+    const anchorLon = metadata.anchor?.lon;
+
+    // Build vertex map: pointId -> [lat, lon, elevation]
+    const vertexMap: Record<string, [number, number, number]> = {};
+    const vertices: [number, number, number][] = [];
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    let minElev = Infinity, maxElev = -Infinity;
+
+    for (const p of rawPoints) {
+      const text = typeof p === 'string' ? p : (p['#text'] || '');
+      const id = typeof p === 'string' ? '' : (p['@_id'] || '');
+      const parts = text.toString().trim().split(/\s+/);
+      if (parts.length < 3) continue;
+
+      const northing = parseFloat(parts[0]);
+      const easting = parseFloat(parts[1]);
+      const elevation = parseFloat(parts[2]);
+
+      let lat: number, lon: number;
+
+      if (crs === 'EPSG:4326') {
+        // Already in WGS84: northing=lat, easting=lon
+        lat = northing;
+        lon = easting;
+      } else if (crs === 'local' || crs === 'LOCAL') {
+        // Local coordinates: use anchor point + offset in meters
+        // Approximate conversion: 1 degree lat ≈ 111320m, 1 degree lon ≈ 111320*cos(lat)m
+        const refLat = anchorLat || 0.3134;
+        const refLon = anchorLon || 32.5802;
+        lat = refLat + northing / 111320;
+        lon = refLon + easting / (111320 * Math.cos(refLat * Math.PI / 180));
+      } else {
+        // Use proj4 to transform from project CRS to WGS84
+        try {
+          const [lonOut, latOut] = proj4(crs, 'EPSG:4326', [easting, northing]);
+          lat = latOut;
+          lon = lonOut;
+        } catch (projErr) {
+          // Fallback to anchor-based local offset
+          const refLat = anchorLat || 0.3134;
+          const refLon = anchorLon || 32.5802;
+          lat = refLat + northing / 111320;
+          lon = refLon + easting / (111320 * Math.cos(refLat * Math.PI / 180));
+        }
+      }
+
+      vertexMap[id || vertices.length.toString()] = [lat, lon, elevation];
+      vertices.push([lat, lon, elevation]);
+
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+      if (elevation < minElev) minElev = elevation;
+      if (elevation > maxElev) maxElev = elevation;
+    }
+
+    // 5. Parse faces: <F>p1 p2 p3</F>
+    let rawFaces = facesContainer.F || facesContainer.f || [];
+    if (!Array.isArray(rawFaces)) rawFaces = [rawFaces];
+
+    const triangles: [number, number, number][] = [];
+    // Build id-to-index lookup for vertex references
+    const idToIndex: Record<string, number> = {};
+    let idx = 0;
+    for (const p of rawPoints) {
+      const id = typeof p === 'string' ? idx.toString() : (p['@_id'] || idx.toString());
+      idToIndex[id] = idx;
+      idx++;
+    }
+
+    for (const f of rawFaces) {
+      const text = typeof f === 'string' ? f : (f['#text'] || f || '');
+      const parts = text.toString().trim().split(/\s+/);
+      if (parts.length < 3) continue;
+
+      const i1 = idToIndex[parts[0]];
+      const i2 = idToIndex[parts[1]];
+      const i3 = idToIndex[parts[2]];
+
+      if (i1 !== undefined && i2 !== undefined && i3 !== undefined) {
+        triangles.push([i1, i2, i3]);
+      }
+    }
+
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLon = (minLon + maxLon) / 2;
+
+    res.json({
+      vertices,
+      triangles,
+      bounds: { west: minLon, east: maxLon, south: minLat, north: maxLat },
+      center: { lat: centerLat, lon: centerLon },
+      stats: {
+        vertexCount: vertices.length,
+        triangleCount: triangles.length,
+        minElev,
+        maxElev,
+        crs
+      }
+    });
+  } catch (error: any) {
+    console.error('Error parsing surface file:', error);
+    res.status(500).json({ error: `Failed to parse surface: ${error.message}` });
   }
 });
 

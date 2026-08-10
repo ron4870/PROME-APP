@@ -2215,109 +2215,231 @@ export const CesiumWorkspace: React.FC = () => {
           }
         }
       } else if (file.layerType === 'GeoTIFF' || file.layerType === 'LandXML' || file.layerType === 'OBJ/FBX' || file.name.endsWith('.xml') || file.name.endsWith('.tif') || file.name.endsWith('.tiff') || file.name.endsWith('.obj') || file.name.endsWith('.fbx')) {
-        addLog(`Initiating dynamic terrain replacement at project site for surface: ${file.name}`);
+        addLog(`Initiating surface loading for: ${file.name}`);
         
-        let lat = 0.3134;
-        let lon = 32.5802;
-        if (file.coordinates && typeof file.coordinates.lat === 'number') {
-          lat = file.coordinates.lat;
-          lon = file.coordinates.lon;
-          addLog(`Using custom georeference anchor from file metadata: Lat ${lat}, Lon ${lon}`);
-        } else if (selectedProject?.name?.includes('Gulu')) {
-          lat = 2.7715;
-          lon = 32.2920;
-        }
-
-        const delta = 0.003; 
-        const west = lon - delta;
-        const east = lon + delta;
-        const south = lat - delta;
-        const north = lat + delta;
-
-        // 1. Create a ClippingPlane collection to cut a hole in the base terrain centered at project coordinates
-        const center = Cesium.Cartesian3.fromDegrees(lon, lat, 0.0);
-        const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
-
-        const planes = [
-          new Cesium.ClippingPlane(new Cesium.Cartesian3(1.0, 0.0, 0.0), -150.0),  // East
-          new Cesium.ClippingPlane(new Cesium.Cartesian3(-1.0, 0.0, 0.0), -150.0), // West
-          new Cesium.ClippingPlane(new Cesium.Cartesian3(0.0, 1.0, 0.0), -150.0),  // North
-          new Cesium.ClippingPlane(new Cesium.Cartesian3(0.0, -1.0, 0.0), -150.0)  // South
-        ];
-
-        viewer.globe.clippingPlanes = new Cesium.ClippingPlaneCollection({
-          modelMatrix: modelMatrix,
-          planes: planes,
-          edgeColor: Cesium.Color.DODGERBLUE,
-          edgeWidth: 2.0,
-          unionClippingRegions: false,
-          enabled: true
-        });
-
-        // 2. Resolve base elevation dynamically from active terrain provider at center location
-        const cartographic = Cesium.Cartographic.fromDegrees(lon, lat);
-        const terrainHeight = viewer.scene.globe.getHeight(cartographic) || 1150.0;
-        const baseElevation = terrainHeight;
-        
-        // Add georeferenced replacement design surface grid
-        const entitiesAdded: any[] = [];
-        const gridRes = 10;
-        const stepX = (east - west) / gridRes;
-        const stepY = (north - south) / gridRes;
-
-        for (let i = 0; i < gridRes; i++) {
-          for (let j = 0; j < gridRes; j++) {
-            const w = west + i * stepX;
-            const e = west + (i + 1) * stepX;
-            const s = south + j * stepY;
-            const n = south + (j + 1) * stepY;
-
-            const distFromCenter = Math.sqrt(Math.pow((i - gridRes/2), 2) + Math.pow((j - gridRes/2), 2));
-            // excavation bowl shape elevation logic
-            const elevationOffset = -18.0 * Math.exp(-distFromCenter / 3.0); 
-
-            const polygonCoords = Cesium.Cartesian3.fromDegreesArrayHeights([
-              w, s, baseElevation + elevationOffset,
-              e, s, baseElevation + elevationOffset,
-              e, n, baseElevation + elevationOffset,
-              w, n, baseElevation + elevationOffset
-            ]);
-
-            const cellEntity = viewer.entities.add({
-              name: `Surface Cell [${i},${j}]`,
-              polygon: {
-                hierarchy: new Cesium.PolygonHierarchy(polygonCoords),
-                material: file.name.endsWith('.tif') || file.name.endsWith('.tiff') || file.layerType === 'GeoTIFF'
-                  ? Cesium.Color.DARKGREEN.withAlpha(0.8) 
-                  : Cesium.Color.LIGHTSLATEGRAY.withAlpha(0.9), 
-                outline: true,
-                outlineColor: Cesium.Color.DARKSLATEGRAY.withAlpha(0.2),
-                outlineWidth: 1,
-                perPositionHeight: true
-              }
+        // For LandXML files with a document ID, fetch and render real TIN surface data
+        if (file.id && (file.layerType === 'LandXML' || file.name.endsWith('.xml'))) {
+          addLog(`Parsing LandXML TIN surface data from server...`);
+          try {
+            const surfaceRes = await fetch(`/api/projects-database/documents/${file.id}/parse-surface`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` }
             });
-            entitiesAdded.push(cellEntity);
+
+            if (!surfaceRes.ok) {
+              const errData = await surfaceRes.json().catch(() => ({}));
+              addLog(`Error parsing surface: ${errData.error || 'Unknown error'}`);
+              setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'Failed' } : f));
+              return;
+            }
+
+            const surfaceData = await surfaceRes.json();
+            const { vertices, triangles, bounds, center, stats } = surfaceData;
+
+            addLog(`Surface parsed: ${stats.vertexCount} vertices, ${stats.triangleCount} triangles, elevation range ${stats.minElev.toFixed(1)}m - ${stats.maxElev.toFixed(1)}m`);
+
+            // 1. Clip base terrain at the surface bounds with a small padding
+            const padDeg = 0.0002;
+            const clipCenter = Cesium.Cartesian3.fromDegrees(center.lon, center.lat, 0.0);
+            const clipModelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(clipCenter);
+
+            // Calculate clipping plane distances from center to bounds (in meters)
+            const latRange = (bounds.north - bounds.south + padDeg * 2) * 111320;
+            const lonRange = (bounds.east - bounds.west + padDeg * 2) * 111320 * Math.cos(center.lat * Math.PI / 180);
+            const halfDistNS = latRange / 2;
+            const halfDistEW = lonRange / 2;
+
+            const planes = [
+              new Cesium.ClippingPlane(new Cesium.Cartesian3(1.0, 0.0, 0.0), -halfDistEW),   // East
+              new Cesium.ClippingPlane(new Cesium.Cartesian3(-1.0, 0.0, 0.0), -halfDistEW),  // West
+              new Cesium.ClippingPlane(new Cesium.Cartesian3(0.0, 1.0, 0.0), -halfDistNS),   // North
+              new Cesium.ClippingPlane(new Cesium.Cartesian3(0.0, -1.0, 0.0), -halfDistNS)   // South
+            ];
+
+            viewer.globe.clippingPlanes = new Cesium.ClippingPlaneCollection({
+              modelMatrix: clipModelMatrix,
+              planes: planes,
+              edgeColor: Cesium.Color.DODGERBLUE,
+              edgeWidth: 2.0,
+              unionClippingRegions: false,
+              enabled: true
+            });
+
+            // 2. Render TIN triangles as polygon entities with per-position height
+            const entitiesAdded: any[] = [];
+            const elevRange = stats.maxElev - stats.minElev || 1;
+
+            // Color ramp function: green (low) -> yellow (mid) -> brown (high)
+            const getElevColor = (elev: number) => {
+              const t = Math.max(0, Math.min(1, (elev - stats.minElev) / elevRange));
+              if (t < 0.5) {
+                // Green to Yellow
+                const s = t * 2;
+                return new Cesium.Color(s * 0.8, 0.55 + s * 0.35, 0.15 * (1 - s), 0.9);
+              } else {
+                // Yellow to Brown
+                const s = (t - 0.5) * 2;
+                return new Cesium.Color(0.8 - s * 0.2, 0.9 - s * 0.45, s * 0.1, 0.9);
+              }
+            };
+
+            for (let ti = 0; ti < triangles.length; ti++) {
+              const [i1, i2, i3] = triangles[ti];
+              if (!vertices[i1] || !vertices[i2] || !vertices[i3]) continue;
+
+              const v1 = vertices[i1]; // [lat, lon, elev]
+              const v2 = vertices[i2];
+              const v3 = vertices[i3];
+
+              const avgElev = (v1[2] + v2[2] + v3[2]) / 3;
+
+              const polygonCoords = Cesium.Cartesian3.fromDegreesArrayHeights([
+                v1[1], v1[0], v1[2],
+                v2[1], v2[0], v2[2],
+                v3[1], v3[0], v3[2]
+              ]);
+
+              const triEntity = viewer.entities.add({
+                layerName: file.name,
+                name: `TIN Triangle ${ti}`,
+                polygon: {
+                  hierarchy: new Cesium.PolygonHierarchy(polygonCoords),
+                  material: getElevColor(avgElev),
+                  outline: true,
+                  outlineColor: Cesium.Color.DARKSLATEGRAY.withAlpha(0.3),
+                  outlineWidth: 1,
+                  perPositionHeight: true
+                }
+              });
+              entitiesAdded.push(triEntity);
+            }
+
+            viewer._customSurfaceElements = viewer._customSurfaceElements || {};
+            viewer._customSurfaceElements[file.name] = {
+              entities: entitiesAdded,
+              clippingPlanes: viewer.globe.clippingPlanes
+            };
+
+            // 3. Fly camera to surface center
+            const flyAltitude = Math.max(500, latRange * 1.5, lonRange * 1.5);
+            viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(center.lon, center.lat - (bounds.north - bounds.south) * 0.3, flyAltitude),
+              orientation: {
+                heading: Cesium.Math.toRadians(0.0),
+                pitch: Cesium.Math.toRadians(-35.0),
+                roll: 0.0
+              },
+              duration: 2.5
+            });
+
+            addLog(`Successfully rendered ${triangles.length} TIN triangles for surface "${file.name}".`);
+
+          } catch (err: any) {
+            console.error('Surface parsing error:', err);
+            addLog(`Error loading surface: ${err.message}`);
+            setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'Failed' } : f));
+            return;
           }
+        } else {
+          // Fallback for GeoTIFF, OBJ, FBX, or surfaces without an ID — use the original grid approach
+          let lat = 0.3134;
+          let lon = 32.5802;
+          if (file.coordinates && typeof file.coordinates.lat === 'number') {
+            lat = file.coordinates.lat;
+            lon = file.coordinates.lon;
+          } else if (selectedProject?.name?.includes('Gulu')) {
+            lat = 2.7715;
+            lon = 32.2920;
+          }
+
+          const delta = 0.003; 
+          const west = lon - delta;
+          const east = lon + delta;
+          const south = lat - delta;
+          const north = lat + delta;
+
+          const center = Cesium.Cartesian3.fromDegrees(lon, lat, 0.0);
+          const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
+
+          const planes = [
+            new Cesium.ClippingPlane(new Cesium.Cartesian3(1.0, 0.0, 0.0), -150.0),
+            new Cesium.ClippingPlane(new Cesium.Cartesian3(-1.0, 0.0, 0.0), -150.0),
+            new Cesium.ClippingPlane(new Cesium.Cartesian3(0.0, 1.0, 0.0), -150.0),
+            new Cesium.ClippingPlane(new Cesium.Cartesian3(0.0, -1.0, 0.0), -150.0)
+          ];
+
+          viewer.globe.clippingPlanes = new Cesium.ClippingPlaneCollection({
+            modelMatrix: modelMatrix,
+            planes: planes,
+            edgeColor: Cesium.Color.DODGERBLUE,
+            edgeWidth: 2.0,
+            unionClippingRegions: false,
+            enabled: true
+          });
+
+          const cartographic = Cesium.Cartographic.fromDegrees(lon, lat);
+          const terrainHeight = viewer.scene.globe.getHeight(cartographic) || 1150.0;
+          const baseElevation = terrainHeight;
+          
+          const entitiesAdded: any[] = [];
+          const gridRes = 10;
+          const stepX = (east - west) / gridRes;
+          const stepY = (north - south) / gridRes;
+
+          for (let i = 0; i < gridRes; i++) {
+            for (let j = 0; j < gridRes; j++) {
+              const w = west + i * stepX;
+              const e = west + (i + 1) * stepX;
+              const s = south + j * stepY;
+              const n = south + (j + 1) * stepY;
+
+              const distFromCenter = Math.sqrt(Math.pow((i - gridRes/2), 2) + Math.pow((j - gridRes/2), 2));
+              const elevationOffset = -18.0 * Math.exp(-distFromCenter / 3.0); 
+
+              const polygonCoords = Cesium.Cartesian3.fromDegreesArrayHeights([
+                w, s, baseElevation + elevationOffset,
+                e, s, baseElevation + elevationOffset,
+                e, n, baseElevation + elevationOffset,
+                w, n, baseElevation + elevationOffset
+              ]);
+
+              const cellEntity = viewer.entities.add({
+                name: `Surface Cell [${i},${j}]`,
+                polygon: {
+                  hierarchy: new Cesium.PolygonHierarchy(polygonCoords),
+                  material: file.name.endsWith('.tif') || file.name.endsWith('.tiff') || file.layerType === 'GeoTIFF'
+                    ? Cesium.Color.DARKGREEN.withAlpha(0.8) 
+                    : Cesium.Color.LIGHTSLATEGRAY.withAlpha(0.9), 
+                  outline: true,
+                  outlineColor: Cesium.Color.DARKSLATEGRAY.withAlpha(0.2),
+                  outlineWidth: 1,
+                  perPositionHeight: true
+                }
+              });
+              entitiesAdded.push(cellEntity);
+            }
+          }
+
+          viewer._customSurfaceElements = viewer._customSurfaceElements || {};
+          viewer._customSurfaceElements[file.name] = {
+            entities: entitiesAdded,
+            clippingPlanes: viewer.globe.clippingPlanes
+          };
+
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.005, 1300.0),
+            orientation: {
+              heading: Cesium.Math.toRadians(0.0),
+              pitch: Cesium.Math.toRadians(-35.0),
+              roll: 0.0
+            },
+            duration: 2.5
+          });
+
+          addLog(`Loaded surface "${file.name}" with grid replacement.`);
         }
 
-        viewer._customSurfaceElements = viewer._customSurfaceElements || {};
-        viewer._customSurfaceElements[file.name] = {
-          entities: entitiesAdded,
-          clippingPlanes: viewer.globe.clippingPlanes
-        };
-
-        // Zoom camera to site
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.005, 1300.0),
-          orientation: {
-            heading: Cesium.Math.toRadians(0.0),
-            pitch: Cesium.Math.toRadians(-35.0),
-            roll: 0.0
-          },
-          duration: 2.5
-        });
-
-        addLog(`Successfully loaded georeferenced surface "${file.name}" replacing base terrain.`);
+        addLog(`Successfully loaded georeferenced surface "${file.name}".`);
       } else if (file.name.includes('kampala_flyover')) {
         // Render Kampala Flyover glowing red alignment line
         const flyoverCoordinates = [
