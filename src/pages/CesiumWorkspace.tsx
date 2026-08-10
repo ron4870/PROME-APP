@@ -2100,7 +2100,7 @@ export const CesiumWorkspace: React.FC = () => {
     return 'Design Files';
   };
 
-  const toggleLayer = (file: StreamFile, forceState?: boolean) => {
+  const toggleLayer = async (file: StreamFile, forceState?: boolean) => {
     if (!viewerRef.current || !window.Cesium) return;
     const Cesium = window.Cesium;
     const viewer = viewerRef.current;
