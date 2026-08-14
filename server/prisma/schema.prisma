@@ -57,6 +57,7 @@ model User {
   // Objectives & KPIs Relations
   ownedObjectives QualityObjective[] @relation("ObjectiveOwner")
   kpiMeasurements KpiMeasurement[]   @relation("MeasurementReporter")
+  companyExperiences CompanyExperience[] @relation("CompanyExperienceCreator")
 
   // Training & Competence Relations
   trainingsConducted  TrainingRecord[]     @relation("InternalTrainer")
@@ -1752,3 +1753,27 @@ model DatabaseProjectDocument {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
+
+model CompanyExperience {
+  id              Int       @id @default(autoincrement())
+  projectNumber   String    @unique
+  projectName     String
+  client          String
+  sector          String    @default("Civil & Infrastructure")
+  location        String    @default("Uganda")
+  contractValue   String?
+  role            String    @default("Lead Consultant")
+  startDate       DateTime?
+  completionDate  DateTime?
+  status          String    @default("Completed")
+  description     String?   @db.Text
+  scopeOfServices String?   @db.Text
+  clientContact   String?   @db.Text
+  
+  createdById     Int?
+  createdBy       User?     @relation("CompanyExperienceCreator", fields: [createdById], references: [id])
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+

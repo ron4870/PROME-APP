@@ -520,7 +520,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 </div>
                 <span style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center', fontWeight: '500' }}>Library</span>
               </Link>
-              <Link to="/projects-database" onClick={() => setIsRightDrawerOpen(false)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}>
+              <Link to="/company-experience" onClick={() => setIsRightDrawerOpen(false)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', gap: '0.5rem' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(145deg, #ffffff, #e6e6e6)', boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.08), -4px -4px 8px rgba(255, 255, 255, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.4)' }}>
                   <Award size={20} color="#cc0000" strokeWidth={2} style={{ filter: 'drop-shadow(1px 2px 2px rgba(204, 0, 0, 0.3))' }} />
                 </div>

@@ -40,6 +40,8 @@ import { ProjectsDashboard } from './pages/ProjectsDashboard';
 import { ProjectsDatabase } from './pages/ProjectsDatabase';
 import { CesiumWorkspace } from './pages/CesiumWorkspace';
 import { ProjectWorkspace } from './pages/ProjectWorkspace';
+import { CompanyExperienceDashboard } from './pages/CompanyExperienceDashboard';
+import { CompanyExperienceDetails } from './pages/CompanyExperienceDetails';
 import FormsDirectory from './pages/forms/FormsDirectory';
 import FundsRequisitionForm from './pages/forms/FundsRequisitionForm';
 import LocalPurchaseOrderForm from './pages/forms/LocalPurchaseOrderForm';
@@ -161,6 +163,10 @@ function App() {
         <Route path="/projects-database" element={<ProtectedRoute><ProjectsDatabase /></ProtectedRoute>} />
         <Route path="/projects-database/3d" element={<ProtectedRoute><CesiumWorkspace /></ProtectedRoute>} />
         <Route path="/projects/:id" element={<ProtectedRoute><ProjectWorkspace /></ProtectedRoute>} />
+        
+        {/* Company Experience Routes */}
+        <Route path="/company-experience" element={<ProtectedRoute><CompanyExperienceDashboard /></ProtectedRoute>} />
+        <Route path="/company-experience/:id" element={<ProtectedRoute><CompanyExperienceDetails /></ProtectedRoute>} />
         
         {/* Forms Routes */}
         <Route path="/forms" element={<ProtectedRoute><FormsDirectory /></ProtectedRoute>} />
