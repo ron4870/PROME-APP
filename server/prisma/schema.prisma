@@ -1756,19 +1756,26 @@ model DatabaseProjectDocument {
 
 model CompanyExperience {
   id              Int       @id @default(autoincrement())
+  itemNo          Int?
   projectNumber   String    @unique
   projectName     String
+  category        String    @default("Feasibility Studies and Design of Highway Projects")
+  duration        String?
   client          String
-  sector          String    @default("Civil & Infrastructure")
-  location        String    @default("Uganda")
+  funder          String?
+  clientAddress   String?
+  country         String    @default("Uganda")
   contractValue   String?
-  role            String    @default("Lead Consultant")
-  startDate       DateTime?
-  completionDate  DateTime?
+  role            String    @default("Sole Consultant")
   status          String    @default("Completed")
+  deliverables    String?   @db.Text
   description     String?   @db.Text
   scopeOfServices String?   @db.Text
   clientContact   String?   @db.Text
+  sector          String    @default("Civil & Infrastructure")
+  location        String    @default("Uganda")
+  startDate       DateTime?
+  completionDate  DateTime?
   
   createdById     Int?
   createdBy       User?     @relation("CompanyExperienceCreator", fields: [createdById], references: [id])

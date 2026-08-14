@@ -1,24 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Award, MapPin, FileText, UserCheck } from 'lucide-react';
+import { ArrowLeft, Save, Award, MapPin, FileText } from 'lucide-react';
 
 interface CompanyExperienceDetail {
   id: number;
+  itemNo?: number;
   projectNumber: string;
   projectName: string;
+  category: string;
+  duration?: string | null;
   client: string;
-  sector: string;
-  location: string;
-  contractValue: string | null;
+  funder?: string | null;
+  clientAddress?: string | null;
+  country: string;
+  contractValue?: string | null;
   role: string;
-  startDate: string | null;
-  completionDate: string | null;
   status: string;
-  description: string | null;
-  scopeOfServices: string | null;
-  clientContact: string | null;
-  createdBy?: { id: number; name: string };
+  deliverables?: string | null;
+  description?: string | null;
+  scopeOfServices?: string | null;
+  clientContact?: string | null;
+  sector?: string | null;
+  location?: string | null;
 }
+
+const CATEGORIES = [
+  'A. Feasibility Studies and Design of Expressway Projects',
+  'B. Feasibility Studies and Design of Highway Projects',
+  'C. Feasibility Studies and Design of Bridges',
+  'D. Feasibility Studies and Design of Urban/Town Road Projects',
+  'E. Field Investigations and Data Collection Assignments',
+  'F. Feasibility Studies and Design of Infrastructure Projects in Oil and GAS',
+  'G. Feasibility Studies and Design of Building Projects',
+  'H. Development and Management of Asset Management Systems',
+  'I. Design Review and Construction Supervision'
+];
 
 export const CompanyExperienceDetails: React.FC = () => {
   const { id } = useParams();
@@ -66,7 +82,7 @@ export const CompanyExperienceDetails: React.FC = () => {
       if (response.ok) {
         const updated = await response.json();
         setRecord(updated);
-        alert('Company experience record saved successfully');
+        alert('Infrastructure project experience saved successfully');
       } else {
         alert('Failed to save record');
       }
@@ -81,7 +97,7 @@ export const CompanyExperienceDetails: React.FC = () => {
   if (isLoading) {
     return (
       <div className="layout-container" style={{ padding: '4rem', textAlign: 'center', color: '#6b7280' }}>
-        Loading experience details...
+        Loading project details...
       </div>
     );
   }
@@ -89,7 +105,7 @@ export const CompanyExperienceDetails: React.FC = () => {
   if (!record) return null;
 
   return (
-    <div className="layout-container" style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '4rem' }}>
+    <div className="layout-container" style={{ maxWidth: '1050px', margin: '0 auto', paddingBottom: '4rem' }}>
       <button 
         onClick={() => navigate('/company-experience')} 
         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', marginBottom: '1.5rem', fontWeight: '500' }}
@@ -101,11 +117,11 @@ export const CompanyExperienceDetails: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: '700', color: '#cc0000', backgroundColor: '#fee2e2', padding: '4px 10px', borderRadius: '6px' }}>
-                {record.projectNumber}
+              <span style={{ fontSize: '0.875rem', fontWeight: '800', color: '#cc0000', backgroundColor: '#fee2e2', padding: '4px 12px', borderRadius: '6px' }}>
+                Item #{record.itemNo || record.id} | {record.projectNumber}
               </span>
               <span style={{
-                padding: '4px 10px',
+                padding: '4px 12px',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
                 fontWeight: '600',
@@ -119,10 +135,12 @@ export const CompanyExperienceDetails: React.FC = () => {
                 {record.status}
               </span>
             </div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#111827', margin: 0, lineHeight: '1.3' }}>
               {record.projectName}
             </h1>
-            <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>Client: {record.client} | Location: {record.location}</p>
+            <p style={{ color: '#6b7280', margin: '6px 0 0 0' }}>
+              Category: <strong style={{ color: '#cc0000' }}>{record.category}</strong>
+            </p>
           </div>
           
           <button 
@@ -135,27 +153,110 @@ export const CompanyExperienceDetails: React.FC = () => {
           </button>
         </div>
 
-        {/* Section 1: General Project Information */}
+        {/* Section 1: Official Project Classification */}
         <div style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginTop: 0, marginBottom: '1.25rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Award size={20} color="#cc0000" /> Basic Project Credentials
+            <Award size={20} color="#cc0000" /> Infrastructure Assignment Details
           </h2>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
             <div style={{ gridColumn: 'span 2' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Project Title / Name *
+                Official Project Category *
               </label>
-              <input 
-                type="text" 
+              <select 
+                value={record.category}
+                onChange={(e) => setRecord({ ...record, category: e.target.value })}
+                className="form-input"
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem', fontWeight: '600', color: '#991b1b' }}
+              >
+                {CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Full Project Name / Assignment Title *
+              </label>
+              <textarea 
+                rows={2}
                 value={record.projectName}
                 onChange={(e) => setRecord({ ...record, projectName: e.target.value })}
                 className="form-input"
                 required
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem', fontWeight: '600' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Project Duration (e.g. March 2016 to June 2020) *
+              </label>
+              <input 
+                type="text" 
+                value={record.duration || ''}
+                onChange={(e) => setRecord({ ...record, duration: e.target.value })}
+                className="form-input"
+                placeholder="e.g. November 2016 to November 2017"
                 style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
               />
             </div>
 
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Country of Project Execution *
+              </label>
+              <input 
+                type="text" 
+                value={record.country || 'Uganda'}
+                onChange={(e) => setRecord({ ...record, country: e.target.value })}
+                className="form-input"
+                placeholder="e.g. Uganda, Ethiopia, Tanzania"
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Role in Assignment *
+              </label>
+              <input 
+                type="text" 
+                value={record.role || ''}
+                onChange={(e) => setRecord({ ...record, role: e.target.value })}
+                className="form-input"
+                placeholder="e.g. Sole Consultant, Sub Consultant in association with EGIS International"
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Assignment Status *
+              </label>
+              <select 
+                value={record.status}
+                onChange={(e) => setRecord({ ...record, status: e.target.value })}
+                className="form-input"
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
+              >
+                <option value="Completed">Completed</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Pipeline">Pipeline / Tender</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Client, Funder & Financials */}
+        <div style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginTop: 0, marginBottom: '1.25rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MapPin size={20} color="#cc0000" /> Client / Employer, Funder & Contract Value
+          </h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
                 Client / Employer Name *
@@ -166,184 +267,72 @@ export const CompanyExperienceDetails: React.FC = () => {
                 onChange={(e) => setRecord({ ...record, client: e.target.value })}
                 className="form-input"
                 required
+                placeholder="e.g. Uganda National Roads Authority"
                 style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
               />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Engineering Sector / Discipline *
-              </label>
-              <select 
-                value={record.sector}
-                onChange={(e) => setRecord({ ...record, sector: e.target.value })}
-                className="form-input"
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              >
-                <option value="Civil & Infrastructure">Civil & Infrastructure</option>
-                <option value="Roads & Highways">Roads & Highways</option>
-                <option value="Structures & Buildings">Structures & Buildings</option>
-                <option value="Water & Sanitation">Water & Sanitation</option>
-                <option value="Geotechnical & Foundation">Geotechnical & Foundation</option>
-                <option value="Transportation Studies">Transportation Studies</option>
-                <option value="Hydrology & Drainage">Hydrology & Drainage</option>
-                <option value="Infrastructure & Logistics">Infrastructure & Logistics</option>
-                <option value="Environmental & Social">Environmental & Social</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Consulting Role *
-              </label>
-              <select 
-                value={record.role}
-                onChange={(e) => setRecord({ ...record, role: e.target.value })}
-                className="form-input"
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              >
-                <option value="Lead Consultant">Lead Consultant</option>
-                <option value="Sub-Consultant">Sub-Consultant</option>
-                <option value="Joint Venture Partner">Joint Venture Partner</option>
-                <option value="Project Manager">Project Manager</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Project Status *
-              </label>
-              <select 
-                value={record.status}
-                onChange={(e) => setRecord({ ...record, status: e.target.value })}
-                className="form-input"
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              >
-                <option value="Completed">Completed</option>
-                <option value="Ongoing">Ongoing</option>
-                <option value="Pipeline">Pipeline / Bidding</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Location, Financials & Dates */}
-        <div style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginTop: 0, marginBottom: '1.25rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <MapPin size={20} color="#cc0000" /> Location, Financials & Timeline
-          </h2>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Project Location (City / Country)
+                Funder / Donor Agency
               </label>
               <input 
                 type="text" 
-                value={record.location}
-                onChange={(e) => setRecord({ ...record, location: e.target.value })}
+                value={record.funder || ''}
+                onChange={(e) => setRecord({ ...record, funder: e.target.value })}
                 className="form-input"
-                placeholder="e.g. Kampala, Uganda"
+                placeholder="e.g. Government of Uganda, World Bank, JICA, AfDB"
                 style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
               />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Contract Value (Currency & Amount)
+                Client Physical Address & Contact Info
+              </label>
+              <input 
+                type="text" 
+                value={record.clientAddress || ''}
+                onChange={(e) => setRecord({ ...record, clientAddress: e.target.value })}
+                className="form-input"
+                placeholder="e.g. P.O. Box 28487, Kampala Uganda"
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Contract Value (UGX / USD / ETB)
               </label>
               <input 
                 type="text" 
                 value={record.contractValue || ''}
                 onChange={(e) => setRecord({ ...record, contractValue: e.target.value })}
                 className="form-input"
-                placeholder="e.g. USD 3,800,000 or UGX 14.2B"
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Commencement Date
-              </label>
-              <input 
-                type="date" 
-                value={record.startDate ? new Date(record.startDate).toISOString().split('T')[0] : ''}
-                onChange={(e) => setRecord({ ...record, startDate: e.target.value || null })}
-                className="form-input"
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Completion Date
-              </label>
-              <input 
-                type="date" 
-                value={record.completionDate ? new Date(record.completionDate).toISOString().split('T')[0] : ''}
-                onChange={(e) => setRecord({ ...record, completionDate: e.target.value || null })}
-                className="form-input"
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
+                placeholder="e.g. UGX 6,342,048,583 (USD 1,865,308.40)"
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem', fontWeight: '700', color: '#047857' }}
               />
             </div>
           </div>
         </div>
 
-        {/* Section 3: Scope of Services & Project Description */}
+        {/* Section 3: Main Deliverables & Outputs */}
         <div style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginTop: 0, marginBottom: '1.25rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileText size={20} color="#cc0000" /> Executive Summary & Scope of Services
-          </h2>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Detailed Project Description
-              </label>
-              <textarea 
-                rows={4}
-                value={record.description || ''}
-                onChange={(e) => setRecord({ ...record, description: e.target.value })}
-                className="form-input"
-                placeholder="Comprehensive project background, technical parameters, structural dimensions, alignment length, capacity, etc."
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                Scope of Services Provided
-              </label>
-              <textarea 
-                rows={4}
-                value={record.scopeOfServices || ''}
-                onChange={(e) => setRecord({ ...record, scopeOfServices: e.target.value })}
-                className="form-input"
-                placeholder="List key services: Topographical surveying, geotechnical drilling, structural analysis, hydraulic modeling, construction supervision, ESIA, defects liability monitoring, etc."
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section 4: Client References & Verification */}
-        <div style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginTop: 0, marginBottom: '1.25rem', borderBottom: '1px solid #f3f4f6', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <UserCheck size={20} color="#cc0000" /> Client References & Contact Person
+            <FileText size={20} color="#cc0000" /> Description of Main Deliverables / Outputs
           </h2>
 
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-              Client Contact Person & Verification Details
+              Main Deliverables & Bullet Points *
             </label>
             <textarea 
-              rows={3}
-              value={record.clientContact || ''}
-              onChange={(e) => setRecord({ ...record, clientContact: e.target.value })}
+              rows={8}
+              value={record.deliverables || ''}
+              onChange={(e) => setRecord({ ...record, deliverables: e.target.value })}
               className="form-input"
-              placeholder="Name, Designation, Organization, Phone, Email, and physical office location for client reference checks."
-              style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem' }}
+              placeholder="• Traffic Surveys&#10;• Topographic and Cadastral Surveys&#10;• Geotechnical Investigations&#10;• Feasibility Study&#10;• Engineering Design&#10;• Environmental and Social Impact Assessment (ESIA)&#10;• Resettlement Action Plan (RAP)&#10;• Road safety audit studies&#10;• Preparation of Bidding documents&#10;• Unit rate analysis and confidential Engineers estimate&#10;• Preparation of Drawings"
+              style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem', fontFamily: 'monospace, sans-serif', fontSize: '0.875rem', lineHeight: '1.5' }}
             />
           </div>
         </div>

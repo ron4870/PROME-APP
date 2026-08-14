@@ -1,32 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Award, CheckCircle2, Clock, Briefcase, Trash2, Printer, Building2, MapPin } from 'lucide-react';
+import { Search, Plus, Award, CheckCircle2, Clock, Briefcase, Trash2, Printer, Building2, MapPin, RefreshCw, Filter } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 interface CompanyExperience {
   id: number;
+  itemNo?: number;
   projectNumber: string;
   projectName: string;
+  category: string;
+  duration?: string | null;
   client: string;
-  sector: string;
-  location: string;
-  contractValue: string | null;
+  funder?: string | null;
+  clientAddress?: string | null;
+  country: string;
+  contractValue?: string | null;
   role: string;
-  startDate: string | null;
-  completionDate: string | null;
   status: string;
+  deliverables?: string | null;
   description?: string | null;
   scopeOfServices?: string | null;
   clientContact?: string | null;
-  createdBy?: { id: number; name: string };
+  sector?: string | null;
+  location?: string | null;
 }
+
+const CATEGORIES = [
+  'All Categories',
+  'A. Feasibility Studies and Design of Expressway Projects',
+  'B. Feasibility Studies and Design of Highway Projects',
+  'C. Feasibility Studies and Design of Bridges',
+  'D. Feasibility Studies and Design of Urban/Town Road Projects',
+  'E. Field Investigations and Data Collection Assignments',
+  'F. Feasibility Studies and Design of Infrastructure Projects in Oil and GAS',
+  'G. Feasibility Studies and Design of Building Projects',
+  'H. Development and Management of Asset Management Systems',
+  'I. Design Review and Construction Supervision'
+];
 
 export const CompanyExperienceDashboard: React.FC = () => {
   const [experiences, setExperiences] = useState<CompanyExperience[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isReseeding, setIsReseeding] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,6 +54,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
 
   const fetchExperiences = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('/api/company-experience', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -43,6 +63,27 @@ export const CompanyExperienceDashboard: React.FC = () => {
       console.error(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReseedData = async () => {
+    if (!window.confirm("This will replace all current experience records with the official 66 PDF project records. Proceed?")) return;
+    setIsReseeding(true);
+    try {
+      const response = await fetch('/api/company-experience/reseed', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExperiences(data.records);
+        alert(`Successfully reseeded ${data.count} official infrastructure projects!`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to reseed database');
+    } finally {
+      setIsReseeding(false);
     }
   };
 
@@ -55,12 +96,13 @@ export const CompanyExperienceDashboard: React.FC = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          projectName: 'New Engineering Project Experience',
-          client: 'Client / Employer Name',
-          sector: 'Civil & Infrastructure',
-          location: 'Uganda',
-          role: 'Lead Consultant',
-          status: 'Completed'
+          projectName: 'New Infrastructure Project Experience',
+          client: 'Uganda National Roads Authority',
+          category: selectedCategory !== 'All Categories' ? selectedCategory : 'B. Feasibility Studies and Design of Highway Projects',
+          duration: '2025 to date',
+          country: 'Uganda',
+          role: 'Sole Consultant',
+          status: 'Ongoing'
         })
       });
       if (response.ok) {
@@ -94,13 +136,18 @@ export const CompanyExperienceDashboard: React.FC = () => {
     }
   };
 
-  const filteredExperiences = experiences.filter(exp => 
-    exp.projectName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    exp.projectNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    exp.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    exp.sector.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    exp.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredExperiences = experiences.filter(exp => {
+    const matchesCategory = selectedCategory === 'All Categories' || exp.category === selectedCategory;
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      exp.projectName.toLowerCase().includes(searchLower) || 
+      exp.projectNumber.toLowerCase().includes(searchLower) ||
+      exp.client.toLowerCase().includes(searchLower) ||
+      (exp.deliverables && exp.deliverables.toLowerCase().includes(searchLower)) ||
+      (exp.country && exp.country.toLowerCase().includes(searchLower)) ||
+      (exp.role && exp.role.toLowerCase().includes(searchLower));
+    return matchesCategory && matchesSearch;
+  });
 
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -282,13 +329,13 @@ export const CompanyExperienceDashboard: React.FC = () => {
         rightHeader.style.flex = '1';
 
         const regTitle = document.createElement('div');
-        regTitle.innerText = 'COMPANY EXPERIENCE REGISTER';
-        regTitle.style.fontSize = '22px';
+        regTitle.innerText = "PROME'S INFRASTRUCTURE EXPERIENCE";
+        regTitle.style.fontSize = '20px';
         regTitle.style.fontWeight = '800';
         regTitle.style.color = '#cc0000';
 
         const regMeta = document.createElement('div');
-        regMeta.innerText = 'ISO 9001:2015 Clause 8.2 & Project Credentials';
+        regMeta.innerText = 'Feasibility, Design & Construction Supervision Register';
         regMeta.style.fontSize = '11px';
         regMeta.style.fontWeight = '500';
         regMeta.style.color = '#475569';
@@ -311,10 +358,10 @@ export const CompanyExperienceDashboard: React.FC = () => {
         cardsContainer.style.marginBottom = '16px';
 
         const cardsData = [
-          { label: 'TOTAL EXECUTED PROJECTS', val: filteredExperiences.length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
-          { label: 'COMPLETED PROJECTS', val: filteredExperiences.filter(e => e.status === 'Completed').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
-          { label: 'ONGOING PROJECTS', val: filteredExperiences.filter(e => e.status === 'Ongoing').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
-          { label: 'PIPELINE / BIDDING', val: filteredExperiences.filter(e => e.status === 'Pipeline').length, color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
+          { label: 'TOTAL INFRASTRUCTURE PROJECTS', val: filteredExperiences.length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+          { label: 'COMPLETED ASSIGNMENTS', val: filteredExperiences.filter(e => e.status === 'Completed').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
+          { label: 'ONGOING ASSIGNMENTS', val: filteredExperiences.filter(e => e.status === 'Ongoing').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
+          { label: 'COUNTRIES OF OPERATION', val: Array.from(new Set(filteredExperiences.map(e => e.country))).join(', ') || 'Uganda, Ethiopia, Tanzania', color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
         ];
 
         cardsData.forEach(c => {
@@ -337,7 +384,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
 
           const valDiv = document.createElement('div');
           valDiv.innerText = String(c.val);
-          valDiv.style.fontSize = '22px';
+          valDiv.style.fontSize = typeof c.val === 'string' && c.val.length > 10 ? '14px' : '22px';
           valDiv.style.fontWeight = '800';
           valDiv.style.color = c.color;
           valDiv.style.marginTop = '4px';
@@ -351,33 +398,33 @@ export const CompanyExperienceDashboard: React.FC = () => {
       };
 
       const headersList = [
-        { text: 'NUMBER', w: '8%' },
-        { text: 'PROJECT NAME &<br/>SECTOR', w: '24%' },
-        { text: 'CLIENT / EMPLOYER', w: '16%' },
-        { text: 'ROLE', w: '10%' },
-        { text: 'LOCATION', w: '10%' },
-        { text: 'CONTRACT VALUE', w: '11%', center: true },
-        { text: 'DESCRIPTION / SCOPE', w: '15%' },
-        { text: 'STATUS', w: '6%', center: true }
+        { text: 'ITEM<br/>NO', w: '4%', center: true },
+        { text: 'PROJECT<br/>DURATION', w: '9%' },
+        { text: 'PROJECT NAME', w: '22%' },
+        { text: 'DESCRIPTION OF MAIN<br/>DELIVERABLES/OUTPUTS', w: '25%' },
+        { text: 'CLIENT/EMPLOYER<br/>AND FUNDER', w: '17%' },
+        { text: 'COUNTRY OF<br/>PROJECT EXECUTION', w: '7%', center: true },
+        { text: 'CONTRACT VALUE<br/>(UGX/USD/ETB)', w: '9%', center: true },
+        { text: 'ROLE IN<br/>ASSIGNMENT', w: '7%' }
       ];
 
       const createTableHead = () => {
         const thead = document.createElement('thead');
-        thead.style.backgroundColor = '#f1f5f9';
-        thead.style.border = '1px solid #cbd5e1';
+        thead.style.backgroundColor = '#991b1b';
+        thead.style.color = '#ffffff';
 
         const trHead = document.createElement('tr');
         headersList.forEach(h => {
           const th = document.createElement('th');
           th.innerHTML = h.text;
           th.style.width = h.w;
-          th.style.padding = '8px 6px';
+          th.style.padding = '8px 4px';
           th.style.fontWeight = '700';
-          th.style.color = '#1e293b';
+          th.style.color = '#ffffff';
           th.style.fontSize = '8.5px';
           th.style.lineHeight = '1.25';
-          th.style.verticalAlign = 'bottom';
-          th.style.border = '1px solid #cbd5e1';
+          th.style.verticalAlign = 'middle';
+          th.style.border = '1px solid #7f1d1d';
           if (h.center) {
             th.style.textAlign = 'center';
           } else {
@@ -393,70 +440,43 @@ export const CompanyExperienceDashboard: React.FC = () => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #cbd5e1';
 
+        const clientText = `${exp.client}\n${exp.clientAddress ? `Address: ${exp.clientAddress}\n` : ''}${exp.funder ? `Funder: ${exp.funder}` : ''}`;
+
         const cells = [
-          { text: exp.projectNumber || '-', bold: true, color: '#0f172a' },
-          { text: exp.projectName || '-', sector: exp.sector },
-          { text: exp.client || '-' },
-          { text: exp.role || '-' },
-          { text: exp.location || '-' },
+          { text: String(exp.itemNo || exp.id), bold: true, center: true, color: '#991b1b' },
+          { text: exp.duration || '-' },
+          { text: exp.projectName || '-', bold: true },
+          { text: exp.deliverables || exp.description || '-', fullText: true },
+          { text: clientText, dualText: true },
+          { text: exp.country || 'Uganda', center: true },
           { text: exp.contractValue || '-', center: true, bold: true, color: '#047857' },
-          { text: exp.description || exp.scopeOfServices || '-', fullText: true },
-          { text: exp.status || '-', badge: true, isStatus: true }
+          { text: exp.role || '-' }
         ];
 
         cells.forEach((cell) => {
           const td = document.createElement('td');
-          td.style.padding = '6px 6px';
+          td.style.padding = '6px 4px';
           td.style.border = '1px solid #cbd5e1';
           td.style.verticalAlign = 'top';
-          td.style.fontSize = '9px';
+          td.style.fontSize = '8.5px';
 
-          if (cell.bold) {
-            td.style.fontWeight = '600';
-          }
-          if (cell.color) {
-            td.style.color = cell.color;
-          }
-          if (cell.center) {
-            td.style.textAlign = 'center';
-          }
+          if (cell.bold) td.style.fontWeight = '600';
+          if (cell.color) td.style.color = cell.color;
+          if (cell.center) td.style.textAlign = 'center';
 
-          if (cell.badge) {
-            const span = document.createElement('span');
-            span.innerText = cell.text;
-            span.style.padding = '3px 6px';
-            span.style.borderRadius = '4px';
-            span.style.fontSize = '8px';
-            span.style.fontWeight = 'bold';
-
-            if (cell.isStatus) {
-              span.style.backgroundColor = 
-                cell.text === 'Completed' ? '#dcfce3' : 
-                cell.text === 'Ongoing' ? '#e0f2fe' : '#fef9c3';
-              span.style.color = 
-                cell.text === 'Completed' ? '#166534' : 
-                cell.text === 'Ongoing' ? '#0369a1' : '#854d0e';
-            }
-            td.appendChild(span);
-          } else if (cell.sector !== undefined) {
-            const titleNode = document.createElement('div');
-            titleNode.innerText = cell.text;
-            titleNode.style.fontWeight = '600';
-            titleNode.style.color = '#1e293b';
-            
-            const sectorNode = document.createElement('div');
-            sectorNode.innerText = cell.sector || 'Civil Engineering';
-            sectorNode.style.fontSize = '8px';
-            sectorNode.style.color = '#64748b';
-            sectorNode.style.marginTop = '2px';
-            td.appendChild(titleNode);
-            td.appendChild(sectorNode);
+          if (cell.dualText) {
+            const textDiv = document.createElement('div');
+            textDiv.innerText = cell.text;
+            textDiv.style.whiteSpace = 'pre-line';
+            textDiv.style.lineHeight = '1.3';
+            textDiv.style.color = '#1e293b';
+            td.appendChild(textDiv);
           } else if (cell.fullText) {
             const textDiv = document.createElement('div');
             textDiv.innerText = cell.text;
             textDiv.style.whiteSpace = 'pre-wrap';
             textDiv.style.wordBreak = 'break-word';
-            textDiv.style.lineHeight = '1.35';
+            textDiv.style.lineHeight = '1.3';
             textDiv.style.color = '#334155';
             td.appendChild(textDiv);
           } else {
@@ -498,7 +518,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
         const table = document.createElement('table');
         table.style.width = '100%';
         table.style.borderCollapse = 'collapse';
-        table.style.fontSize = '10px';
+        table.style.fontSize = '9px';
 
         table.appendChild(createTableHead());
 
@@ -549,10 +569,10 @@ export const CompanyExperienceDashboard: React.FC = () => {
         footer.style.color = '#64748b';
 
         const leftFooter = document.createElement('div');
-        leftFooter.innerText = `Report Date: ${new Date().toLocaleDateString()} | Confidential Credentials`;
+        leftFooter.innerText = `www.promeconsult.com | ISO 9001:2015 Certified`;
 
         const centerFooter = document.createElement('div');
-        centerFooter.innerText = 'PROME Consultants Ltd. - Corporate Experience Directory';
+        centerFooter.innerText = 'PROME Consultants Ltd. - Feasibility, Design & Construction Supervision Experience';
 
         const rightFooter = document.createElement('div');
         rightFooter.innerText = `Page ${index + 1} of ${pagesToRender.length}`;
@@ -585,7 +605,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
         pdf.addImage(imgData, 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
       }
 
-      pdf.save(`PROME_Company_Experience_Register_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`PROME_Infrastructure_Experience_Register_${new Date().toISOString().split('T')[0]}.pdf`);
       document.body.removeChild(container);
     } catch (err) {
       console.error('Error generating company experience register PDF:', err);
@@ -596,15 +616,27 @@ export const CompanyExperienceDashboard: React.FC = () => {
 
   return (
     <div className="layout-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Award color="#cc0000" size={32} />
             Company Experience Register
           </h1>
-          <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>Comprehensive database of executed engineering projects, contracts, credentials, and client references</p>
+          <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>
+            PROME’s Feasibility, Design and Construction Supervision Experience on Infrastructure Projects
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button 
+            className="btn btn-outline no-print"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: '#d1d5db' }}
+            onClick={handleReseedData}
+            disabled={isReseeding}
+            title="Reset & sync with official PDF dataset"
+          >
+            <RefreshCw size={16} className={isReseeding ? 'spin' : ''} /> {isReseeding ? 'Syncing...' : 'Sync Official PDF Data'}
+          </button>
           <button 
             className="btn btn-outline no-print"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
@@ -623,9 +655,9 @@ export const CompanyExperienceDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      {/* Summary KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
             <Briefcase size={16} color="#cc0000" /> Total Executed Projects
           </div>
@@ -633,112 +665,139 @@ export const CompanyExperienceDashboard: React.FC = () => {
             {experiences.length}
           </div>
         </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <CheckCircle2 size={16} color="#22c55e" /> Completed Projects
+            <CheckCircle2 size={16} color="#22c55e" /> Completed Assignments
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
             {experiences.filter(e => e.status === 'Completed').length}
           </div>
         </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <Clock size={16} color="#0ea5e9" /> Ongoing Projects
+            <Clock size={16} color="#0ea5e9" /> Ongoing Assignments
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
             {experiences.filter(e => e.status === 'Ongoing').length}
           </div>
         </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <Building2 size={16} color="#eab308" /> Pipeline / Bidding
+            <Building2 size={16} color="#eab308" /> Key Clients & Funders
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
-            {experiences.filter(e => e.status === 'Pipeline').length}
+          <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#334155', marginTop: '0.5rem' }}>
+            UNRA, KCCA, ERA, MLHUD, World Bank, JICA, AfDB, CNOOC
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Category Tabs Filter */}
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem', backgroundColor: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', fontWeight: '700', color: '#374151', marginRight: '0.5rem' }}>
+          <Filter size={16} color="#cc0000" /> Filter Category:
+        </span>
+        {CATEGORIES.map(cat => {
+          const isSelected = selectedCategory === cat;
+          const count = cat === 'All Categories' ? experiences.length : experiences.filter(e => e.category === cat).length;
+          
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                border: '1px solid',
+                borderColor: isSelected ? '#cc0000' : '#e5e7eb',
+                backgroundColor: isSelected ? '#fee2e2' : '#f9fafb',
+                color: isSelected ? '#991b1b' : '#4b5563',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {cat === 'All Categories' ? `All (${experiences.length})` : `${cat.split('.')[0]}. ${cat.split('.')[1]?.trim().slice(0, 28)}... (${count})`}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search & Main Table */}
       <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ position: 'relative', flex: 1, maxWidth: '500px' }}>
             <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
             <input
               type="text"
-              placeholder="Search by project name, client, sector, location..."
+              placeholder="Search by project name, client, funder, deliverables, country..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input"
               style={{ paddingLeft: '2.5rem', width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.5rem 0.5rem 0.5rem 2.5rem' }}
             />
           </div>
+          <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280' }}>
+            Showing {filteredExperiences.length} of {experiences.length} Projects
+          </div>
         </div>
         
         {isLoading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#6b7280' }}>Loading experience records...</div>
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#6b7280' }}>Loading PROME project records...</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ backgroundColor: '#f9fafb' }}>
+              <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Number</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Project Name</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Client</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Role</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Contract Value</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '60px', textAlign: 'center' }}>Item</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '130px' }}>Duration</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Project Name & Category</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '220px' }}>Deliverables / Outputs</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '200px' }}>Client / Employer & Funder</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '90px' }}>Country</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '160px' }}>Contract Value</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', width: '150px' }}>Role in Assignment</th>
+                  <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', textAlign: 'right', width: '60px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.875rem' }}>
                 {filteredExperiences.map((exp) => (
                   <tr 
                     key={exp.id} 
-                    style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer' }}
                     onClick={() => navigate(`/company-experience/${exp.id}`)}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: '600', color: '#111827' }}>
-                      {exp.projectNumber}
+                    <td style={{ padding: '1rem', fontWeight: '800', color: '#991b1b', textAlign: 'center', backgroundColor: '#fef2f2' }}>
+                      {exp.itemNo || exp.id}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>{exp.projectName}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>{exp.sector}</div>
+                    <td style={{ padding: '1rem', color: '#475569', fontSize: '0.8rem', fontWeight: '500' }}>
+                      {exp.duration || '-'}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', color: '#374151' }}>
-                      {exp.client}
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.9rem', lineHeight: '1.3' }}>{exp.projectName}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#991b1b', marginTop: '4px', fontWeight: '600' }}>{exp.category}</div>
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', color: '#6b7280' }}>
-                      {exp.role}
+                    <td style={{ padding: '1rem', color: '#334155', fontSize: '0.8rem', whiteSpace: 'pre-line', maxHeight: '100px', overflow: 'hidden' }}>
+                      {exp.deliverables ? exp.deliverables.slice(0, 150) + (exp.deliverables.length > 150 ? '...' : '') : '-'}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', color: '#6b7280' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={14} color="#6b7280" /> {exp.location}
+                    <td style={{ padding: '1rem', color: '#334155', fontSize: '0.8rem' }}>
+                      <div style={{ fontWeight: '600', color: '#1e293b' }}>{exp.client}</div>
+                      {exp.funder && <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>Funder: {exp.funder}</div>}
+                    </td>
+                    <td style={{ padding: '1rem', color: '#475569', fontSize: '0.8rem' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
+                        <MapPin size={12} color="#6b7280" /> {exp.country}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: '600', color: '#047857' }}>
+                    <td style={{ padding: '1rem', fontWeight: '700', color: '#047857', fontSize: '0.8rem' }}>
                       {exp.contractValue || '-'}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        backgroundColor: 
-                          exp.status === 'Completed' ? '#dcfce3' : 
-                          exp.status === 'Ongoing' ? '#e0f2fe' : '#fef9c3',
-                        color: 
-                          exp.status === 'Completed' ? '#166534' : 
-                          exp.status === 'Ongoing' ? '#0369a1' : '#854d0e'
-                      }}>
-                        {exp.status}
-                      </span>
+                    <td style={{ padding: '1rem', color: '#475569', fontSize: '0.8rem', fontWeight: '500' }}>
+                      {exp.role}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                    <td style={{ padding: '1rem', textAlign: 'right' }}>
                       <button 
                         onClick={(e) => handleDelete(exp.id, e)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}
@@ -751,8 +810,8 @@ export const CompanyExperienceDashboard: React.FC = () => {
                 ))}
                 {filteredExperiences.length === 0 && (
                   <tr>
-                    <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                      No company experience records found.
+                    <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
+                      No infrastructure projects found matching your search.
                     </td>
                   </tr>
                 )}
@@ -804,7 +863,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
                 to { transform: rotate(360deg); }
               }
             `}</style>
-            <span>Generating A3 Landscape PDF...</span>
+            <span>Generating A3 Landscape Register PDF...</span>
           </div>
         </div>
       )}
