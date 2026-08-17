@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Award, CheckCircle2, Clock, Briefcase, Trash2, Printer, Building2, MapPin, RefreshCw, Filter } from 'lucide-react';
+import { Search, Plus, Award, CheckCircle2, Clock, Briefcase, Trash2, Printer, Building2, MapPin, Filter } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -45,7 +45,6 @@ export const CompanyExperienceDashboard: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [isReseeding, setIsReseeding] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,27 +62,6 @@ export const CompanyExperienceDashboard: React.FC = () => {
       console.error(error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleReseedData = async () => {
-    if (!window.confirm("This will replace all current experience records with the official 66 PDF project records. Proceed?")) return;
-    setIsReseeding(true);
-    try {
-      const response = await fetch('/api/company-experience/reseed', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setExperiences(data.records);
-        alert(`Successfully reseeded ${data.count} official infrastructure projects!`);
-      }
-    } catch (error) {
-      console.error(error);
-      alert('Failed to reseed database');
-    } finally {
-      setIsReseeding(false);
     }
   };
 
@@ -628,15 +606,6 @@ export const CompanyExperienceDashboard: React.FC = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button 
-            className="btn btn-outline no-print"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: '#d1d5db' }}
-            onClick={handleReseedData}
-            disabled={isReseeding}
-            title="Reset & sync with official PDF dataset"
-          >
-            <RefreshCw size={16} className={isReseeding ? 'spin' : ''} /> {isReseeding ? 'Syncing...' : 'Sync Official PDF Data'}
-          </button>
           <button 
             className="btn btn-outline no-print"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}

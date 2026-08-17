@@ -1205,23 +1205,6 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Force Reseed endpoint
-router.post('/reseed', authenticateToken, async (req: any, res) => {
-  try {
-    await seedAllRecords(req.user?.userId);
-    const records = await prisma.companyExperience.findMany({
-      include: {
-        createdBy: { select: { id: true, name: true } }
-      },
-      orderBy: { itemNo: 'asc' }
-    });
-    res.json({ message: 'Reseeded successfully', count: records.length, records });
-  } catch (error) {
-    console.error('Failed to reseed company experience:', error);
-    res.status(500).json({ message: 'Failed to reseed database' });
-  }
-});
-
 // Create a new experience record
 router.post('/', authenticateToken, async (req: any, res) => {
   try {
