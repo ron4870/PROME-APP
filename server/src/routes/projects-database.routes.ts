@@ -568,6 +568,8 @@ router.get('/documents/:docId/file', authenticate, async (req, res) => {
     else if (ext === 'gif') mimeType = 'image/gif';
     else if (ext === 'pdf') mimeType = 'application/pdf';
     else if (ext === 'xml') mimeType = 'text/xml';
+    else if (ext === 'kml') mimeType = 'application/vnd.google-earth.kml+xml';
+    else if (ext === 'kmz') mimeType = 'application/vnd.google-earth.kmz';
     else if (ext === 'glb') mimeType = 'model/gltf-binary';
     else if (ext === 'gltf') mimeType = 'model/gltf+json';
     else mimeType = 'application/octet-stream';

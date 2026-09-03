@@ -2840,6 +2840,58 @@ export const CesiumWorkspace: React.FC = () => {
           duration: 2.0
         });
         addLog(`Successfully draped 3D GLTF/GLB model "${file.name}" onto prevailing terrain surface at Lat ${lat.toFixed(5)}, Lon ${lon.toFixed(5)}.`);
+      } else if (file.layerType === 'KML' || file.name.toLowerCase().endsWith('.kml') || file.name.toLowerCase().endsWith('.kmz') || file.type === 'KML/KMZ Layer') {
+        addLog(`Initiating KML/KMZ spatial layer streaming: ${file.name}`);
+        
+        let kmlUrl = '';
+        if (file.id) {
+          kmlUrl = `/api/projects-database/documents/${file.id}/file?token=${encodeURIComponent(token || '')}`;
+        } else if (file.fileUrl) {
+          try {
+            const urlInfo = JSON.parse(file.fileUrl);
+            kmlUrl = urlInfo.view || urlInfo.download || file.fileUrl;
+          } catch (e) {
+            kmlUrl = file.fileUrl;
+          }
+        }
+
+        if (kmlUrl) {
+          try {
+            const options = {
+              camera: viewer.scene.camera,
+              canvas: viewer.scene.canvas,
+              clampToGround: true
+            };
+
+            Cesium.KmlDataSource.load(kmlUrl, options)
+              .then((dataSource: any) => {
+                viewer.dataSources.add(dataSource);
+                viewer._customDataSources = viewer._customDataSources || {};
+                viewer._customDataSources[file.name] = dataSource;
+
+                // Tag entities for layer reference
+                dataSource.entities.values.forEach((entity: any) => {
+                  entity.layerName = file.name;
+                });
+
+                // Fly camera to loaded KML/KMZ data source
+                viewer.flyTo(dataSource);
+                addLog(`Successfully loaded and streamed KML/KMZ layer "${file.name}" onto globe.`);
+              })
+              .catch((err: any) => {
+                console.error('KmlDataSource.load failed:', err);
+                addLog(`Error streaming KML/KMZ layer "${file.name}": ${err.message || 'Failed to parse KML/KMZ'}`);
+                setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'Failed' } : f));
+              });
+          } catch (err: any) {
+            console.error('KML/KMZ processing error:', err);
+            addLog(`Error loading KML/KMZ file: ${err.message}`);
+            setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'Failed' } : f));
+          }
+        } else {
+          addLog(`Error: Could not resolve file URL for KML/KMZ layer "${file.name}"`);
+          setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'Failed' } : f));
+        }
       } else {
         // Generic simulated overlay for custom design files
         addLog(`Streaming design model payload from Google Drive: ${file.name}`);
@@ -3344,11 +3396,18 @@ export const CesiumWorkspace: React.FC = () => {
     if (ext === 'xodr') layerType = 'OpenDRIVE';
     if (ext === 'json' || ext === 'zip') layerType = '3D Tiles';
     if (ext === 'glb' || ext === 'gltf') layerType = 'Point Cloud';
+    if (ext === 'kml' || ext === 'kmz') layerType = 'KML';
     
     // Clear the input value so the same file can be selected again
     e.target.value = '';
     
-    const docType = (ext === 'glb' || ext === 'gltf') ? 'GLTF/GLB' : ((ext === 'zip' || ext === 'json') ? '3D Tiles' : 'GIS Layer');
+    const docType = (ext === 'glb' || ext === 'gltf') 
+      ? 'GLTF/GLB' 
+      : ((ext === 'zip' || ext === 'json') 
+        ? '3D Tiles' 
+        : ((ext === 'kml' || ext === 'kmz') 
+          ? 'KML/KMZ Layer' 
+          : 'GIS Layer'));
     await uploadRealFileToActiveProject(file, sizeStr, layerType, undefined, docType, 'project');
   };
 
@@ -5883,7 +5942,7 @@ export const CesiumWorkspace: React.FC = () => {
                 <input 
                   type="file" 
                   ref={designFileInputRef}
-                  accept=".geojson,.xml,.dxf,.dwg,.ifc,.shp,.xodr,.json,.zip,.glb,.gltf"
+                  accept=".geojson,.xml,.dxf,.dwg,.ifc,.shp,.xodr,.json,.zip,.glb,.gltf,.kml,.kmz"
                   onChange={handleDesignFileChange}
                   style={{ display: 'none' }}
                 />
