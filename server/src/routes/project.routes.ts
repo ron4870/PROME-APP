@@ -329,6 +329,27 @@ router.post('/:id/members', authenticate, checkProjectAccess(), async (req, res)
   }
 });
 
+// Remove Member from Project
+router.delete('/:id/members/:userId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id);
+    const userId = parseInt(req.params.userId);
+
+    await prisma.projectMember.deleteMany({
+      where: { projectId, userId }
+    });
+
+    await prisma.projectUserPermission.deleteMany({
+      where: { projectId, userId }
+    });
+
+    res.json({ message: 'Member removed successfully' });
+  } catch (error) {
+    console.error('Error removing member:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Update User Permissions Matrix
 router.put('/:id/permissions', authenticate, checkProjectAccess(), async (req, res) => {
   try {

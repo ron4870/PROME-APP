@@ -1,19 +1,48 @@
-import React, { useState } from 'react';
-import { Shield, Plus, Save, UserPlus, CheckCircle, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Plus, Save, UserPlus, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 
 interface ProjectAdminDashboardProps {
   project: any;
   onAssignUser: (userId: string, role: string) => void;
+  onRemoveUser?: (userId: string) => void;
   onUpdatePermissions: (updates: { userId: string; module: string; accessLevel: string }[]) => void;
 }
 
-export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ project, onAssignUser, onUpdatePermissions }) => {
+export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ project, onAssignUser, onRemoveUser, onUpdatePermissions }) => {
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedRole, setSelectedRole] = useState('Project Staff');
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   
   // Local state for permissions matrix
   const [permissions, setPermissions] = useState<any[]>(project?.userPermissions || []);
   const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    setPermissions(project?.userPermissions || []);
+  }, [project]);
+
+  useEffect(() => {
+    fetchSystemUsers();
+  }, []);
+
+  const fetchSystemUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSystemUsers(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch system users', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const availableRoles = [
     'Project Manager', 'Lead Engineer', 'Site Engineer', 
@@ -26,14 +55,6 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
     'Daily Reports', 'Variations', 'Subcontractors', 'Punch List', 
     'Correspondence', 'Equipment Logs', 'HSE', 'Quality', 'Risk Register', 
     'Team', 'Financials'
-  ];
-
-  // System Users Mock
-  const systemUsers = [
-    { id: '1', name: 'Alice Engineer', email: 'alice@prome.com' },
-    { id: '2', name: 'Bob Technician', email: 'bob@prome.com' },
-    { id: '3', name: 'Charlie Admin', email: 'charlie@prome.com' },
-    { id: '4', name: 'Diana Manager', email: 'diana@prome.com' }
   ];
 
   const handleAssignUser = () => {
@@ -75,9 +96,11 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
           <select className="form-input" style={{ flex: 1 }} value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-            <option value="">-- Select System User --</option>
+            <option value="">{loadingUsers ? 'Loading Users...' : '-- Select System User --'}</option>
             {systemUsers.map(u => (
-              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+              <option key={u.id} value={u.id}>
+                {u.name || u.email} ({u.email}){u.division ? ` - ${u.division}` : ''}
+              </option>
             ))}
           </select>
           
@@ -101,19 +124,35 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
             </tr>
           </thead>
           <tbody>
-            {project?.members?.map((m: any) => (
-              <tr key={m.id || m.userId} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '0.75rem 0', fontWeight: 500 }}>{m.user?.name || m.name}</td>
-                <td style={{ padding: '0.75rem 0' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', color: '#334155', borderRadius: '999px' }}>
-                    {m.role}
-                  </span>
-                </td>
-                <td style={{ padding: '0.75rem 0' }}>
-                  <button style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>Remove</button>
-                </td>
-              </tr>
-            ))}
+            {project?.members?.map((m: any) => {
+              const uId = (m.userId || m.user?.id || m.id).toString();
+              const uName = m.user?.name || m.name || systemUsers.find(u => u.id.toString() === uId)?.name || 'Unknown User';
+              const uEmail = m.user?.email || systemUsers.find(u => u.id.toString() === uId)?.email;
+
+              return (
+                <tr key={m.id || m.userId} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '0.75rem 0', fontWeight: 500 }}>
+                    <div style={{ color: '#0f172a' }}>{uName}</div>
+                    {uEmail && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{uEmail}</div>}
+                  </td>
+                  <td style={{ padding: '0.75rem 0' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, padding: '0.25rem 0.75rem', backgroundColor: '#f1f5f9', color: '#334155', borderRadius: '999px' }}>
+                      {m.role}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.75rem 0' }}>
+                    {onRemoveUser && (
+                      <button 
+                        onClick={() => onRemoveUser(uId)}
+                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {(!project?.members || project.members.length === 0) && (
               <tr>
                 <td colSpan={3} style={{ padding: '1rem 0', textAlign: 'center', color: '#94a3b8' }}>No members assigned to this project yet.</td>
@@ -148,12 +187,16 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
               <th style={{ padding: '1rem', textAlign: 'left', minWidth: '150px' }}>Module</th>
-              {(project?.members || []).map((m: any) => (
-                <th key={m.userId} style={{ padding: '1rem', textAlign: 'center', minWidth: '110px', fontWeight: 600 }}>
-                  {m.user?.name || m.name} <br/>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8' }}>{m.role}</span>
-                </th>
-              ))}
+              {(project?.members || []).map((m: any) => {
+                const uId = (m.userId || m.user?.id || m.id).toString();
+                const uName = m.user?.name || m.name || systemUsers.find(u => u.id.toString() === uId)?.name || 'Member';
+                return (
+                  <th key={uId} style={{ padding: '1rem', textAlign: 'center', minWidth: '110px', fontWeight: 600 }}>
+                    {uName} <br/>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8' }}>{m.role}</span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -161,17 +204,18 @@ export const ProjectAdminDashboard: React.FC<ProjectAdminDashboardProps> = ({ pr
               <tr key={mod} style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: '#334155' }}>{mod}</td>
                 {(project?.members || []).map((m: any) => {
-                  const val = getPermission(m.userId || m.user?.id, mod);
+                  const targetUserId = (m.userId || m.user?.id || m.id).toString();
+                  const val = getPermission(targetUserId, mod);
                   let bgColor = '#ffffff';
                   if (val === 'Edit') bgColor = '#dcfce7';
                   if (val === 'Read') bgColor = '#e0f2fe';
                   if (val === 'None') bgColor = '#fee2e2';
 
                   return (
-                    <td key={m.userId} style={{ padding: '0.5rem', textAlign: 'center' }}>
+                    <td key={targetUserId} style={{ padding: '0.5rem', textAlign: 'center' }}>
                       <select 
                         value={val}
-                        onChange={(e) => handlePermissionChange(m.userId || m.user?.id, mod, e.target.value)}
+                        onChange={(e) => handlePermissionChange(targetUserId, mod, e.target.value)}
                         style={{ 
                           width: '100%', 
                           padding: '0.35rem', 

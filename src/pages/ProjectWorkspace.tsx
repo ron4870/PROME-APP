@@ -128,6 +128,22 @@ export const ProjectWorkspace: React.FC = () => {
     }
   };
 
+  // Add the handler for removing users
+  const handleRemoveUser = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to remove this member from the project?')) return;
+    try {
+      const res = await fetch(`/api/projects/${id}/members/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to remove member');
+      fetchProjectData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to remove member');
+    }
+  };
+
   // Add the handler for updating permissions
   const handleUpdatePermissions = async (updates: any[]) => {
     try {
@@ -1539,6 +1555,7 @@ export const ProjectWorkspace: React.FC = () => {
             <ProjectAdminDashboard 
               project={project} 
               onAssignUser={handleAssignUser} 
+              onRemoveUser={handleRemoveUser}
               onUpdatePermissions={handleUpdatePermissions} 
             />
           )}
