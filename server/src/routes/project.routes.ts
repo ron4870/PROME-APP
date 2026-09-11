@@ -4,6 +4,8 @@ import { authenticateToken as authenticate } from '../middleware/auth';
 import { checkProjectAccess } from '../middleware/projectAuth';
 import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateProjectFolder } from '../services/drive.service';
 import { Readable } from 'stream';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -879,41 +881,76 @@ router.post('/:id/meetings', authenticate, checkProjectAccess(), async (req, res
   }
 });
 
-// POST Project Documents
-router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
+// Helper for project file uploads (Google Drive with local storage fallback)
+async function uploadProjectFile(projectId: number, file: Express.Multer.File): Promise<string> {
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  if (!project) throw new Error('Project not found');
+
   try {
-    const projectId = req.params.id;
-    const { documentNumber, title, type, revision, status, issueDate } = req.body;
-    const file = req.file;
-    let fileUrl = null;
-
-    if (file) {
-      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
-
-      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink, webContentLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
+    const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+    const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+    const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+    const driveFile = await driveService.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id, webViewLink, webContentLink',
+      supportsAllDrives: true
+    });
+    const fileId = driveFile.data.id;
+    if (fileId) {
+      try {
         await driveService.permissions.create({
           fileId: fileId,
           requestBody: { role: 'reader', type: 'anyone' },
           supportsAllDrives: true
         });
-        fileUrl = JSON.stringify({ id: fileId, view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
+      } catch (permErr) {
+        console.warn('Drive permission setting warning:', permErr);
       }
+      return JSON.stringify({
+        id: fileId,
+        view: driveFile.data.webViewLink,
+        download: driveFile.data.webContentLink,
+        isPdf: file.mimetype === 'application/pdf'
+      });
+    }
+  } catch (driveErr) {
+    console.error('Google Drive upload error, falling back to local file storage:', driveErr);
+  }
+
+  // Fallback to local storage in /uploads directory
+  const sanitizeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const localFilename = `proj-${projectId}-${Date.now()}-${sanitizeName}`;
+  const uploadsDir = path.join(__dirname, '../../uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  const localUploadPath = path.join(uploadsDir, localFilename);
+  fs.writeFileSync(localUploadPath, file.buffer);
+  const relativeUrlPath = `/uploads/${localFilename}`;
+  return JSON.stringify({
+    id: `local-${Date.now()}`,
+    view: relativeUrlPath,
+    download: relativeUrlPath,
+    isPdf: file.mimetype === 'application/pdf'
+  });
+}
+
+// POST Project Documents
+router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id);
+    const { documentNumber, title, type, revision, status, issueDate } = req.body;
+    const file = req.file;
+    let fileUrl = null;
+
+    if (file) {
+      fileUrl = await uploadProjectFile(projectId, file);
     }
 
     const newDoc = await prisma.projectDocument.create({
       data: {
-        projectId: parseInt(projectId),
+        projectId,
         documentNumber: documentNumber || `DOC-${Date.now()}`,
         title: title || file?.originalname || 'Untitled',
         type: type || 'General',
@@ -925,9 +962,9 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
       }
     });
     res.json(newDoc);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in documents post:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
@@ -949,14 +986,19 @@ router.delete('/:id/documents/:docId', authenticate, checkProjectAccess(), async
     if (doc.fileUrl) {
       try {
         const fileInfo = JSON.parse(doc.fileUrl);
-        if (fileInfo.id) {
+        if (fileInfo.id && !fileInfo.id.startsWith('local-')) {
           await driveService.files.delete({
             fileId: fileInfo.id,
             supportsAllDrives: true
           });
+        } else if (fileInfo.view && fileInfo.view.startsWith('/uploads/')) {
+          const localFilePath = path.join(__dirname, '../..', fileInfo.view);
+          if (fs.existsSync(localFilePath)) {
+            fs.unlinkSync(localFilePath);
+          }
         }
       } catch (err) {
-        console.error('Failed to delete file from Google Drive:', err);
+        console.error('Failed to delete file:', err);
       }
     }
     
@@ -975,38 +1017,18 @@ router.delete('/:id/documents/:docId', authenticate, checkProjectAccess(), async
 // POST Project Payment Invoices
 router.post('/:id/payment-invoices', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
   try {
-    const projectId = req.params.id;
+    const projectId = parseInt(req.params.id);
     const { documentNumber, title, type, revision, status, issueDate } = req.body;
     const file = req.file;
     let fileUrl = null;
 
     if (file) {
-      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
-
-      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink, webContentLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
-        fileUrl = JSON.stringify({ view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
-      }
+      fileUrl = await uploadProjectFile(projectId, file);
     }
 
     const newInvoice = await prisma.projectPaymentInvoice.create({
       data: {
-        projectId: parseInt(projectId),
+        projectId,
         documentNumber: documentNumber || `INV-${Date.now()}`,
         title: title || file?.originalname || 'Untitled',
         type: type || 'Consultant Invoice',
@@ -1018,9 +1040,9 @@ router.post('/:id/payment-invoices', authenticate, checkProjectAccess(), upload.
       }
     });
     res.json(newInvoice);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in payment-invoices post:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
@@ -1182,38 +1204,18 @@ router.post('/:id/procurement', authenticate, checkProjectAccess(), async (req, 
 // POST Daily Report
 router.post('/:id/daily-reports', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
   try {
-    const projectId = req.params.id;
+    const projectId = parseInt(req.params.id);
     const { date, weatherCondition, manpowerCount, equipmentCount, summary, location } = req.body;
     const file = req.file;
     let fileUrl = null;
 
     if (file) {
-      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
-
-      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink, webContentLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
-        fileUrl = JSON.stringify({ view: driveFile.data.webViewLink, download: driveFile.data.webContentLink, isPdf: file.mimetype === 'application/pdf' });
-      }
+      fileUrl = await uploadProjectFile(projectId, file);
     }
 
     const newRep = await prisma.projectDailyReport.create({
       data: {
-        projectId: parseInt(projectId),
+        projectId,
         date: date ? new Date(date) : new Date(),
         weatherMorning: weatherCondition,
         activeManpower: parseInt(manpowerCount || '0'),
@@ -1225,47 +1227,27 @@ router.post('/:id/daily-reports', authenticate, checkProjectAccess(), upload.sin
       }
     });
     res.json(newRep);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in daily reports post:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
 // POST Variations
 router.post('/:id/variations', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
   try {
-    const projectId = req.params.id;
+    const projectId = parseInt(req.params.id);
     const { title, description, costImpact, scheduleImpactDays, date, referenceNumber } = req.body;
     const file = req.file;
     let fileUrl = null;
 
     if (file) {
-      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
-
-      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink, webContentLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
-        fileUrl = driveFile.data.webViewLink;
-      }
+      fileUrl = await uploadProjectFile(projectId, file);
     }
 
     const newVar = await prisma.projectVariationOrder.create({
       data: {
-        projectId: parseInt(projectId),
+        projectId,
         referenceNumber: referenceNumber || `VO-${Date.now()}`,
         date: date ? new Date(date) : new Date(),
         title,
@@ -1277,9 +1259,9 @@ router.post('/:id/variations', authenticate, checkProjectAccess(), upload.single
       }
     });
     res.json(newVar);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in variations post:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
@@ -1329,38 +1311,18 @@ router.post('/:id/snags', authenticate, checkProjectAccess(), async (req, res) =
 // POST Correspondence
 router.post('/:id/correspondence', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
   try {
-    const projectId = req.params.id;
+    const projectId = parseInt(req.params.id);
     const { type, subject, sender, recipient, date, referenceNumber } = req.body;
     const file = req.file;
     let fileUrl = null;
 
     if (file) {
-      const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
-
-      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-      const driveFile = await driveService.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, webViewLink, webContentLink',
-        supportsAllDrives: true
-      });
-      const fileId = driveFile.data.id;
-      if (fileId) {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
-        fileUrl = driveFile.data.webViewLink;
-      }
+      fileUrl = await uploadProjectFile(projectId, file);
     }
 
     const newCorr = await prisma.projectCorrespondence.create({
       data: {
-        projectId: parseInt(projectId),
+        projectId,
         referenceNumber: referenceNumber || `CORR-${Date.now()}`,
         type,
         subject,
@@ -1372,9 +1334,9 @@ router.post('/:id/correspondence', authenticate, checkProjectAccess(), upload.si
       }
     });
     res.json(newCorr);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in correspondence post:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
