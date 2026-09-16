@@ -44,6 +44,13 @@ import companyExperienceRoutes from './routes/company-experience.routes';
 import { setupCronJobs } from './services/cron.service';
 dotenv.config();
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[fatal] unhandled rejection:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('[fatal] uncaught exception:', error);
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-prome-key';
 
 // Configure Nodemailer for Google Workspace
@@ -116,7 +123,9 @@ async function initOAuthTables() {
         disabled_at    TIMESTAMPTZ,
         created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+    `);
 
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
         id                    BIGSERIAL PRIMARY KEY,
         code_hash             CHAR(64)    NOT NULL UNIQUE,
@@ -131,9 +140,11 @@ async function initOAuthTables() {
         used_at               TIMESTAMPTZ,
         created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_authorization_codes (expires_at);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_authorization_codes (expires_at);`);
 
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
         id            BIGSERIAL PRIMARY KEY,
         token_hash    CHAR(64)    NOT NULL UNIQUE,
@@ -146,11 +157,13 @@ async function initOAuthTables() {
         superseded_by CHAR(64),
         created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_oauth_refresh_family  ON oauth_refresh_tokens (family_id);
-      CREATE INDEX IF NOT EXISTS idx_oauth_refresh_user    ON oauth_refresh_tokens (user_id);
-      CREATE INDEX IF NOT EXISTS idx_oauth_refresh_expires ON oauth_refresh_tokens (expires_at);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_family ON oauth_refresh_tokens (family_id);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_user ON oauth_refresh_tokens (user_id);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_expires ON oauth_refresh_tokens (expires_at);`);
 
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS oauth_access_tokens (
         id         BIGSERIAL PRIMARY KEY,
         token_hash CHAR(64)    NOT NULL UNIQUE,
@@ -162,14 +175,17 @@ async function initOAuthTables() {
         revoked_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_oauth_access_family  ON oauth_access_tokens (family_id);
-      CREATE INDEX IF NOT EXISTS idx_oauth_access_expires ON oauth_access_tokens (expires_at);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_access_family ON oauth_access_tokens (family_id);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_access_expires ON oauth_access_tokens (expires_at);`);
 
+    await prisma.$executeRawUnsafe(`
       INSERT INTO oauth_clients (client_id, client_name, redirect_uris, is_public, require_pkce, allowed_scopes)
       VALUES ('prome-desktop', 'Prome Suite (macOS)', 'prome://auth/callback https://ims.promeconsult.com/oauth/desktop-return', TRUE, TRUE, 'profile')
       ON CONFLICT (client_id) DO NOTHING;
     `);
+
     console.log('OAuth 2.0 tables and prome-desktop client initialized successfully.');
   } catch (err) {
     console.error('Error initializing OAuth tables:', err);
