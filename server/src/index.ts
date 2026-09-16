@@ -99,6 +99,116 @@ app.use('/api/book-of-drawings', bookOfDrawingsRoutes);
 app.use('/api/cvs', cvsRoutes);
 app.use('/api/faqs', faqRoutes);
 
+// --- OAuth 2.0 + PKCE Integration for Desktop App ---
+const { createOAuthRouter } = require('./oauth/oauth.routes');
+const { createOAuthStore } = require('./oauth/oauth.store');
+
+async function initOAuthTables() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS oauth_clients (
+        client_id      TEXT PRIMARY KEY,
+        client_name    TEXT        NOT NULL,
+        redirect_uris  TEXT        NOT NULL,
+        is_public      BOOLEAN     NOT NULL DEFAULT TRUE,
+        require_pkce   BOOLEAN     NOT NULL DEFAULT TRUE,
+        allowed_scopes TEXT        NOT NULL DEFAULT 'profile',
+        disabled_at    TIMESTAMPTZ,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
+        id                    BIGSERIAL PRIMARY KEY,
+        code_hash             CHAR(64)    NOT NULL UNIQUE,
+        client_id             TEXT        NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+        user_id               TEXT        NOT NULL,
+        redirect_uri          TEXT        NOT NULL,
+        code_challenge        CHAR(43),
+        code_challenge_method TEXT        NOT NULL DEFAULT 'S256'
+                                          CHECK (code_challenge_method = 'S256'),
+        scope                 TEXT        NOT NULL DEFAULT 'profile',
+        expires_at            TIMESTAMPTZ NOT NULL,
+        used_at               TIMESTAMPTZ,
+        created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_authorization_codes (expires_at);
+
+      CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
+        id            BIGSERIAL PRIMARY KEY,
+        token_hash    CHAR(64)    NOT NULL UNIQUE,
+        client_id     TEXT        NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+        user_id       TEXT        NOT NULL,
+        scope         TEXT        NOT NULL DEFAULT 'profile',
+        family_id     TEXT        NOT NULL,
+        expires_at    TIMESTAMPTZ NOT NULL,
+        revoked_at    TIMESTAMPTZ,
+        superseded_by CHAR(64),
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_oauth_refresh_family  ON oauth_refresh_tokens (family_id);
+      CREATE INDEX IF NOT EXISTS idx_oauth_refresh_user    ON oauth_refresh_tokens (user_id);
+      CREATE INDEX IF NOT EXISTS idx_oauth_refresh_expires ON oauth_refresh_tokens (expires_at);
+
+      CREATE TABLE IF NOT EXISTS oauth_access_tokens (
+        id         BIGSERIAL PRIMARY KEY,
+        token_hash CHAR(64)    NOT NULL UNIQUE,
+        client_id  TEXT        NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+        user_id    TEXT        NOT NULL,
+        scope      TEXT        NOT NULL DEFAULT 'profile',
+        family_id  TEXT        NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        revoked_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_oauth_access_family  ON oauth_access_tokens (family_id);
+      CREATE INDEX IF NOT EXISTS idx_oauth_access_expires ON oauth_access_tokens (expires_at);
+
+      INSERT INTO oauth_clients (client_id, client_name, redirect_uris, is_public, require_pkce, allowed_scopes)
+      VALUES ('prome-desktop', 'Prome Suite (macOS)', 'prome://auth/callback https://ims.promeconsult.com/oauth/desktop-return', TRUE, TRUE, 'profile')
+      ON CONFLICT (client_id) DO NOTHING;
+    `);
+    console.log('OAuth 2.0 tables and prome-desktop client initialized successfully.');
+  } catch (err) {
+    console.error('Error initializing OAuth tables:', err);
+  }
+}
+initOAuthTables();
+
+const oauthStore = createOAuthStore();
+
+app.use('/api/oauth', createOAuthRouter({
+  store: oauthStore,
+  resolveBearerUser: async (req: express.Request) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return null;
+    const token = authHeader.split(' ')[1];
+    if (!token) return null;
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      return { id: String(decoded.userId), name: decoded.name, email: decoded.email, role: decoded.role };
+    } catch {
+      return null;
+    }
+  },
+  loadUserProfile: async (id: string) => {
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      include: { roles: true }
+    });
+    if (!user) return null;
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      division: user.division,
+      roles: user.roles.map(r => r.name)
+    };
+  }
+}));
+
 import { driveService, GOOGLE_DRIVE_FOLDER_ID, upload } from './services/drive.service';
 
 // Continue to serve existing local files for backward compatibility

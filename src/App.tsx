@@ -80,6 +80,8 @@ import BookOfDrawingsWorkspace from './pages/divisions/BookOfDrawingsWorkspace';
 import CVsDashboard from './pages/divisions/CVsDashboard';
 import CVsWorkspace from './pages/divisions/CVsWorkspace';
 
+import OAuthAuthorize from './pages/OAuthAuthorize';
+
 // Simple protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
@@ -94,6 +96,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
         <Route 
           path="/dashboard" 
           element={
