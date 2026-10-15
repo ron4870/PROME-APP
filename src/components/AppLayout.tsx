@@ -422,6 +422,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <BookOpen size={28} color="#bb0a0a" strokeWidth={1.5} />
                   <span>ISO Documents</span>
                 </Link>
+                <Link to="/iso-compliance-matrix" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <Award size={28} color="#bb0a0a" strokeWidth={1.5} />
+                  <span>ISO Matrix</span>
+                </Link>
                 {(hasPermission('wiki_view') || hasPermission('wiki_draft') || hasPermission('wiki_review') || hasPermission('wiki_approve')) && (
                   <Link to="/wiki" className="dropdown-item" style={{ padding: '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '0.75rem', color: '#333', border: 'none', borderRadius: '8px', gap: '0.5rem', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                     <Library size={28} color="#bb0a0a" strokeWidth={1.5} />

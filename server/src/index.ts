@@ -41,6 +41,7 @@ import bookOfDrawingsRoutes from './routes/bookofdrawings.routes';
 import cvsRoutes from './routes/cvs.routes';
 import faqRoutes from './routes/faq.routes';
 import companyExperienceRoutes from './routes/company-experience.routes';
+import isoMatrixRoutes from './routes/iso-matrix.routes';
 import { setupCronJobs } from './services/cron.service';
 dotenv.config();
 
@@ -105,6 +106,7 @@ app.use('/api/company-experience', companyExperienceRoutes);
 app.use('/api/book-of-drawings', bookOfDrawingsRoutes);
 app.use('/api/cvs', cvsRoutes);
 app.use('/api/faqs', faqRoutes);
+app.use('/api/iso-matrix', isoMatrixRoutes);
 
 // --- OAuth 2.0 + PKCE Integration for Desktop App ---
 const { createOAuthRouter } = require('./oauth/oauth.routes');

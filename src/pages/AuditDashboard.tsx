@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Calendar, CheckCircle, Clock, Sparkles, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, CheckCircle, Clock, Sparkles, Trash2, ShieldCheck } from 'lucide-react';
 
 interface Audit {
   id: number;
@@ -208,7 +208,26 @@ const AuditDashboard: React.FC = () => {
           <h1 style={{ fontSize: '1.8rem', color: '#1e293b', marginBottom: '0.5rem' }}>Internal Audits Management</h1>
           <p style={{ color: '#64748b', margin: 0 }}>Schedule and autonomously conduct ISO internal audits with evidentiary questionnaires.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button 
+            className="btn" 
+            onClick={() => navigate('/iso-compliance-matrix')}
+            style={{ 
+              backgroundColor: '#1e293b', 
+              color: '#ffffff', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              padding: '0.6rem 1.2rem', 
+              borderRadius: '8px', 
+              fontWeight: 600,
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              cursor: 'pointer'
+            }}
+          >
+            <ShieldCheck size={18} />
+            ISO Records Matrix
+          </button>
           <button 
             className="btn" 
             onClick={() => setIsCampaignModalOpen(true)}
@@ -221,7 +240,8 @@ const AuditDashboard: React.FC = () => {
               padding: '0.6rem 1.2rem', 
               borderRadius: '8px', 
               fontWeight: 600,
-              boxShadow: '0 2px 4px rgba(204, 0, 0, 0.2)' 
+              boxShadow: '0 2px 4px rgba(204, 0, 0, 0.2)',
+              cursor: 'pointer'
             }}
           >
             <Sparkles size={18} />

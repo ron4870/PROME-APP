@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 import { GoogleGenAI, Type } from '@google/genai';
 import { upload, driveService } from '../services/drive.service';
 import { createIsoAuditCampaign, compileIsoAuditReport } from '../services/iso-audit.service';
+import { getLiveIsoComplianceMatrix } from '../services/iso-matrix.service';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -242,6 +243,17 @@ const systemTools: any[] = [
       },
       required: ["auditId"]
     }
+  },
+  {
+    name: "getIsoComplianceMatrix",
+    description: "Returns the live list and register of all mandatory documents and records required by ISO standards (ISO 9001:2018, ISO 14001:2015, ISO 45001:2018), where within the PROME IMS each is stored, and which documents or records are compliant, need to be updated, or are missing.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        standard: { type: Type.STRING, description: "Optional filter for standard: 'ISO 9001:2018', 'ISO 14001:2015', 'ISO 45001:2018', or 'ALL'." },
+        status: { type: Type.STRING, description: "Optional filter by status: 'MISSING', 'NEEDS_UPDATE', or 'COMPLIANT'." }
+      }
+    }
   }
 ];
 
@@ -301,7 +313,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // System instruction
     const systemInstruction = {
       role: "system",
-      parts: [{ text: "You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems. You assist Administrators and Managing Directors in managing projects and conducting autonomous audits. When a user asks you to interview personnel for particular sections of the ISO standard and specific projects, use `createIsoAuditCampaign` to create the audit campaign, generate customized questions with objective evidence requirements, generate secure interview links, and send notification emails. Clearly report the created audit reference, list of interviewees, assigned clauses, projects, and direct interview links in your response. When interview responses and evidentiary files are ready, use `compileIsoAuditReport` to perform compliance evaluation, generate findings, compile an official multi-page PDF audit report, link it to the audit on https://ims.promeconsult.com/audits, and archive it into the Corporate Library on https://ims.promeconsult.com/library under 'Audit Reports & Compliance'. You also have access to wiki, projects, employees, and ASAM OpenDrive capabilities." }]
+      parts: [{ text: "You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems, ISO 14001:2015, and ISO 45001:2018. You assist Administrators and Managing Directors in managing projects, conducting autonomous audits, and maintaining the corporate ISO Compliance & Mandatory Records Register. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use `getIsoComplianceMatrix` to inspect the live IMS database and provide a clear, structured breakdown with direct IMS module links (such as https://ims.promeconsult.com/iso-compliance-matrix). When a user asks you to interview personnel for particular sections of the ISO standard and specific projects, use `createIsoAuditCampaign` to create the audit campaign, generate customized questions with objective evidence requirements, generate secure interview links, and send notification emails. When interview responses and evidentiary files are ready, use `compileIsoAuditReport` to perform compliance evaluation, generate findings, compile an official multi-page PDF audit report, link it to the audit on https://ims.promeconsult.com/audits, and archive it into the Corporate Library on https://ims.promeconsult.com/library under 'Audit Reports & Compliance'. You also have access to wiki, projects, employees, and ASAM OpenDrive capabilities." }]
     };
 
     // Initialize chat session with history
@@ -488,6 +500,27 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
 
           const reportResult = await compileIsoAuditReport(args.auditId, baseUrl);
           functionResponse = reportResult;
+        } else if (call.name === 'getIsoComplianceMatrix') {
+          const args = call.args as any;
+          const matrix = await getLiveIsoComplianceMatrix(args.standard);
+          let reqs = matrix.requirements;
+          if (args.status) {
+            reqs = reqs.filter(r => r.status.toUpperCase() === args.status.toUpperCase());
+          }
+          functionResponse = {
+            summary: matrix.summary,
+            totalCount: reqs.length,
+            requirements: reqs.map(r => ({
+              clause: r.clause,
+              title: r.title,
+              type: r.type,
+              status: r.status,
+              storedInModule: r.targetModule,
+              imsRoute: `https://ims.promeconsult.com${r.route}`,
+              liveSummary: r.liveSummary,
+              actionRequired: r.aiRecommendation
+            }))
+          };
         } else {
           functionResponse = { error: 'Function not found' };
         }

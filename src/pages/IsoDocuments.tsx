@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, FileText, CheckCircle, Upload, Search, Filter } from 'lucide-react';
+import { Shield, FileText, CheckCircle, Upload, Search, Filter, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface IsoDocument {
@@ -138,26 +138,36 @@ const IsoDocuments: React.FC = () => {
           <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Central repository for controlled policies, procedures, and manuals.</p>
         </div>
         
-        {(user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Super Admin')) && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button 
-              className="btn btn-secondary"
-              onClick={() => navigate('/iso-documents/edit/new')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <FileText size={18} />
-              Draft Native Doc
-            </button>
-            <button 
-              className="btn btn-primary"
-              onClick={() => setIsUploadModalOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <Upload size={18} />
-              Upload PDF
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => navigate('/iso-compliance-matrix')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
+          >
+            <Award size={18} color="#cc0000" />
+            ISO Standards Matrix
+          </button>
+          {(user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Super Admin')) && (
+            <>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => navigate('/iso-documents/edit/new')}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <FileText size={18} />
+                Draft Native Doc
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setIsUploadModalOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <Upload size={18} />
+                Upload PDF
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: '2rem' }}>

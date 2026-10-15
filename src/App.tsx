@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import UserProfile from './pages/UserProfile';
 import AlignmentConverter from './pages/AlignmentConverter';
 import IsoDocuments from './pages/IsoDocuments';
+import IsoComplianceMatrix from './pages/IsoComplianceMatrix';
 import IsoDocumentEditor from './pages/document-control/IsoDocumentEditor';
 import IsoDocumentViewer from './pages/document-control/IsoDocumentViewer';
 import CapaDashboard from './pages/CapaDashboard';
@@ -131,6 +132,8 @@ function App() {
           } 
         />
         {/* Division Routes */}
+        <Route path="/iso-compliance-matrix" element={<ProtectedRoute><IsoComplianceMatrix /></ProtectedRoute>} />
+        <Route path="/iso-matrix" element={<ProtectedRoute><IsoComplianceMatrix /></ProtectedRoute>} />
         <Route path="/iso-documents" element={<ProtectedRoute><IsoDocuments /></ProtectedRoute>} />
         <Route path="/iso-documents/edit/:id" element={<ProtectedRoute><IsoDocumentEditor /></ProtectedRoute>} />
         <Route path="/iso-documents/:id" element={<ProtectedRoute><IsoDocumentViewer /></ProtectedRoute>} />

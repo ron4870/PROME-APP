@@ -271,6 +271,12 @@ export default function AIAssistant() {
                   🔍 Check ISO Audit Campaign Status
                 </button>
                 <button
+                  onClick={() => setInputText("What mandatory documents and records are required by ISO standards, where in the PROME IMS are they stored, and which ones are currently missing or need updating?")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  🛡️ Check ISO Mandatory Records & Missing Docs
+                </button>
+                <button
                   onClick={() => setInputText("Compile the official ISO audit report for our latest completed audit and publish the PDF to /audits and the library.")}
                   style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
