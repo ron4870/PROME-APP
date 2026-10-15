@@ -528,7 +528,8 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
         functionResponse = { error: e.message };
       }
 
-      contents.push({ role: 'model', parts: [{ functionCall: call }] });
+      const modelContent = response.candidates?.[0]?.content || { role: 'model', parts: [{ functionCall: call }] };
+      contents.push(modelContent);
       contents.push({ role: 'user', parts: [{ functionResponse: { name: call.name, response: functionResponse } }] });
 
       response = await ai.models.generateContent({

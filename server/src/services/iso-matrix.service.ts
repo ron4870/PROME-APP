@@ -771,7 +771,7 @@ Respond ONLY with valid JSON, without any surrounding markdown code block quotes
 `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: {
         temperature: 0.3,
