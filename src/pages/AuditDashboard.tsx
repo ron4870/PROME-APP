@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { Plus, Search, Calendar, CheckCircle, Clock, Sparkles, Trash2, ShieldCheck } from 'lucide-react';
 
 interface Audit {
@@ -43,12 +44,45 @@ const ISO_CLAUSES_LIST = [
 
 const AuditDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director' || r.name === 'Super Admin') || false;
+
   const [audits, setAudits] = useState<Audit[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'list'|'schedule'>('list');
   const [currentYear] = useState(new Date().getFullYear());
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleDeleteAudit = async (id: number, auditNumber: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete audit "${auditNumber}"?\n\nThis will remove all associated interview responses, questions, uploaded evidence files, findings, and compiled reports. This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/audits/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        setAudits(prev => prev.filter(a => a.id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete audit.');
+      }
+    } catch (err) {
+      console.error('Failed to delete audit:', err);
+      alert('An error occurred while deleting the audit.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   
   // Standard New Audit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -332,12 +366,15 @@ const AuditDashboard: React.FC = () => {
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditor</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditees</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Findings</th>
+                  {isAdmin && (
+                    <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600, textAlign: 'right' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {filteredAudits.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>No audits scheduled yet.</td>
+                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>No audits scheduled yet.</td>
                   </tr>
                 ) : (
                   filteredAudits.map(audit => (
@@ -363,6 +400,36 @@ const AuditDashboard: React.FC = () => {
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontWeight: 600 }}>
                         {audit._count?.findings || 0}
                       </td>
+                      {isAdmin && (
+                        <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAudit(audit.id, audit.auditNumber);
+                            }}
+                            disabled={deletingId === audit.id}
+                            title="Delete Audit (Administrator)"
+                            style={{
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              padding: '6px 12px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              cursor: deletingId === audit.id ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.2s',
+                              opacity: deletingId === audit.id ? 0.6 : 1
+                            }}
+                          >
+                            <Trash2 size={14} />
+                            {deletingId === audit.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

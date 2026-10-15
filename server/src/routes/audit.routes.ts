@@ -1,8 +1,9 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
+import { authenticateToken } from '../middleware/auth';
 import { createIsoAuditCampaign, compileIsoAuditReport } from '../services/iso-audit.service';
 
 const router = Router();
@@ -467,6 +468,92 @@ router.post('/findings/:findingId/capa', async (req, res) => {
   } catch (error) {
     console.error('Error raising CAPA:', error);
     res.status(500).json({ error: 'Failed to raise CAPA' });
+  }
+});
+
+// 14. Delete audit (Administrator only)
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: true }
+    });
+
+    const isAdmin = user?.roles?.some(r => 
+      r.name === 'Administrator' || 
+      r.name === 'Managing Director' || 
+      r.name === 'Super Admin'
+    );
+
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Permission denied. Only Administrators can delete audits.' });
+    }
+
+    const auditId = parseInt(req.params.id);
+    const audit = await prisma.audit.findUnique({
+      where: { id: auditId },
+      include: {
+        interviews: {
+          include: {
+            questions: {
+              include: { attachments: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!audit) {
+      return res.status(404).json({ error: 'Audit not found' });
+    }
+
+    // 1. Clean up evidence attachment files from uploads directory
+    for (const interview of audit.interviews) {
+      for (const question of interview.questions) {
+        for (const attachment of question.attachments) {
+          if (attachment.fileUrl && attachment.fileUrl.startsWith('/uploads/')) {
+            const filePath = path.join(__dirname, '../..', attachment.fileUrl);
+            if (fs.existsSync(filePath)) {
+              try { fs.unlinkSync(filePath); } catch (e) {}
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Clean up compiled PDF report if it exists
+    if (audit.reportPdfUrl && audit.reportPdfUrl.startsWith('/uploads/')) {
+      const pdfPath = path.join(__dirname, '../..', audit.reportPdfUrl);
+      if (fs.existsSync(pdfPath)) {
+        try { fs.unlinkSync(pdfPath); } catch (e) {}
+      }
+    }
+
+    // 3. Clean up linked Library item if registered
+    if (audit.libraryItemId) {
+      try {
+        await prisma.libraryItem.delete({
+          where: { id: audit.libraryItemId }
+        });
+      } catch (e) {
+        console.warn('Linked library item already removed or not found');
+      }
+    }
+
+    // 4. Delete the audit record (Prisma cascade deletes interviews, questions, attachments, and findings)
+    await prisma.audit.delete({
+      where: { id: auditId }
+    });
+
+    res.json({ success: true, message: `Audit ${audit.auditNumber} deleted successfully.` });
+  } catch (error: any) {
+    console.error('Error deleting audit:', error);
+    res.status(500).json({ error: `Failed to delete audit: ${error.message}` });
   }
 });
 

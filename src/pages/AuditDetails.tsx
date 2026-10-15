@@ -18,7 +18,8 @@ import {
   Sparkles, 
   Paperclip, 
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
 
 interface AuditFinding {
@@ -88,11 +89,13 @@ const AuditDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isAdmin = user?.roles?.some(r => r.name === 'Administrator' || r.name === 'Managing Director' || r.name === 'Super Admin') || false;
   
   const [audit, setAudit] = useState<Audit | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [compiling, setCompiling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [expandedInterviewId, setExpandedInterviewId] = useState<number | null>(null);
   
@@ -214,6 +217,35 @@ const AuditDetails: React.FC = () => {
     setTimeout(() => setCopiedToken(null), 3000);
   };
 
+  const handleDeleteAudit = async () => {
+    if (!window.confirm(`Are you sure you want to permanently delete audit "${audit?.auditNumber}"?\n\nThis will remove all associated interview responses, questions, uploaded evidence files, findings, and compiled reports. This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/audits/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        navigate('/audits');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete audit.');
+      }
+    } catch (err) {
+      console.error('Failed to delete audit:', err);
+      alert('An error occurred while deleting the audit.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Loading Audit Details...</div>;
   if (!audit) return null;
 
@@ -258,6 +290,28 @@ const AuditDetails: React.FC = () => {
             <Save size={18} style={{ marginRight: '8px' }} />
             {saving ? 'Saving...' : 'Save Audit Form'}
           </button>
+          {isAdmin && (
+            <button 
+              className="btn no-print" 
+              onClick={handleDeleteAudit} 
+              disabled={deleting}
+              style={{
+                backgroundColor: '#fee2e2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.6rem 1rem',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: deleting ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Trash2 size={16} />
+              {deleting ? 'Deleting...' : 'Delete Audit'}
+            </button>
+          )}
         </div>
       </div>
 
