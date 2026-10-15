@@ -253,9 +253,30 @@ export default function AIAssistant() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
               <Bot size={64} color="#e2e8f0" style={{ marginBottom: '1rem' }} />
               <h2 style={{ fontSize: '1.5rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>How can I help you today?</h2>
-              <p style={{ textAlign: 'center', maxWidth: '400px' }}>
-                I can help you analyze documents, query project statuses, or summarize system data.
+              <p style={{ textAlign: 'center', maxWidth: '500px', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+                I can help you analyze documents, query live project data, or autonomously conduct full ISO 9001:2015 / ISO 9001:2018 quality audits with evidentiary questionnaires and report compilation.
               </p>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '650px' }}>
+                <button
+                  onClick={() => setInputText("Conduct an ISO 9001 internal audit. Interview our project managers on Clause 5 (Leadership) and Clause 8 (Operation) for active engineering projects, generate evidentiary links, and prepare to compile an audit report.")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  📋 Conduct an ISO 9001 Internal Audit
+                </button>
+                <button
+                  onClick={() => setInputText("What is the status of our latest ISO audit campaign and interview submissions?")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  🔍 Check ISO Audit Campaign Status
+                </button>
+                <button
+                  onClick={() => setInputText("Compile the official ISO audit report for our latest completed audit and publish the PDF to /audits and the library.")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  📄 Compile Audit Report & Save to Library
+                </button>
+              </div>
             </div>
           ) : (
             messages.map((msg, idx) => (
@@ -276,7 +297,31 @@ export default function AIAssistant() {
                   lineHeight: '1.6',
                   whiteSpace: 'pre-wrap'
                 }}>
-                  {msg.content}
+                  {(() => {
+                    const urlRegex = /(https?:\/\/[^\s]+)/g;
+                    const parts = (msg.content || '').split(urlRegex);
+                    return parts.map((part: string, i: number) => {
+                      if (part.match(urlRegex)) {
+                        return (
+                          <a
+                            key={i}
+                            href={part}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              color: msg.role === 'user' ? '#93c5fd' : '#cc0000',
+                              textDecoration: 'underline',
+                              fontWeight: 600,
+                              wordBreak: 'break-all'
+                            }}
+                          >
+                            {part}
+                          </a>
+                        );
+                      }
+                      return part;
+                    });
+                  })()}
                 </div>
               </div>
             ))

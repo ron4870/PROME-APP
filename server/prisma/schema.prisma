@@ -46,6 +46,7 @@ model User {
   // Audit Relations
   auditsConducted Audit[] @relation("AuditsConducted")
   auditsReceived  Audit[] @relation("AuditsReceived")
+  auditInterviews AuditInterview[] @relation("UserAuditInterviews")
 
   ownedRisks Risk[] @relation("RiskOwner")
 
@@ -361,17 +362,23 @@ model Audit {
   auditNumber   String    @unique
   title         String
   type          String // Internal, External, Management Review
+  standard      String?   @default("ISO 9001:2015") // e.g. ISO 9001:2015 / ISO 9001:2018
   scope         String    @db.Text
   plannedDate   DateTime
   executionDate DateTime?
   status        String    @default("Planned") // Planned, In Progress, Completed, Cancelled
 
+  summary         String?   @db.Text
+  complianceScore Float?
+  reportPdfUrl    String?   @db.Text
+  libraryItemId   Int?
+
   auditorId Int?
   auditor   User? @relation("AuditsConducted", fields: [auditorId], references: [id])
 
-  auditees User[] @relation("AuditsReceived")
-
-  findings AuditFinding[]
+  auditees   User[]           @relation("AuditsReceived")
+  findings   AuditFinding[]
+  interviews AuditInterview[]
 
   projectId Int?
   project   Project? @relation(fields: [projectId], references: [id])
@@ -386,16 +393,71 @@ model AuditFinding {
   auditId       Int
   audit         Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
-  description String @db.Text
+  clauseRef   String? // e.g. "Clause 8.3", "Clause 5.1"
+  description String  @db.Text
   type        String // "Major NC", "Minor NC", "Observation", "OFI"
   severity    String
-  status      String @default("Open") // "Open", "Closed", "Escalated"
+  status      String  @default("Open") // "Open", "Closed", "Escalated"
 
   capaId Int?
   capa   CapaReport? @relation(fields: [capaId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model AuditInterview {
+  id               Int                      @id @default(autoincrement())
+  token            String                   @unique
+  auditId          Int
+  audit            Audit                    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  intervieweeId    Int?
+  interviewee      User?                    @relation("UserAuditInterviews", fields: [intervieweeId], references: [id])
+  intervieweeName  String
+  intervieweeEmail String
+
+  projects         String?                  @db.Text
+  isoSections      String                   @db.Text // e.g. "Clause 5 Leadership, Clause 8 Operation"
+
+  status           String                   @default("PENDING") // PENDING, IN_PROGRESS, SUBMITTED, EVALUATED
+  submittedAt      DateTime?
+
+  questions        AuditInterviewQuestion[]
+  evaluation       String?                  @db.Text
+
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+}
+
+model AuditInterviewQuestion {
+  id           Int                        @id @default(autoincrement())
+  interviewId  Int
+  interview    AuditInterview             @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  clauseNumber String // e.g. "5.1", "8.3"
+  clauseTitle  String // e.g. "Leadership & Commitment", "Design & Development"
+  questionText String                     @db.Text
+  guidance     String?                    @db.Text
+
+  response     String?                    @db.Text
+  attachments  AuditInterviewAttachment[]
+
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+}
+
+model AuditInterviewAttachment {
+  id         Int                    @id @default(autoincrement())
+  questionId Int
+  question   AuditInterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  fileName   String
+  fileUrl    String                 @db.Text
+  fileType   String?
+  fileSize   Int?
+
+  createdAt  DateTime               @default(now())
 }
 
 model Risk {

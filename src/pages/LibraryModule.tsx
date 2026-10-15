@@ -26,7 +26,8 @@ const CATEGORIES = [
   'Financial Documents',
   'Certificates',
   'Company Profiles',
-  'Insurance Documents'
+  'Insurance Documents',
+  'Audit Reports & Compliance'
 ];
 
 const DISCIPLINES = [
@@ -145,6 +146,7 @@ const LibraryModule: React.FC = () => {
     if (category.includes('Certificates')) return <Award size={size} color="#eab308" strokeWidth={1.5} />;
     if (category.includes('Company Profiles')) return <Building2 size={size} color="#1d4ed8" strokeWidth={1.5} />;
     if (category.includes('Insurance')) return <ShieldCheck size={size} color="#be185d" strokeWidth={1.5} />;
+    if (category.includes('Audit')) return <ShieldCheck size={size} color="#cc0000" strokeWidth={1.5} />;
     return <PenTool size={size} color="#475569" strokeWidth={1.5} />;
   };
 

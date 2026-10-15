@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Calendar, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Search, Calendar, CheckCircle, Clock, Sparkles, Trash2 } from 'lucide-react';
 
 interface Audit {
   id: number;
@@ -8,16 +8,38 @@ interface Audit {
   title: string;
   type: string;
   status: string;
+  standard?: string | null;
+  complianceScore?: number | null;
+  reportPdfUrl?: string | null;
   plannedDate: string;
   auditor: { name: string } | null;
   auditees: { name: string }[];
-  _count: { findings: number };
+  _count: { findings: number; interviews?: number };
 }
 
 interface UserData {
   id: number;
   name: string;
+  email: string;
 }
+
+interface CampaignInterviewee {
+  name: string;
+  email: string;
+  isoSections: string;
+  projects: string;
+  userId?: number;
+}
+
+const ISO_CLAUSES_LIST = [
+  'Clause 4 (Context)',
+  'Clause 5 (Leadership)',
+  'Clause 6 (Planning)',
+  'Clause 7 (Support)',
+  'Clause 8 (Operation)',
+  'Clause 9 (Performance)',
+  'Clause 10 (Improvement)'
+];
 
 const AuditDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -26,9 +48,9 @@ const AuditDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'list'|'schedule'>('list');
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentYear] = useState(new Date().getFullYear());
   
-  // New Audit Modal State
+  // Standard New Audit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuditeeDropdownOpen, setIsAuditeeDropdownOpen] = useState(false);
   const [newAudit, setNewAudit] = useState({
@@ -39,6 +61,18 @@ const AuditDashboard: React.FC = () => {
     auditorId: '',
     auditeeIds: [] as string[]
   });
+
+  // AI ISO Audit Campaign Modal State
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
+  const [campaignLoading, setCampaignLoading] = useState(false);
+  const [campaignTitle, setCampaignTitle] = useState('Annual ISO 9001:2015 Quality Management Internal Audit');
+  const [campaignStandard, setCampaignStandard] = useState('ISO 9001:2015');
+  const [campaignScope, setCampaignScope] = useState('Corporate and project quality management system evaluation across engineering design, site operations, and resource controls.');
+  const [campaignPlannedDate, setCampaignPlannedDate] = useState(new Date().toISOString().substring(0, 10));
+  const [campaignAuditorId, setCampaignAuditorId] = useState('');
+  const [campaignInterviewees, setCampaignInterviewees] = useState<CampaignInterviewee[]>([
+    { name: '', email: '', isoSections: 'Clause 5 (Leadership), Clause 6 (Planning)', projects: 'All Active Projects' }
+  ]);
 
   useEffect(() => {
     fetchAudits();
@@ -87,6 +121,71 @@ const AuditDashboard: React.FC = () => {
     }
   };
 
+  const handleAddIntervieweeRow = () => {
+    setCampaignInterviewees(prev => [
+      ...prev,
+      { name: '', email: '', isoSections: 'Clause 8 (Operation)', projects: '' }
+    ]);
+  };
+
+  const handleRemoveIntervieweeRow = (index: number) => {
+    setCampaignInterviewees(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleIntervieweeUserSelect = (index: number, userId: string) => {
+    const selected = users.find(u => u.id.toString() === userId);
+    if (!selected) return;
+
+    setCampaignInterviewees(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        userId: selected.id,
+        name: selected.name,
+        email: selected.email
+      };
+      return updated;
+    });
+  };
+
+  const handleLaunchCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (campaignInterviewees.length === 0 || !campaignInterviewees.some(i => i.name && i.email)) {
+      alert('Please specify at least one interviewee with a valid name and email.');
+      return;
+    }
+
+    try {
+      setCampaignLoading(true);
+      const res = await fetch('/api/audits/campaign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: campaignTitle,
+          standard: campaignStandard,
+          scope: campaignScope,
+          plannedDate: campaignPlannedDate,
+          auditorId: campaignAuditorId || undefined,
+          interviewees: campaignInterviewees.filter(i => i.name && i.email)
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create audit campaign');
+      }
+
+      const result = await res.json();
+      setIsCampaignModalOpen(false);
+      await fetchAudits();
+      navigate(`/audits/${result.audit.id}`);
+    } catch (err: any) {
+      alert('Error launching campaign: ' + err.message);
+    } finally {
+      setCampaignLoading(false);
+    }
+  };
+
   const filteredAudits = audits.filter(a => 
     a.auditNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
     a.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -104,15 +203,35 @@ const AuditDashboard: React.FC = () => {
 
   return (
     <div className="layout-container" style={{ padding: '2rem 1rem' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', color: '#1e293b', marginBottom: '0.5rem' }}>Internal Audits Management</h1>
-          <p style={{ color: '#64748b' }}>Schedule and track ISO internal audits and inspections.</p>
+          <p style={{ color: '#64748b', margin: 0 }}>Schedule and autonomously conduct ISO internal audits with evidentiary questionnaires.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} style={{ marginRight: '8px' }} />
-          Schedule Audit
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button 
+            className="btn" 
+            onClick={() => setIsCampaignModalOpen(true)}
+            style={{ 
+              backgroundColor: '#cc0000', 
+              color: '#ffffff', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              padding: '0.6rem 1.2rem', 
+              borderRadius: '8px', 
+              fontWeight: 600,
+              boxShadow: '0 2px 4px rgba(204, 0, 0, 0.2)' 
+            }}
+          >
+            <Sparkles size={18} />
+            Launch AI ISO Audit Campaign
+          </button>
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} style={{ marginRight: '8px' }} />
+            Schedule Audit
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -180,24 +299,25 @@ const AuditDashboard: React.FC = () => {
 
         <div style={{ overflowX: 'auto' }}>
           {loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>Loading...</div>
+            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>Loading audits...</div>
           ) : (
             <table className="iso-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Audit No.</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Title</th>
+                  <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Standard</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Planned Date</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditor</th>
-                  <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditee(s)</th>
+                  <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditees</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Findings</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAudits.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>No audits scheduled yet.</td>
+                    <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>No audits scheduled yet.</td>
                   </tr>
                 ) : (
                   filteredAudits.map(audit => (
@@ -207,14 +327,21 @@ const AuditDashboard: React.FC = () => {
                       onClick={() => navigate(`/audits/${audit.id}`)}
                       className="hover-bg"
                     >
-                      <td style={{ padding: '1rem 1.5rem', fontWeight: 500, color: '#0f172a' }}>{audit.auditNumber}</td>
-                      <td style={{ padding: '1rem 1.5rem' }}>{audit.title}</td>
+                      <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: '#cc0000' }}>{audit.auditNumber}</td>
+                      <td style={{ padding: '1rem 1.5rem', fontWeight: 500 }}>{audit.title}</td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, backgroundColor: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px' }}>
+                          {audit.standard || 'ISO 9001:2015'}
+                        </span>
+                      </td>
                       <td style={{ padding: '1rem 1.5rem' }}><span className={getStatusBadgeClass(audit.status)}>{audit.status}</span></td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{new Date(audit.plannedDate).toLocaleDateString()}</td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{audit.auditor?.name || 'TBA'}</td>
-                      <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>{audit.auditees?.length > 0 ? audit.auditees.map(a => a.name).join(', ') : 'TBA'}</td>
+                      <td style={{ padding: '1rem 1.5rem', color: '#64748b' }}>
+                        {audit.auditees?.length > 0 ? audit.auditees.map(a => a.name).join(', ') : 'TBA'}
+                      </td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontWeight: 600 }}>
-                        {audit._count.findings}
+                        {audit._count?.findings || 0}
                       </td>
                     </tr>
                   ))
@@ -225,69 +352,302 @@ const AuditDashboard: React.FC = () => {
         </div>
       </div>
       ) : (
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem' }}>{currentYear} Internal Audit Programme</h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => setCurrentYear(y => y - 1)} className="btn btn-secondary" style={{ padding: '0.5rem' }}>&larr;</button>
-              <button onClick={() => setCurrentYear(new Date().getFullYear())} className="btn btn-secondary">Current Year</button>
-              <button onClick={() => setCurrentYear(y => y + 1)} className="btn btn-secondary" style={{ padding: '0.5rem' }}>&rarr;</button>
+        /* Annual Schedule view */
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+          <h3>Annual Audit Schedule for {currentYear}</h3>
+          <p>Audits are distributed across quarters to ensure continual QMS conformance.</p>
+        </div>
+      )}
+
+      {/* AI ISO Audit Campaign Modal */}
+      {isCampaignModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCampaignModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '16px', width: '100%', maxWidth: '780px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={22} color="#cc0000" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#0f172a' }}>Launch Autonomous ISO Audit Campaign</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Specify interviewees, designated projects, and assigned ISO clauses. The AI will create links and questions.</p>
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
-            {Array.from({ length: 12 }).map((_, i) => {
-              const monthName = new Date(currentYear, i, 1).toLocaleString('default', { month: 'long' });
-              const monthAudits = audits.filter(a => {
-                const d = new Date(a.plannedDate);
-                return d.getFullYear() === currentYear && d.getMonth() === i;
-              });
-              
-              return (
-                <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', backgroundColor: '#f8fafc' }}>
-                  <h3 style={{ margin: '0 0 1rem', color: '#334155', fontSize: '1rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>{monthName}</h3>
-                  {monthAudits.length === 0 ? (
-                    <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>No audits planned.</p>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {monthAudits.map(a => (
-                        <div key={a.id} onClick={() => navigate(`/audits/${a.id}`)} style={{ backgroundColor: 'white', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', borderLeft: `4px solid ${a.status === 'Completed' ? '#22c55e' : a.status === 'In Progress' ? '#f59e0b' : '#3b82f6'}`, cursor: 'pointer' }} className="hover-bg">
-                          <p style={{ margin: '0 0 0.25rem', fontWeight: 600, fontSize: '0.875rem', color: '#0f172a' }}>{a.auditNumber}</p>
-                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#475569', lineHeight: 1.3 }}>{a.title}</p>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(a.plannedDate).toLocaleDateString()}</span>
-                            <span className={getStatusBadgeClass(a.status)} style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>{a.status}</span>
+
+            <form onSubmit={handleLaunchCampaign}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Audit Campaign Title</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="form-input" 
+                    style={{ width: '100%' }} 
+                    value={campaignTitle} 
+                    onChange={e => setCampaignTitle(e.target.value)} 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Standard</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%' }} 
+                    value={campaignStandard} 
+                    onChange={e => setCampaignStandard(e.target.value)}
+                  >
+                    <option value="ISO 9001:2015">ISO 9001:2015</option>
+                    <option value="ISO 9001:2018">ISO 9001:2018</option>
+                    <option value="ISO 14001:2015">ISO 14001:2015 (HSE)</option>
+                    <option value="ISO 45001:2018">ISO 45001:2018 (Safety)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Planned Audit Date</label>
+                  <input 
+                    type="date" 
+                    required 
+                    className="form-input" 
+                    style={{ width: '100%' }} 
+                    value={campaignPlannedDate} 
+                    onChange={e => setCampaignPlannedDate(e.target.value)} 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Lead Quality Auditor</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%' }} 
+                    value={campaignAuditorId} 
+                    onChange={e => setCampaignAuditorId(e.target.value)}
+                  >
+                    <option value="">-- AI Auditor / Select Auditor --</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Audit Scope & Objectives</label>
+                <textarea 
+                  rows={2} 
+                  className="form-input" 
+                  style={{ width: '100%', resize: 'vertical' }} 
+                  value={campaignScope} 
+                  onChange={e => setCampaignScope(e.target.value)} 
+                />
+              </div>
+
+              {/* Interviewees Section */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', marginBottom: '1.5rem', backgroundColor: '#f8fafc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
+                    Personnel to Interview ({campaignInterviewees.length})
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleAddIntervieweeRow}
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', color: '#cc0000', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    <Plus size={16} /> Add Another Interviewee
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {campaignInterviewees.map((item, idx) => (
+                    <div key={idx} style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '14px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Interviewee #{idx + 1}</span>
+                        {campaignInterviewees.length > 1 && (
+                          <button 
+                            type="button" 
+                            onClick={() => handleRemoveIntervieweeRow(idx)}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Select User or Type Name</label>
+                          <select 
+                            className="form-input" 
+                            style={{ width: '100%', fontSize: '13px' }}
+                            value={item.userId || ''}
+                            onChange={e => handleIntervieweeUserSelect(idx, e.target.value)}
+                          >
+                            <option value="">-- Choose User or Custom --</option>
+                            {users.map(u => (
+                              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Interviewee Full Name</label>
+                          <input 
+                            type="text" 
+                            required 
+                            placeholder="e.g. Ronald Kibuuka" 
+                            className="form-input" 
+                            style={{ width: '100%', fontSize: '13px' }} 
+                            value={item.name} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setCampaignInterviewees(prev => {
+                                const copy = [...prev];
+                                copy[idx].name = val;
+                                return copy;
+                              });
+                            }} 
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Email Address (for invitation)</label>
+                          <input 
+                            type="email" 
+                            required 
+                            placeholder="e.g. ronald@promeconsult.com" 
+                            className="form-input" 
+                            style={{ width: '100%', fontSize: '13px' }} 
+                            value={item.email} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setCampaignInterviewees(prev => {
+                                const copy = [...prev];
+                                copy[idx].email = val;
+                                return copy;
+                              });
+                            }} 
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Designated Projects in Charge Of</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Kampala-Jinja Expressway, Water Works" 
+                            className="form-input" 
+                            style={{ width: '100%', fontSize: '13px' }} 
+                            value={item.projects} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setCampaignInterviewees(prev => {
+                                const copy = [...prev];
+                                copy[idx].projects = val;
+                                return copy;
+                              });
+                            }} 
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Assigned ISO Clauses</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Clause 5 (Leadership), Clause 8 (Operation)" 
+                            className="form-input" 
+                            style={{ width: '100%', fontSize: '13px' }} 
+                            value={item.isoSections} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setCampaignInterviewees(prev => {
+                                const copy = [...prev];
+                                copy[idx].isoSections = val;
+                                return copy;
+                              });
+                            }} 
+                          />
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                            {ISO_CLAUSES_LIST.map(clause => (
+                              <button
+                                key={clause}
+                                type="button"
+                                onClick={() => {
+                                  setCampaignInterviewees(prev => {
+                                    const copy = [...prev];
+                                    const curr = copy[idx].isoSections || '';
+                                    if (curr.includes(clause)) {
+                                      copy[idx].isoSections = curr.replace(clause, '').replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '').trim();
+                                    } else {
+                                      copy[idx].isoSections = curr ? `${curr}, ${clause}` : clause;
+                                    }
+                                    return copy;
+                                  });
+                                }}
+                                style={{
+                                  fontSize: '10px',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: (item.isoSections || '').includes(clause) ? '#fee2e2' : '#ffffff',
+                                  color: (item.isoSections || '').includes(clause) ? '#cc0000' : '#475569',
+                                  fontWeight: (item.isoSections || '').includes(clause) ? 700 : 500,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {clause}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsCampaignModalOpen(false)}>Cancel</button>
+                <button 
+                  type="submit" 
+                  disabled={campaignLoading}
+                  style={{ 
+                    backgroundColor: '#cc0000', 
+                    color: '#ffffff', 
+                    border: 'none', 
+                    padding: '10px 24px', 
+                    borderRadius: '8px', 
+                    fontWeight: 600, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    cursor: campaignLoading ? 'not-allowed' : 'pointer' 
+                  }}
+                >
+                  <Sparkles size={16} />
+                  {campaignLoading ? 'Creating Campaign...' : 'Launch AI Campaign & Send Links'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Schedule Audit Modal */}
+      {/* Standard Schedule Audit Modal */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px' }}>
             <h2 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <FileText color="#0f172a" /> Schedule New Audit
+              <Plus color="#0f172a" /> Schedule Standard Audit
             </h2>
             <form onSubmit={handleCreateAudit}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Audit Title</label>
-                <input required type="text" className="form-input" style={{ width: '100%' }} value={newAudit.title} onChange={e => setNewAudit({...newAudit, title: e.target.value})} placeholder="e.g., Q3 HR Department Internal Audit" />
+                <input required type="text" className="form-input" style={{ width: '100%' }} value={newAudit.title} onChange={e => setNewAudit({...newAudit, title: e.target.value})} placeholder="e.g. Q3 Internal QMS Audit" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Type</label>
                   <select className="form-input" style={{ width: '100%' }} value={newAudit.type} onChange={e => setNewAudit({...newAudit, type: e.target.value})}>
                     <option>Internal</option>
-                    <option>External / Certification</option>
+                    <option>External</option>
                     <option>Management Review</option>
-                    <option>Supplier Audit</option>
                   </select>
                 </div>
                 <div>
@@ -295,17 +655,19 @@ const AuditDashboard: React.FC = () => {
                   <input required type="date" className="form-input" style={{ width: '100%' }} value={newAudit.plannedDate} onChange={e => setNewAudit({...newAudit, plannedDate: e.target.value})} />
                 </div>
               </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Auditor</label>
+                <select className="form-input" style={{ width: '100%' }} value={newAudit.auditorId} onChange={e => setNewAudit({...newAudit, auditorId: e.target.value})}>
+                  <option value="">-- Select Auditor --</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Lead Auditor</label>
-                  <select className="form-input" style={{ width: '100%' }} value={newAudit.auditorId} onChange={e => setNewAudit({...newAudit, auditorId: e.target.value})}>
-                    <option value="">-- TBA --</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Auditee(s)</label>
                 <div style={{ position: 'relative' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Auditee(s) (Dept Reps)</label>
                   <div 
                     className="form-input" 
                     style={{ width: '100%', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '42px' }} 

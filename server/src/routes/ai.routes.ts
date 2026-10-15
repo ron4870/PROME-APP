@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 import { GoogleGenAI, Type } from '@google/genai';
 import { upload, driveService } from '../services/drive.service';
+import { createIsoAuditCampaign, compileIsoAuditReport } from '../services/iso-audit.service';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -192,6 +193,55 @@ const systemTools: any[] = [
       },
       required: ["question", "answer"]
     }
+  },
+  {
+    name: "createIsoAuditCampaign",
+    description: "Initiates an ISO 9001 internal quality audit campaign. When the user specifies personnel to interview, assigned ISO standard clauses/sections, and projects they manage, this tool creates the audit, generates tailored audit questions, creates unique secure interview links for each person, and sends email invitations with the links.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING, description: "Descriptive title for the audit (e.g. 'Annual ISO 9001:2015 QMS Internal Audit')." },
+        scope: { type: Type.STRING, description: "Audit scope, objectives, or criteria." },
+        standard: { type: Type.STRING, description: "ISO Standard name, e.g. 'ISO 9001:2015' or 'ISO 9001:2018'." },
+        interviewees: {
+          type: Type.ARRAY,
+          description: "List of individuals to interview, their assigned ISO standard clauses, and projects in charge of.",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING, description: "Full name of the interviewee." },
+              email: { type: Type.STRING, description: "Email address of the interviewee." },
+              isoSections: { type: Type.STRING, description: "Assigned ISO clauses/sections (e.g. 'Clause 5 (Leadership), Clause 6 (Planning)' or 'Clause 8 (Operation)')." },
+              projects: { type: Type.STRING, description: "Projects they manage or are in charge of." }
+            },
+            required: ["name", "email", "isoSections"]
+          }
+        }
+      },
+      required: ["title", "interviewees"]
+    }
+  },
+  {
+    name: "getIsoAuditStatus",
+    description: "Retrieves real-time status of an ISO audit campaign, checking interview submission progress and evidentiary documents attached.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        auditId: { type: Type.NUMBER, description: "ID of the audit." },
+        auditNumber: { type: Type.STRING, description: "Audit reference number (e.g. 'PROME-AUD-2026-001')." }
+      }
+    }
+  },
+  {
+    name: "compileIsoAuditReport",
+    description: "Evaluates all submitted audit interview responses and evidentiary files against ISO 9001 criteria, identifies non-conformances and OFIs, generates a compliant multi-page PDF audit report, saves the PDF to https://ims.promeconsult.com/audits, and registers it in the Corporate Library on https://ims.promeconsult.com/library in category 'Audit Reports & Compliance'.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        auditId: { type: Type.NUMBER, description: "ID of the audit to evaluate and compile." }
+      },
+      required: ["auditId"]
+    }
   }
 ];
 
@@ -251,7 +301,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // System instruction
     const systemInstruction = {
       role: "system",
-      parts: [{ text: "You are the PROME App AI Assistant. You help Administrators and Managing Directors manage their company. You are professional, concise, and helpful. You have access to system tools (including company Wiki pages, documentation, FAQs, and the Organizational Knowledge Folder via getOrganizationalKnowledge) to look up live data. You can also write or expand FAQs by using createFaqItem. When asked to plan, analyze, or generate ASAM OpenDrive roads or features, use the provided horizontal alignment geometry PIs as the reference line (planView) to build the road network. Always output valid, complete, and syntactically correct ASAM OpenDrive XML (.xodr) code using standard elements like <header>, <road>, <link>, <planView>, <geometry>, <lanes>, and <laneSection> to detail road objects, lanes, and alignments." }]
+      parts: [{ text: "You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems. You assist Administrators and Managing Directors in managing projects and conducting autonomous audits. When a user asks you to interview personnel for particular sections of the ISO standard and specific projects, use `createIsoAuditCampaign` to create the audit campaign, generate customized questions with objective evidence requirements, generate secure interview links, and send notification emails. Clearly report the created audit reference, list of interviewees, assigned clauses, projects, and direct interview links in your response. When interview responses and evidentiary files are ready, use `compileIsoAuditReport` to perform compliance evaluation, generate findings, compile an official multi-page PDF audit report, link it to the audit on https://ims.promeconsult.com/audits, and archive it into the Corporate Library on https://ims.promeconsult.com/library under 'Audit Reports & Compliance'. You also have access to wiki, projects, employees, and ASAM OpenDrive capabilities." }]
     };
 
     // Initialize chat session with history
@@ -378,6 +428,66 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
             }
           });
           functionResponse = { faq: { id: faq.id, question: faq.question } };
+        } else if (call.name === 'createIsoAuditCampaign') {
+          const args = call.args as any;
+          const hostHeader = req.get('host');
+          const protocol = req.protocol;
+          const baseUrl = hostHeader ? `${protocol}://${hostHeader}` : 'https://ims.promeconsult.com';
+
+          const campaign = await createIsoAuditCampaign({
+            title: args.title,
+            scope: args.scope,
+            standard: args.standard || 'ISO 9001:2015',
+            auditorId: userId,
+            interviewees: args.interviewees || [],
+            baseUrl
+          });
+          functionResponse = campaign;
+        } else if (call.name === 'getIsoAuditStatus') {
+          const args = call.args as any;
+          const audit = await prisma.audit.findFirst({
+            where: args.auditId ? { id: args.auditId } : (args.auditNumber ? { auditNumber: args.auditNumber } : undefined),
+            include: {
+              findings: true,
+              interviews: {
+                include: {
+                  questions: {
+                    include: { attachments: true }
+                  }
+                }
+              }
+            }
+          });
+          if (!audit) {
+            functionResponse = { error: 'Audit not found' };
+          } else {
+            functionResponse = {
+              auditNumber: audit.auditNumber,
+              title: audit.title,
+              status: audit.status,
+              complianceScore: audit.complianceScore,
+              reportPdfUrl: audit.reportPdfUrl,
+              interviews: audit.interviews.map(i => ({
+                interviewee: i.intervieweeName,
+                email: i.intervieweeEmail,
+                status: i.status,
+                isoSections: i.isoSections,
+                projects: i.projects,
+                answeredCount: i.questions.filter(q => q.response && q.response.trim().length > 0).length,
+                totalQuestions: i.questions.length,
+                attachmentCount: i.questions.reduce((acc, q) => acc + q.attachments.length, 0),
+                interviewUrl: `https://ims.promeconsult.com/audit-interview/${i.token}`
+              }))
+            };
+          }
+        } else if (call.name === 'compileIsoAuditReport') {
+          const args = call.args as any;
+          const hostHeader = req.get('host');
+          const protocol = req.protocol;
+          const baseUrl = hostHeader ? `${protocol}://${hostHeader}` : 'https://ims.promeconsult.com';
+
+          const reportResult = await compileIsoAuditReport(args.auditId, baseUrl);
+          functionResponse = reportResult;
         } else {
           functionResponse = { error: 'Function not found' };
         }

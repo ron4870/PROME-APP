@@ -11,6 +11,7 @@ import CapaDashboard from './pages/CapaDashboard';
 import CapaDetails from './pages/CapaDetails';
 import AuditDashboard from './pages/AuditDashboard';
 import AuditDetails from './pages/AuditDetails';
+import AuditInterviewPortal from './pages/AuditInterviewPortal';
 import RiskDashboard from './pages/RiskDashboard';
 import RiskDetails from './pages/RiskDetails';
 import ManagementReviewDashboard from './pages/ManagementReviewDashboard';
@@ -137,6 +138,7 @@ function App() {
         <Route path="/capa/:id" element={<ProtectedRoute><CapaDetails /></ProtectedRoute>} />
         <Route path="/audits" element={<ProtectedRoute><AuditDashboard /></ProtectedRoute>} />
         <Route path="/audits/:id" element={<ProtectedRoute><AuditDetails /></ProtectedRoute>} />
+        <Route path="/audit-interview/:token" element={<AuditInterviewPortal />} />
         <Route path="/risks" element={<ProtectedRoute><RiskDashboard /></ProtectedRoute>} />
         <Route path="/risks/:id" element={<ProtectedRoute><RiskDetails /></ProtectedRoute>} />
         <Route path="/management-reviews" element={<ProtectedRoute><ManagementReviewDashboard /></ProtectedRoute>} />
