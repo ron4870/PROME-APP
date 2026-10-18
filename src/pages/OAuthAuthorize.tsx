@@ -1,7 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-function getPortalToken() {
-  const candidateKeys = ['token', 'accessToken', 'jwtToken', 'access_token', 'jwt', 'authToken', 'ims_token'];
+/**
+ * OAuthAuthorize.tsx — the SPA half of OAuth 2.0 sign-in for desktop and web.
+ * Route: /oauth/authorize
+ */
+
+function getPortalToken(): string | null {
+  // Check query parameter in case Login page appended token to redirect URL
+  try {
+    const search = new URLSearchParams(window.location.search);
+    const qToken = search.get('token');
+    if (qToken) return qToken;
+  } catch { /* ignore */ }
+
+  const candidateKeys = ['token', 'jwtToken', 'accessToken', 'access_token', 'jwt', 'authToken', 'ims_token'];
   for (const key of candidateKeys) {
     const raw = window.localStorage.getItem(key) || window.sessionStorage.getItem(key);
     if (!raw) continue;
@@ -10,7 +22,7 @@ function getPortalToken() {
         const parsed = JSON.parse(raw);
         const nested = parsed.token || parsed.accessToken || parsed.access_token || parsed?.state?.token;
         if (nested) return nested;
-      } catch { /* not JSON */ }
+      } catch { /* not JSON after all */ }
       continue;
     }
     return raw;
@@ -18,8 +30,15 @@ function getPortalToken() {
   return null;
 }
 
-function goToLogin() {
-  const returnTo = window.location.pathname + window.location.search;
+function forgetPortalToken(): void {
+  const candidateKeys = ['token', 'jwtToken', 'accessToken', 'access_token', 'jwt', 'authToken', 'ims_token', 'isAuthenticated'];
+  for (const key of candidateKeys) {
+    window.localStorage.removeItem(key);
+    window.sessionStorage.removeItem(key);
+  }
+}
+
+function goToLogin(returnTo = window.location.pathname + window.location.search): void {
   window.location.assign(`/login?redirect=${encodeURIComponent(returnTo)}`);
 }
 
@@ -48,14 +67,24 @@ export default function OAuthAuthorize() {
         if (value !== null) params[key] = value;
       }
 
+      // prompt=login (OpenID Connect's word for it): the password again, then
+      // this page again without the prompt, so the second visit goes on.
+      if (search.get('prompt') === 'login') {
+        forgetPortalToken();
+        const next = new URLSearchParams(search);
+        next.delete('prompt');
+        goToLogin(`${window.location.pathname}?${next.toString()}`);
+        return;
+      }
+
       const token = getPortalToken();
       if (!token) {
         goToLogin();
         return;
       }
 
-      let response;
-      let body;
+      let response: Response;
+      let body: any;
       try {
         response = await fetch(AUTHORIZE_ENDPOINT, {
           method: 'POST',
@@ -75,6 +104,7 @@ export default function OAuthAuthorize() {
         return;
       }
 
+      // 401 means the JWT is missing, expired or rejected.
       if (response.status === 401) {
         goToLogin();
         return;
@@ -130,7 +160,7 @@ export default function OAuthAuthorize() {
         <p style={{ margin: 0, color: '#4b5563' }}>
           {status === 'leaving'
             ? 'Your browser may ask for permission to open the Prome Suite app.'
-            : 'One moment while the portal authorizes the desktop app.'}
+            : 'One moment while the portal authorises the application.'}
         </p>
       </div>
     </div>
