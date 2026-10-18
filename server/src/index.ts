@@ -156,14 +156,17 @@ async function initOAuthTables() {
         family_id     TEXT        NOT NULL,
         expires_at    TIMESTAMPTZ NOT NULL,
         revoked_at    TIMESTAMPTZ,
+        revoked_reason TEXT,
         superseded_by CHAR(64),
         created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
 
+    await prisma.$executeRawUnsafe(`ALTER TABLE oauth_refresh_tokens ADD COLUMN IF NOT EXISTS revoked_reason TEXT;`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_family ON oauth_refresh_tokens (family_id);`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_user ON oauth_refresh_tokens (user_id);`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_expires ON oauth_refresh_tokens (expires_at);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_refresh_user_live ON oauth_refresh_tokens (user_id, client_id) WHERE revoked_at IS NULL;`);
 
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS oauth_access_tokens (
@@ -175,12 +178,15 @@ async function initOAuthTables() {
         family_id  TEXT        NOT NULL,
         expires_at TIMESTAMPTZ NOT NULL,
         revoked_at TIMESTAMPTZ,
+        revoked_reason TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
 
+    await prisma.$executeRawUnsafe(`ALTER TABLE oauth_access_tokens ADD COLUMN IF NOT EXISTS revoked_reason TEXT;`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_access_family ON oauth_access_tokens (family_id);`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_access_expires ON oauth_access_tokens (expires_at);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_oauth_access_user_live ON oauth_access_tokens (user_id, client_id) WHERE revoked_at IS NULL;`);
 
     await prisma.$executeRawUnsafe(`
       INSERT INTO oauth_clients (client_id, client_name, redirect_uris, is_public, require_pkce, allowed_scopes)

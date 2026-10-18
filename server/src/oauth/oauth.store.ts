@@ -154,6 +154,27 @@ function mintTokenPair({ clientId, userId, scope, familyId, accessTtlSeconds, re
  * PostgreSQL adapter
  * ======================================================================== */
 
+/* ===========================================================================
+ * ONE SESSION PER PERSON, ACROSS PROME SUITE (OAUTH_SINGLE_SESSION_CLIENTS)
+ *
+ * A person may be logged in to one Prome Suite — the desktop app or the web
+ * version — on one computer at a time. A new login (an authorization code
+ * redeemed) ends every other live session of that person for the clients in
+ * the group: their refresh and access tokens are revoked with the reason
+ * `replaced`, and the routes say so (`session: "replaced"`), so the app on
+ * the other computer can tell its user why it is asking them to log in.
+ * The newest login wins: nobody is ever locked out by a computer left on at
+ * the office.
+ *
+ * `revoked_reason` is migrations/003_single_session.sql. Until it has run the
+ * other sessions are still ended, just without the reason.
+ * ======================================================================== */
+
+function singleSessionGroup(config, clientId) {
+  const group = config.singleSessionClients || [];
+  return group.includes(clientId) ? group : null;
+}
+
 function createPgStore(options) {
   // Lazy require so a MySQL deployment never needs `pg` installed at all.
   const { Pool } = require('pg');
@@ -180,6 +201,31 @@ function createPgStore(options) {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  /** Whether migration 003 has added `revoked_reason`; asked once, outside any transaction. */
+  let reasonColumn = null;
+  async function hasReasonColumn() {
+    if (reasonColumn !== null) return reasonColumn;
+    try {
+      await pool.query('SELECT revoked_reason FROM oauth_refresh_tokens LIMIT 0');
+      reasonColumn = true;
+    } catch {
+      reasonColumn = false;
+    }
+    return reasonColumn;
+  }
+
+  /** Ends the person's other sessions in the group — see ONE SESSION PER PERSON. */
+  async function endOtherSessions(client, userId, group, keepFamily, withReason) {
+    const set = withReason ? `revoked_at = now(), revoked_reason = 'replaced'` : 'revoked_at = now()';
+    for (const table of ['oauth_refresh_tokens', 'oauth_access_tokens']) {
+      await client.query(
+        `UPDATE ${table} SET ${set}
+          WHERE user_id = $1 AND client_id = ANY($2) AND family_id <> $3 AND revoked_at IS NULL`,
+        [userId, group, keepFamily],
+      );
     }
   }
 
@@ -224,6 +270,7 @@ function createPgStore(options) {
     },
 
     async redeemAuthorizationCode(codeHash, decide) {
+      const withReason = options.singleSessionClients?.length ? await hasReasonColumn() : false;
       return inTransaction(async (client) => {
         // FOR UPDATE is the lock that makes single-use real. Without it, two
         // requests carrying the same stolen code both read used_at = NULL and
@@ -259,6 +306,8 @@ function createPgStore(options) {
 
         const pair = mintTokenPair({ ...decision.grant, familyId: newFamilyId(), ...options.ttl, now: new Date() });
         await insertTokenPair(client, pair);
+        const group = singleSessionGroup(options, decision.grant.clientId);
+        if (group) await endOtherSessions(client, decision.grant.userId, group, pair.refresh.familyId, withReason);
         return { tokens: { ...pair.plaintext, scope: decision.grant.scope, userId: decision.grant.userId } };
       });
     },
@@ -286,7 +335,7 @@ function createPgStore(options) {
                    WHERE family_id = $1 AND revoked_at IS NULL`, [row.familyId]);
             }
           }
-          return { error: decision.error, errorDescription: decision.errorDescription };
+          return { error: decision.error, errorDescription: decision.errorDescription, session: decision.session };
         }
 
         const pair = mintTokenPair({ ...decision.grant, familyId: row.familyId, ...options.ttl, now: new Date() });
@@ -378,6 +427,32 @@ function createMysqlStore(options) {
     }
   }
 
+  /** Whether migration 003 has added `revoked_reason`; asked once, outside any transaction. */
+  let reasonColumn = null;
+  async function hasReasonColumn() {
+    if (reasonColumn !== null) return reasonColumn;
+    try {
+      await pool.query('SELECT revoked_reason FROM oauth_refresh_tokens LIMIT 0');
+      reasonColumn = true;
+    } catch {
+      reasonColumn = false;
+    }
+    return reasonColumn;
+  }
+
+  /** Ends the person's other sessions in the group — see ONE SESSION PER PERSON. */
+  async function endOtherSessions(conn, userId, group, keepFamily, withReason) {
+    const set = withReason ? `revoked_at = UTC_TIMESTAMP(3), revoked_reason = 'replaced'` : 'revoked_at = UTC_TIMESTAMP(3)';
+    const placeholders = group.map(() => '?').join(',');
+    for (const table of ['oauth_refresh_tokens', 'oauth_access_tokens']) {
+      await conn.execute(
+        `UPDATE ${table} SET ${set}
+          WHERE user_id = ? AND client_id IN (${placeholders}) AND family_id <> ? AND revoked_at IS NULL`,
+        [userId, ...group, keepFamily],
+      );
+    }
+  }
+
   async function insertTokenPair(conn, pair) {
     await conn.execute(
       `INSERT INTO oauth_access_tokens
@@ -419,6 +494,7 @@ function createMysqlStore(options) {
     },
 
     async redeemAuthorizationCode(codeHash, decide) {
+      const withReason = options.singleSessionClients?.length ? await hasReasonColumn() : false;
       return inTransaction(async (conn) => {
         // InnoDB: SELECT ... FOR UPDATE on a UNIQUE index takes a record lock,
         // so a concurrent redemption of the same code blocks here instead of
@@ -445,6 +521,8 @@ function createMysqlStore(options) {
 
         const pair = mintTokenPair({ ...decision.grant, familyId: newFamilyId(), ...options.ttl, now: new Date() });
         await insertTokenPair(conn, pair);
+        const group = singleSessionGroup(options, decision.grant.clientId);
+        if (group) await endOtherSessions(conn, decision.grant.userId, group, pair.refresh.familyId, withReason);
         return { tokens: { ...pair.plaintext, scope: decision.grant.scope, userId: decision.grant.userId } };
       });
     },
@@ -468,7 +546,7 @@ function createMysqlStore(options) {
                    WHERE family_id = ? AND revoked_at IS NULL`, [row.familyId]);
             }
           }
-          return { error: decision.error, errorDescription: decision.errorDescription };
+          return { error: decision.error, errorDescription: decision.errorDescription, session: decision.session };
         }
 
         const pair = mintTokenPair({ ...decision.grant, familyId: row.familyId, ...options.ttl, now: new Date() });
@@ -558,8 +636,19 @@ function createMemoryStore(options) {
         if (row.usedAt) return { error: 'invalid_grant', errorDescription: 'authorization code has already been used' };
         row.usedAt = new Date();
         const pair = mintTokenPair({ ...decision.grant, familyId: newFamilyId(), ...options.ttl, now: new Date() });
-        accessTokens.set(pair.access.tokenHash, { id: ++seq, ...pair.access, revokedAt: null });
-        refreshTokens.set(pair.refresh.tokenHash, { id: ++seq, ...pair.refresh, revokedAt: null, supersededBy: null });
+        accessTokens.set(pair.access.tokenHash, { id: ++seq, ...pair.access, revokedAt: null, revokedReason: null });
+        refreshTokens.set(pair.refresh.tokenHash, { id: ++seq, ...pair.refresh, revokedAt: null, revokedReason: null, supersededBy: null });
+        const group = singleSessionGroup(options, decision.grant.clientId);
+        if (group) {
+          for (const map of [refreshTokens, accessTokens]) {
+            for (const t of map.values()) {
+              if (t.userId === decision.grant.userId && group.includes(t.clientId) && t.familyId !== pair.refresh.familyId && !t.revokedAt) {
+                t.revokedAt = new Date();
+                t.revokedReason = 'replaced';
+              }
+            }
+          }
+        }
         return { tokens: { ...pair.plaintext, scope: decision.grant.scope, userId: decision.grant.userId } };
       });
     },
@@ -576,7 +665,7 @@ function createMemoryStore(options) {
               for (const t of accessTokens.values()) if (t.familyId === row.familyId && !t.revokedAt) t.revokedAt = new Date();
             }
           }
-          return { error: decision.error, errorDescription: decision.errorDescription };
+          return { error: decision.error, errorDescription: decision.errorDescription, session: decision.session };
         }
         const pair = mintTokenPair({ ...decision.grant, familyId: row.familyId, ...options.ttl, now: new Date() });
         if (row.revokedAt) return { error: 'invalid_grant', errorDescription: 'refresh token is no longer valid' };
@@ -662,6 +751,7 @@ function normaliseRefresh(r) {
     familyId: r.family_id,
     expiresAt: new Date(r.expires_at),
     revokedAt: r.revoked_at ? new Date(r.revoked_at) : null,
+    revokedReason: r.revoked_reason || null,
     supersededBy: r.superseded_by || null,
   };
 }
@@ -677,6 +767,7 @@ function normaliseAccess(r) {
     familyId: r.family_id,
     expiresAt: new Date(r.expires_at),
     revokedAt: r.revoked_at ? new Date(r.revoked_at) : null,
+    revokedReason: r.revoked_reason || null,
   };
 }
 
@@ -701,6 +792,10 @@ function createOAuthStore(options = {}) {
       accessTtlSeconds: Number(options.accessTtlSeconds || process.env.OAUTH_ACCESS_TOKEN_TTL || 3600),
       refreshTtlSeconds: Number(options.refreshTtlSeconds || process.env.OAUTH_REFRESH_TOKEN_TTL || 60 * 60 * 24 * 30),
     },
+    // ONE SESSION PER PERSON: the clients that share it. Empty turns it off.
+    singleSessionClients: options.singleSessionClients !== undefined
+      ? options.singleSessionClients
+      : (process.env.OAUTH_SINGLE_SESSION_CLIENTS ?? 'prome-desktop prome-web').split(/[\s,]+/).filter(Boolean),
     revokeAccessTokensOnReuse: options.revokeAccessTokensOnReuse !== undefined
       ? options.revokeAccessTokensOnReuse
       : process.env.OAUTH_REVOKE_ACCESS_ON_REUSE === 'true',

@@ -142,11 +142,18 @@ function noStore(res) {
   return res;
 }
 
-/** RFC 6749 §5.2 error body. The desktop app switches on `error`. */
-function oauthError(res, status, error, description) {
+/**
+ * RFC 6749 §5.2 error body. The desktop app switches on `error`.
+ *
+ * `session: "replaced"` beside it says a session ended because its person
+ * logged in to Prome Suite somewhere else (ONE SESSION PER PERSON in
+ * oauth.store.js): a closed word the apps read to say so, never free text.
+ */
+function oauthError(res, status, error, description, session) {
   return noStore(res).status(status).json({
     error,
     ...(description ? { error_description: description } : {}),
+    ...(session ? { session } : {}),
   });
 }
 
@@ -577,7 +584,13 @@ function createOAuthRouter(options = {}) {
           errorDescription: 'refresh token is invalid, expired or revoked',
         };
       }
-      if (row.revokedAt) return { error: 'invalid_grant', errorDescription: 'refresh token is invalid, expired or revoked' };
+      if (row.revokedAt) {
+        return {
+          error: 'invalid_grant',
+          errorDescription: 'refresh token is invalid, expired or revoked',
+          ...(row.revokedReason === 'replaced' ? { session: 'replaced' } : {}),
+        };
+      }
       if (row.expiresAt <= now) return { error: 'invalid_grant', errorDescription: 'refresh token is invalid, expired or revoked' };
       if (row.clientId !== clientId) return { error: 'invalid_grant', errorDescription: 'refresh token is invalid, expired or revoked' };
 
@@ -596,7 +609,7 @@ function createOAuthRouter(options = {}) {
 
     if (result.error) {
       const status = result.error === 'invalid_scope' ? 400 : 400;
-      return oauthError(res, status, result.error, result.errorDescription);
+      return oauthError(res, status, result.error, result.errorDescription, result.session);
     }
     return sendTokens(res, result.tokens);
   }
@@ -648,8 +661,14 @@ function createOAuthRouter(options = {}) {
       if (bad) {
         // RFC 6750 §3.1: 401 invalid_token, and the same answer for expired,
         // revoked and never-existed so this cannot be used to enumerate.
+        // `session: "replaced"` only to the holder of a token its person's newer login ended:
+        // what the app checks every few minutes, to know it has been logged out elsewhere.
         return noStore(res).set('WWW-Authenticate', 'Bearer error="invalid_token"').status(401)
-          .json({ error: 'invalid_token', error_description: 'the access token is invalid or expired' });
+          .json({
+            error: 'invalid_token',
+            error_description: 'the access token is invalid or expired',
+            ...(row && row.revokedReason === 'replaced' ? { session: 'replaced' } : {}),
+          });
       }
       const profile = (await loadUserProfile(row.userId)) || { id: String(row.userId) }; // SEAM 3
       return noStore(res).json({
