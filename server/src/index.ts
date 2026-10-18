@@ -188,7 +188,13 @@ async function initOAuthTables() {
       ON CONFLICT (client_id) DO NOTHING;
     `);
 
-    console.log('OAuth 2.0 tables and prome-desktop client initialized successfully.');
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO oauth_clients (client_id, client_name, redirect_uris, is_public, require_pkce, allowed_scopes)
+      VALUES ('prome-web', 'Prome Suite (web)', 'https://app.promeconsult.com/auth/callback', TRUE, TRUE, 'profile')
+      ON CONFLICT (client_id) DO NOTHING;
+    `);
+
+    console.log('OAuth 2.0 tables, prome-desktop, and prome-web clients initialized successfully.');
   } catch (err) {
     console.error('Error initializing OAuth tables:', err);
   }

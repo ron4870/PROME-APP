@@ -1846,3 +1846,78 @@ model CompanyExperience {
   updatedAt       DateTime  @updatedAt
 }
 
+// OAuth 2.0 PKCE Models
+model OAuthClient {
+  clientId      String    @id @map("client_id")
+  clientName    String    @map("client_name")
+  redirectUris  String    @map("redirect_uris")
+  isPublic      Boolean   @default(true) @map("is_public")
+  requirePkce   Boolean   @default(true) @map("require_pkce")
+  allowedScopes String    @default("profile") @map("allowed_scopes")
+  disabledAt    DateTime? @map("disabled_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  authCodes     OAuthAuthorizationCode[]
+  refreshTokens OAuthRefreshToken[]
+  accessTokens  OAuthAccessToken[]
+
+  @@map("oauth_clients")
+}
+
+model OAuthAuthorizationCode {
+  id                  BigInt       @id @default(autoincrement())
+  codeHash            String       @unique @map("code_hash") @db.Char(64)
+  clientId            String       @map("client_id")
+  userId              String       @map("user_id")
+  redirectUri         String       @map("redirect_uri")
+  codeChallenge       String?      @map("code_challenge") @db.Char(43)
+  codeChallengeMethod String       @default("S256") @map("code_challenge_method")
+  scope               String       @default("profile")
+  expiresAt           DateTime     @map("expires_at")
+  usedAt              DateTime?    @map("used_at")
+  createdAt           DateTime     @default(now()) @map("created_at")
+
+  client              OAuthClient  @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@index([expiresAt], map: "idx_oauth_codes_expires")
+  @@map("oauth_authorization_codes")
+}
+
+model OAuthRefreshToken {
+  id           BigInt       @id @default(autoincrement())
+  tokenHash    String       @unique @map("token_hash") @db.Char(64)
+  clientId     String       @map("client_id")
+  userId       String       @map("user_id")
+  scope        String       @default("profile")
+  familyId     String       @map("family_id")
+  expiresAt    DateTime     @map("expires_at")
+  revokedAt    DateTime?    @map("revoked_at")
+  supersededBy String?      @map("superseded_by") @db.Char(64)
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  client       OAuthClient  @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@index([familyId], map: "idx_oauth_refresh_family")
+  @@index([userId], map: "idx_oauth_refresh_user")
+  @@index([expiresAt], map: "idx_oauth_refresh_expires")
+  @@map("oauth_refresh_tokens")
+}
+
+model OAuthAccessToken {
+  id         BigInt       @id @default(autoincrement())
+  tokenHash  String       @unique @map("token_hash") @db.Char(64)
+  clientId   String       @map("client_id")
+  userId     String       @map("user_id")
+  scope      String       @default("profile")
+  familyId   String       @map("family_id")
+  expiresAt  DateTime     @map("expires_at")
+  revokedAt  DateTime?    @map("revoked_at")
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  client     OAuthClient  @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@index([familyId], map: "idx_oauth_access_family")
+  @@index([expiresAt], map: "idx_oauth_access_expires")
+  @@map("oauth_access_tokens")
+}
+
