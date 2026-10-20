@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { authenticateToken } from '../middleware/auth';
-import { createIsoAuditCampaign, compileIsoAuditReport } from '../services/iso-audit.service';
+import { createIsoAuditCampaign, compileIsoAuditReport, PROME_AUDIT_PROGRAM_OCT_2026 } from '../services/iso-audit.service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -46,10 +46,15 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 1b. Get pre-configured ISO internal audit program template (e.g. October 2026 Integrated Audit)
+router.get('/program-template', (req, res) => {
+  res.json(PROME_AUDIT_PROGRAM_OCT_2026);
+});
+
 // 2. Create ISO Audit Campaign (generates questions, tokens, sends emails)
 router.post('/campaign', async (req, res) => {
   try {
-    const { title, scope, standard, plannedDate, auditorId, interviewees, baseUrl } = req.body;
+    const { title, scope, standard, auditNumber, plannedDate, auditorId, interviewees, baseUrl } = req.body;
     if (!title || !interviewees || !Array.isArray(interviewees) || interviewees.length === 0) {
       return res.status(400).json({ error: 'Title and interviewees array are required.' });
     }
@@ -62,6 +67,7 @@ router.post('/campaign', async (req, res) => {
       title,
       scope,
       standard: standard || 'ISO 9001:2015',
+      auditNumber: auditNumber || undefined,
       plannedDate,
       auditorId: auditorId ? parseInt(auditorId) : undefined,
       interviewees,

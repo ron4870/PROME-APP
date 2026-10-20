@@ -1,10 +1,19 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
 import { GoogleGenAI, Type } from '@google/genai';
 import { upload, driveService } from '../services/drive.service';
-import { createIsoAuditCampaign, compileIsoAuditReport } from '../services/iso-audit.service';
+import { createIsoAuditCampaign, compileIsoAuditReport, PROME_AUDIT_PROGRAM_OCT_2026 } from '../services/iso-audit.service';
 import { getLiveIsoComplianceMatrix } from '../services/iso-matrix.service';
+import {
+  PROME_CONTEXT_FACTORS,
+  PROME_INTERESTED_PARTIES,
+  PROME_COMMUNICATION_MATRIX,
+  PROME_QMS_SCOPE_RECORD,
+  PROME_CONTINUAL_IMPROVEMENT_RECORD
+} from '../services/iso-prome-records';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -202,16 +211,20 @@ const systemTools: any[] = [
       type: Type.OBJECT,
       properties: {
         title: { type: Type.STRING, description: "Descriptive title for the audit (e.g. 'Annual ISO 9001:2015 QMS Internal Audit')." },
+        auditNumber: { type: Type.STRING, description: "Optional reference number for the audit (e.g. 'PROME-IMSR-PMBDD-28' or 'PROME-AUD-2026-001')." },
         scope: { type: Type.STRING, description: "Audit scope, objectives, or criteria." },
         standard: { type: Type.STRING, description: "ISO Standard name, e.g. 'ISO 9001:2015' or 'ISO 9001:2018'." },
         interviewees: {
           type: Type.ARRAY,
-          description: "List of individuals to interview, their assigned ISO standard clauses, and projects in charge of.",
+          description: "List of individuals to interview, their assigned ISO standard clauses, department, scheduled time, and projects in charge of.",
           items: {
             type: Type.OBJECT,
             properties: {
               name: { type: Type.STRING, description: "Full name of the interviewee." },
               email: { type: Type.STRING, description: "Email address of the interviewee." },
+              department: { type: Type.STRING, description: "Department or division (e.g. 'Top Management', 'CPSD', 'PDMD', 'PED', 'AFD/HRAD')." },
+              scheduledTime: { type: Type.STRING, description: "Scheduled time of interview (e.g. '09:00 - 10:00')." },
+              auditorName: { type: Type.STRING, description: "Assigned internal auditor name." },
               isoSections: { type: Type.STRING, description: "Assigned ISO clauses/sections (e.g. 'Clause 5 (Leadership), Clause 6 (Planning)' or 'Clause 8 (Operation)')." },
               projects: { type: Type.STRING, description: "Projects they manage or are in charge of." }
             },
@@ -220,6 +233,35 @@ const systemTools: any[] = [
         }
       },
       required: ["title", "interviewees"]
+    }
+  },
+  {
+    name: "loadIsoAuditProgramTemplate",
+    description: "Loads the official PROME ISO Internal Audit Program preset (e.g. October 23, 2026 Integrated Internal Audit program Doc Ref: PROME-IMSR-PMBDD-28). Returns the full schedule across 7 departments, assigned ISO standard clauses, designated auditors, and 36 targeted audit questions with objective evidence requirements.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {}
+    }
+  },
+  {
+    name: "getIsoMandatoryDocuments",
+    description: "Returns the official company ISO records and mandatory documents under PROME's QMS: Clause 4.1 Organization Context (PROME-QSP-CSVM-01, 7 internal & 5 external factors), Clause 4.2 Interested Parties (PROME-QSP-CSVM-21, 7 external & 3 internal parties with P1/P2/P3 priorities), Clause 4.3 Scope & 16 Core QMS Processes (PROME-QSP-CSVM-18, Quality Policy: 'DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME'), Clause 7.4 Communication Matrix (PROME-QSR-AFD-20, internal & external communication tables), and Clause 10.3 Continual Improvement Record (Section 10).",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        section: { type: Type.STRING, description: "Optional filter for section: 'context', 'parties', 'scope', 'communication', 'continual_improvement', or 'ALL'." }
+      }
+    }
+  },
+  {
+    name: "deleteIsoAudit",
+    description: "Deletes an ISO audit record by ID (Admin only), cascades deletion of questions, responses, attachments from disk, and removes the report from the Corporate Library.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        auditId: { type: Type.NUMBER, description: "The numeric ID of the audit to delete." }
+      },
+      required: ["auditId"]
     }
   },
   {
@@ -313,12 +355,35 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // System instruction
     const systemInstruction = {
       role: "system",
-      parts: [{ text: "You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems, ISO 14001:2015, and ISO 45001:2018. You assist Administrators and Managing Directors in managing projects, conducting autonomous audits, and maintaining the corporate ISO Compliance & Mandatory Records Register. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use `getIsoComplianceMatrix` to inspect the live IMS database and provide a clear, structured breakdown with direct IMS module links (such as https://ims.promeconsult.com/iso-compliance-matrix). When a user asks you to interview personnel for particular sections of the ISO standard and specific projects, use `createIsoAuditCampaign` to create the audit campaign, generate customized questions with objective evidence requirements, generate secure interview links, and send notification emails. When interview responses and evidentiary files are ready, use `compileIsoAuditReport` to perform compliance evaluation, generate findings, compile an official multi-page PDF audit report, link it to the audit on https://ims.promeconsult.com/audits, and archive it into the Corporate Library on https://ims.promeconsult.com/library under 'Audit Reports & Compliance'. You also have access to wiki, projects, employees, and ASAM OpenDrive capabilities." }]
+      parts: [{ text: `You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems, ISO 14001:2015, and ISO 45001:2018. You assist Administrators and Managing Directors in managing projects, conducting autonomous audits, and maintaining the corporate ISO Compliance & Mandatory Records Register.
+
+PROME COMPANY QMS FOUNDATION & POLICIES:
+- Quality Policy: "DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME"
+- Mission: "To provide state-of-the-art infrastructure consultancy solutions through our motivated staff and in an environmentally friendly and sustainable manner."
+- Vision: "To be the preferred consultancy firm in Eastern Africa."
+- Core Values: "Customer Satisfaction, Integrity, Professionalism, Teamwork, Innovation & Continual Improvement."
+- 16 Core QMS Processes: Business Development (PMBDD), Project Inception & Planning (PDMD), Feasibility & Preliminary Engineering (PDMD), Detailed Engineering Design (PED), Procurement Support & Tender Admin (PED), Project Management & Construction Supervision (PDMD), Environmental & Social Impact Assessment (CPSD), Geotechnical & Materials Investigation (PED), Topographical & Engineering Surveys (PED), Quality Assurance & Audit (Lead Auditor), Client Relationship & Feedback (CSVM), Document Control & Records Management (AFD), Human Resource & Competence (HRAD), ICT & Digital Infrastructure (ICT), Financial Management & Invoicing (AFD), Legal & Regulatory Compliance (MD/Legal).
+- Official Controlled Documents:
+  * Clause 4.1 Organization Context (PROME-QSP-CSVM-01, Rev 05) - 7 Internal Factors & 5 External Factors.
+  * Clause 4.2 Interested Party Mapping (PROME-QSP-CSVM-21, Rev 05) - 7 External & 3 Internal Interested Parties with P1/P2/P3 priorities.
+  * Clause 4.3 & 4.4 Scope & Core QMS Processes (PROME-QSP-CSVM-18, Rev 05) - No exclusions (Design & Development included), statutory compliance (KCCA, NSSF, UACE, PPDA).
+  * Clause 7.4 Communication Matrix (PROME-QSR-AFD-20) - Internal & External communication tables.
+  * Clause 9.2 Internal Audit Program (PROME-IMSR-PMBDD-28) - Integrated Audit covering 7 departments & 36 questions.
+  * Clause 10.3 Continual Improvement (Section 10) - Registered improvements across MIS, ISO 45001, ESIA, Tilenga, Equipment, Clients, Suppliers.
+
+CAPABILITIES & DIRECTIVES:
+1. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use \`getIsoComplianceMatrix\` to inspect the live IMS database and \`getIsoMandatoryDocuments\` to provide exact approved company record details with direct IMS module links (e.g. https://ims.promeconsult.com/iso-compliance-matrix and https://ims.promeconsult.com/organization-context).
+2. When asked about company context factors, interested parties, quality policy, scope, communication matrix, or continual improvement, use \`getIsoMandatoryDocuments\`.
+3. When asked to schedule, view, or launch the October 23, 2026 Internal Audit Program, use \`loadIsoAuditProgramTemplate\` to retrieve the complete 7-department schedule and questions, or \`createIsoAuditCampaign\` to generate secure interview links and send email invitations.
+4. When checking interview submission progress and attached evidence, use \`getIsoAuditStatus\`.
+5. When interview responses and evidentiary files are ready, use \`compileIsoAuditReport\` to perform compliance evaluation, generate findings, compile an official multi-page PDF audit report, link it to the audit on https://ims.promeconsult.com/audits, and archive it into the Corporate Library on https://ims.promeconsult.com/library under 'Audit Reports & Compliance'.
+6. When an administrator requests deleting an audit, use \`deleteIsoAudit\`.
+7. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
     };
 
     // Initialize chat session with history
     const chat = ai.chats.create({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.8-flash',
       config: {
         systemInstruction: systemInstruction.parts[0].text,
         tools: [{ functionDeclarations: systemTools }],
@@ -341,7 +406,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     const contents: any[] = [...history, { role: 'user', parts: userParts }];
 
     let response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.8-flash',
       contents: contents,
       config: {
         systemInstruction: systemInstruction.parts[0].text,
@@ -450,11 +515,83 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
             title: args.title,
             scope: args.scope,
             standard: args.standard || 'ISO 9001:2015',
+            auditNumber: args.auditNumber,
             auditorId: userId,
             interviewees: args.interviewees || [],
             baseUrl
           });
           functionResponse = campaign;
+        } else if (call.name === 'loadIsoAuditProgramTemplate') {
+          functionResponse = PROME_AUDIT_PROGRAM_OCT_2026;
+        } else if (call.name === 'getIsoMandatoryDocuments') {
+          const args = call.args as any;
+          const section = (args?.section || 'all').toLowerCase();
+          functionResponse = {
+            qualityPolicy: PROME_QMS_SCOPE_RECORD.qualityPolicy,
+            scopeSummary: PROME_QMS_SCOPE_RECORD.scopeStatement,
+            contextFactors: (section === 'all' || section === 'context') ? PROME_CONTEXT_FACTORS : undefined,
+            interestedParties: (section === 'all' || section === 'parties') ? PROME_INTERESTED_PARTIES : undefined,
+            scopeRecord: (section === 'all' || section === 'scope') ? PROME_QMS_SCOPE_RECORD : undefined,
+            communicationMatrix: (section === 'all' || section === 'communication') ? PROME_COMMUNICATION_MATRIX : undefined,
+            continualImprovement: (section === 'all' || section === 'continual_improvement') ? PROME_CONTINUAL_IMPROVEMENT_RECORD : undefined,
+            imsNavigation: {
+              organizationContext: 'https://ims.promeconsult.com/organization-context',
+              complianceMatrix: 'https://ims.promeconsult.com/iso-compliance-matrix',
+              auditsDashboard: 'https://ims.promeconsult.com/audits',
+              corporateLibrary: 'https://ims.promeconsult.com/library'
+            }
+          };
+        } else if (call.name === 'deleteIsoAudit') {
+          const args = call.args as any;
+          const auditId = Number(args.auditId);
+          const audit = await prisma.audit.findUnique({
+            where: { id: auditId },
+            include: {
+              interviews: {
+                include: {
+                  questions: {
+                    include: { attachments: true }
+                  }
+                }
+              }
+            }
+          });
+          if (!audit) {
+            functionResponse = { error: `Audit with ID ${auditId} not found.` };
+          } else {
+            // Clean up evidence files
+            for (const interview of audit.interviews) {
+              for (const question of interview.questions) {
+                for (const attachment of question.attachments) {
+                  if (attachment.fileUrl && attachment.fileUrl.startsWith('/uploads/')) {
+                    const filePath = path.join(__dirname, '../..', attachment.fileUrl);
+                    if (fs.existsSync(filePath)) {
+                      try { fs.unlinkSync(filePath); } catch (e) {}
+                    }
+                  }
+                }
+              }
+            }
+            // Clean up PDF report
+            if (audit.reportPdfUrl && audit.reportPdfUrl.startsWith('/uploads/')) {
+              const pdfPath = path.join(__dirname, '../..', audit.reportPdfUrl);
+              if (fs.existsSync(pdfPath)) {
+                try { fs.unlinkSync(pdfPath); } catch (e) {}
+              }
+            }
+            // Clean up Library item
+            if (audit.libraryItemId) {
+              try {
+                await prisma.libraryItem.delete({ where: { id: audit.libraryItemId } });
+              } catch (e) {}
+            }
+            // Delete audit record
+            await prisma.audit.delete({ where: { id: auditId } });
+            functionResponse = {
+              success: true,
+              message: `Audit ${audit.auditNumber} (ID: ${auditId}) has been successfully deleted.`
+            };
+          }
         } else if (call.name === 'getIsoAuditStatus') {
           const args = call.args as any;
           const audit = await prisma.audit.findFirst({
@@ -533,7 +670,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
       contents.push({ role: 'user', parts: [{ functionResponse: { name: call.name, response: functionResponse } }] });
 
       response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+        model: 'gemini-3.8-flash',
         contents: contents,
         config: {
           systemInstruction: systemInstruction.parts[0].text,
@@ -997,7 +1134,7 @@ ALWAYS respond with a natural language explanation of what you did.`;
     const contents: any[] = [...history, { role: 'user', parts: [{ text: message }] }];
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.8-flash',
       contents: contents,
       config: {
         systemInstruction,

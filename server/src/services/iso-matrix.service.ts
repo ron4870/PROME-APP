@@ -690,6 +690,107 @@ export async function getLiveIsoComplianceMatrix(filterStandard?: string): Promi
     aiRecommendation: 'Ensure all near-misses and minor first-aid cases are logged via /hse.'
   });
 
+  // 23. ISO 45001 Clause 5.4 Consultation and Participation of Workers
+  const workerConsultDocs = findDocMatching(['consultation', 'worker participation', 'hse-04', 'safety committee', 'toolbox']);
+  const hasWorkerConsult = workerConsultDocs.length > 0;
+  requirements.push({
+    id: 'iso45001-5.4',
+    standard: 'ISO 45001:2018',
+    clause: '5.4',
+    clauseTitle: 'Consultation and participation of workers',
+    title: 'Worker Consultation Procedure, Safety Committee Minutes & Toolbox Talks',
+    type: 'MANDATORY_RECORD',
+    description: 'Establish, implement, and maintain processes for consultation and participation of workers at all applicable levels and functions in the development, planning, implementation, and improvement of the OH&S management system.',
+    auditExpectation: 'Worker consultation procedure (PROME-SOP-HSE-04), safety committee charter & meeting minutes, employee hazard suggestions, and site toolbox talk attendance registers.',
+    targetModule: 'HSE & Safety Committee',
+    route: '/hse',
+    responsibleRole: 'Project Management & Business Development Division (PMBDD) / HRAD',
+    retentionRequirement: 'Retained for minimum 5 years',
+    status: hasWorkerConsult ? 'COMPLIANT' : 'NEEDS_UPDATE',
+    matchedCount: workerConsultDocs.length,
+    lastUpdated: workerConsultDocs[0]?.updatedAt ? new Date(workerConsultDocs[0].updatedAt).toISOString() : null,
+    liveSummary: `${workerConsultDocs.length} worker consultation / safety committee document(s) on file.`,
+    aiRecommendation: hasWorkerConsult
+      ? 'Worker consultation records satisfy ISO 45001 Clause 5.4.'
+      : 'Maintain active records of monthly safety committee meetings and site toolbox talk attendance registers in /hse.'
+  });
+
+  // 24. ISO 45001 Clause 6.1.2.1 Hazard Identification & Risk Assessment (HIRA)
+  const hiraDocs = findDocMatching(['hira', 'hazard identification', 'hazard assessment', 'hira-01']);
+  const hiraRisks = risks.filter(r => (r.title || '').toLowerCase().includes('hazard') || (r.title || '').toLowerCase().includes('safety') || (r.title || '').toLowerCase().includes('site'));
+  const totalHiraCount = hiraDocs.length + hiraRisks.length;
+  requirements.push({
+    id: 'iso45001-6.1.2.1',
+    standard: 'ISO 45001:2018',
+    clause: '6.1.2.1',
+    clauseTitle: 'Hazard identification and assessment of risks and opportunities (HIRA)',
+    title: 'Hazard Identification & Risk Assessment (HIRA) Register',
+    type: 'MANDATORY_DOCUMENT',
+    description: 'Establish, implement, and maintain a process for hazard identification that is ongoing and proactive, taking into account routine and non-routine activities, emergency situations, people, and engineering designs.',
+    auditExpectation: 'Comprehensive HIRA register (PROME-REG-HIRA-01) covering infrastructure project sites, soil testing, survey activities, and emergency response drills.',
+    targetModule: 'HIRA & Risk Register',
+    route: '/risk-register',
+    responsibleRole: 'Planning and Engineering Division (PED) / HSE Lead',
+    retentionRequirement: 'Active living document; reviewed quarterly or prior to new site project mobilization',
+    status: totalHiraCount > 0 ? 'COMPLIANT' : 'NEEDS_UPDATE',
+    matchedCount: totalHiraCount,
+    lastUpdated: (hiraDocs[0]?.updatedAt || hiraRisks[0]?.updatedAt) ? new Date(hiraDocs[0]?.updatedAt || hiraRisks[0]?.updatedAt).toISOString() : null,
+    liveSummary: `${totalHiraCount} HIRA study / site hazard assessment record(s) on file.`,
+    aiRecommendation: totalHiraCount === 0
+      ? 'Upload or register the HIRA Register (PROME-REG-HIRA-01) in /risk-register before site inspections.'
+      : 'HIRA documentation satisfies Clause 6.1.2.1.'
+  });
+
+  // 25. ISO 45001 Clause 8.1.3 Hierarchy of Controls
+  const controlDocs = findDocMatching(['hierarchy of control', 'hazard control', 'ppe', 'control plan', 'safe work']);
+  const totalSafetyMocs = mocs.length;
+  requirements.push({
+    id: 'iso45001-8.1.3',
+    standard: 'ISO 45001:2018',
+    clause: '8.1.3',
+    clauseTitle: 'Eliminating hazards and reducing OH&S risks (Hierarchy of Controls)',
+    title: 'Hazard Control Implementation Plans & Safe Working Procedures',
+    type: 'MANDATORY_DOCUMENT',
+    description: 'Establish, implement, and maintain a process for the elimination of hazards and reduction of OH&S risks using the hierarchy of controls (Elimination, Substitution, Engineering controls, Administrative controls, PPE).',
+    auditExpectation: 'Documented Hazard Control Implementation Plans, site PPE registers, engineering control verification, and Management of Change (MOC) records.',
+    targetModule: 'Change Management & Safety Controls',
+    route: '/change-management',
+    responsibleRole: 'Corporate Planning and Strategy Division (CPSD) / PED',
+    retentionRequirement: 'Retained across project lifecycles',
+    status: (controlDocs.length > 0 || totalSafetyMocs > 0) ? 'COMPLIANT' : 'NEEDS_UPDATE',
+    matchedCount: controlDocs.length + totalSafetyMocs,
+    lastUpdated: (controlDocs[0]?.updatedAt || mocs[0]?.updatedAt) ? new Date(controlDocs[0]?.updatedAt || mocs[0]?.updatedAt).toISOString() : null,
+    liveSummary: `${controlDocs.length + totalSafetyMocs} hazard control / change management record(s) logged.`,
+    aiRecommendation: (controlDocs.length > 0 || totalSafetyMocs > 0)
+      ? 'Hierarchy of controls records are maintained.'
+      : 'Record hazard control measures and engineering change risk reviews in /change-management.'
+  });
+
+  // 26. ISO 45001 Clause 9.1.4 Evaluation of Compliance
+  const compEvalDocs = findDocMatching(['evaluation of compliance', 'compliance review', 'compliance log', 'legal register', 'leg-01']);
+  const evaluatedReqs = complianceReqs.filter(r => r.status === 'Compliant' || r.nextEvaluationDate !== null);
+  requirements.push({
+    id: 'iso45001-9.1.4',
+    standard: 'ISO 45001:2018',
+    clause: '9.1.4',
+    clauseTitle: 'Evaluation of compliance',
+    title: 'Evaluation of Statutory, Legal & OH&S Compliance Records',
+    type: 'MANDATORY_RECORD',
+    description: 'Determine the frequency and method for evaluating compliance; evaluate compliance and take action; maintain knowledge and understanding of compliance status; retain documented information of results.',
+    auditExpectation: 'Compliance evaluation procedure, annual legal compliance audit reports, check-sheets, and regulatory review meeting minutes with NEMA/MOWT/UNBS.',
+    targetModule: 'Compliance Register',
+    route: '/compliance',
+    responsibleRole: 'Project Management & Business Development Division (PMBDD) / MR',
+    retentionRequirement: 'Retained for minimum 5 years',
+    status: evaluatedReqs.length > 0 || compEvalDocs.length > 0 ? 'COMPLIANT' : 'NEEDS_UPDATE',
+    matchedCount: evaluatedReqs.length + compEvalDocs.length,
+    lastUpdated: complianceReqs[0]?.updatedAt ? new Date(complianceReqs[0].updatedAt).toISOString() : null,
+    liveSummary: `${evaluatedReqs.length + compEvalDocs.length} compliance evaluation record(s) and legal assessments tracked.`,
+    aiRecommendation: (evaluatedReqs.length > 0 || compEvalDocs.length > 0)
+      ? 'Statutory and OH&S compliance evaluations are actively logged.'
+      : 'Document the formal evaluation of legal requirements in /compliance.'
+  });
+
   // Filter if standard specified
   const filtered = filterStandard && filterStandard !== 'ALL'
     ? requirements.filter(r => r.standard.toLowerCase().includes(filterStandard.toLowerCase()))

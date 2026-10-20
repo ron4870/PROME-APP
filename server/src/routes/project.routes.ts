@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken as authenticate } from '../middleware/auth';
 import { checkProjectAccess } from '../middleware/projectAuth';
 import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateProjectFolder } from '../services/drive.service';
+import { classifyProjectDocumentWithAI, ProjectContextInfo } from '../services/project-doc-classifier.service';
 import { Readable } from 'stream';
 import path from 'path';
 import fs from 'fs';
@@ -968,6 +969,50 @@ router.post('/:id/documents', authenticate, checkProjectAccess(), upload.single(
   }
 });
 
+// Helper to safely delete stored file (Drive or local)
+async function deleteStoredFile(fileUrlString?: string | null) {
+  if (!fileUrlString) return;
+  try {
+    const fileInfo = JSON.parse(fileUrlString);
+    if (fileInfo.id && !fileInfo.id.startsWith('local-')) {
+      await driveService.files.delete({
+        fileId: fileInfo.id,
+        supportsAllDrives: true
+      });
+    } else if (fileInfo.view && fileInfo.view.startsWith('/uploads/')) {
+      const localFilePath = path.join(__dirname, '../..', fileInfo.view);
+      if (fs.existsSync(localFilePath)) {
+        fs.unlinkSync(localFilePath);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to delete file from storage:', err);
+  }
+}
+
+// PUT Project Document
+router.put('/:id/documents/:docId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const docId = parseInt(req.params.docId);
+    const { documentNumber, title, type, revision, status, issueDate } = req.body;
+    const updated = await prisma.projectDocument.update({
+      where: { id: docId },
+      data: {
+        ...(documentNumber && { documentNumber }),
+        ...(title && { title }),
+        ...(type && { type }),
+        ...(revision !== undefined && { revision }),
+        ...(status && { status }),
+        ...(issueDate && { issueDate: new Date(issueDate) }),
+      }
+    });
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating document:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
 // DELETE Project Document
 router.delete('/:id/documents/:docId', authenticate, checkProjectAccess(), async (req, res) => {
   try {
@@ -982,25 +1027,8 @@ router.delete('/:id/documents/:docId', authenticate, checkProjectAccess(), async
       return res.status(404).json({ message: 'Document not found' });
     }
     
-    // Attempt to delete from Google Drive if fileUrl exists
-    if (doc.fileUrl) {
-      try {
-        const fileInfo = JSON.parse(doc.fileUrl);
-        if (fileInfo.id && !fileInfo.id.startsWith('local-')) {
-          await driveService.files.delete({
-            fileId: fileInfo.id,
-            supportsAllDrives: true
-          });
-        } else if (fileInfo.view && fileInfo.view.startsWith('/uploads/')) {
-          const localFilePath = path.join(__dirname, '../..', fileInfo.view);
-          if (fs.existsSync(localFilePath)) {
-            fs.unlinkSync(localFilePath);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to delete file:', err);
-      }
-    }
+    // Attempt to delete from storage if fileUrl exists
+    await deleteStoredFile(doc.fileUrl);
     
     // Delete from Prisma DB
     await prisma.projectDocument.delete({
@@ -1042,6 +1070,44 @@ router.post('/:id/payment-invoices', authenticate, checkProjectAccess(), upload.
     res.json(newInvoice);
   } catch (error: any) {
     console.error('Error in payment-invoices post:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+// PUT Project Payment Invoice
+router.put('/:id/payment-invoices/:invId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const invId = parseInt(req.params.invId);
+    const { documentNumber, title, type, revision, status, issueDate } = req.body;
+    const updated = await prisma.projectPaymentInvoice.update({
+      where: { id: invId },
+      data: {
+        ...(documentNumber && { documentNumber }),
+        ...(title && { title }),
+        ...(type && { type }),
+        ...(revision !== undefined && { revision }),
+        ...(status && { status }),
+        ...(issueDate && { issueDate: new Date(issueDate) }),
+      }
+    });
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating payment invoice:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+// DELETE Project Payment Invoice
+router.delete('/:id/payment-invoices/:invId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const invId = parseInt(req.params.invId);
+    const item = await prisma.projectPaymentInvoice.findUnique({ where: { id: invId } });
+    if (!item) return res.status(404).json({ message: 'Payment invoice not found' });
+    await deleteStoredFile(item.fileUrl);
+    await prisma.projectPaymentInvoice.delete({ where: { id: invId } });
+    res.json({ message: 'Payment invoice deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting payment invoice:', error);
     res.status(500).json({ message: error.message || 'Server error' });
   }
 });
@@ -1233,6 +1299,46 @@ router.post('/:id/daily-reports', authenticate, checkProjectAccess(), upload.sin
   }
 });
 
+// PUT Daily Report
+router.put('/:id/daily-reports/:reportId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.reportId);
+    const { date, weatherCondition, weatherMorning, weatherAfternoon, manpowerCount, activeManpower, equipmentCount, activeEquipment, summary, activities, location, issuesOrDelays } = req.body;
+    const updated = await prisma.projectDailyReport.update({
+      where: { id: reportId },
+      data: {
+        ...(date && { date: new Date(date) }),
+        ...((weatherCondition !== undefined || weatherMorning !== undefined) && { weatherMorning: weatherCondition || weatherMorning }),
+        ...(weatherAfternoon !== undefined && { weatherAfternoon }),
+        ...((manpowerCount !== undefined || activeManpower !== undefined) && { activeManpower: parseInt(manpowerCount || activeManpower || '0') }),
+        ...((equipmentCount !== undefined || activeEquipment !== undefined) && { activeEquipment: parseInt(equipmentCount || activeEquipment || '0') }),
+        ...((summary !== undefined || activities !== undefined) && { activities: summary || activities || '' }),
+        ...(location !== undefined && { location }),
+        ...(issuesOrDelays !== undefined && { issuesOrDelays }),
+      }
+    });
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating daily report:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+// DELETE Daily Report
+router.delete('/:id/daily-reports/:reportId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.reportId);
+    const rep = await prisma.projectDailyReport.findUnique({ where: { id: reportId } });
+    if (!rep) return res.status(404).json({ message: 'Daily report not found' });
+    await deleteStoredFile(rep.fileUrl);
+    await prisma.projectDailyReport.delete({ where: { id: reportId } });
+    res.json({ message: 'Daily report deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting daily report:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
 // POST Variations
 router.post('/:id/variations', authenticate, checkProjectAccess(), upload.single('file'), async (req, res) => {
   try {
@@ -1261,6 +1367,45 @@ router.post('/:id/variations', authenticate, checkProjectAccess(), upload.single
     res.json(newVar);
   } catch (error: any) {
     console.error('Error in variations post:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+// PUT Variation
+router.put('/:id/variations/:varId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const varId = parseInt(req.params.varId);
+    const { referenceNumber, title, description, costImpact, scheduleImpactDays, scheduleImpact, date, status } = req.body;
+    const updated = await prisma.projectVariationOrder.update({
+      where: { id: varId },
+      data: {
+        ...(referenceNumber && { referenceNumber }),
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+        ...(costImpact !== undefined && { costImpact: parseFloat(costImpact || '0') }),
+        ...((scheduleImpactDays !== undefined || scheduleImpact !== undefined) && { scheduleImpact: parseInt(scheduleImpactDays || scheduleImpact || '0') }),
+        ...(date && { date: new Date(date) }),
+        ...(status && { status }),
+      }
+    });
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating variation:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+// DELETE Variation
+router.delete('/:id/variations/:varId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const varId = parseInt(req.params.varId);
+    const item = await prisma.projectVariationOrder.findUnique({ where: { id: varId } });
+    if (!item) return res.status(404).json({ message: 'Variation not found' });
+    await deleteStoredFile(item.fileUrl);
+    await prisma.projectVariationOrder.delete({ where: { id: varId } });
+    res.json({ message: 'Variation deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting variation:', error);
     res.status(500).json({ message: error.message || 'Server error' });
   }
 });
@@ -1340,6 +1485,45 @@ router.post('/:id/correspondence', authenticate, checkProjectAccess(), upload.si
   }
 });
 
+// PUT Correspondence
+router.put('/:id/correspondence/:corrId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const corrId = parseInt(req.params.corrId);
+    const { referenceNumber, type, category, subject, sender, recipient, date } = req.body;
+    const updated = await prisma.projectCorrespondence.update({
+      where: { id: corrId },
+      data: {
+        ...(referenceNumber && { referenceNumber }),
+        ...(type && { type }),
+        ...(category && { category }),
+        ...(subject && { subject }),
+        ...(sender && { sender }),
+        ...(recipient && { recipient }),
+        ...(date && { date: new Date(date) }),
+      }
+    });
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating correspondence:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
+// DELETE Correspondence
+router.delete('/:id/correspondence/:corrId', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const corrId = parseInt(req.params.corrId);
+    const corr = await prisma.projectCorrespondence.findUnique({ where: { id: corrId } });
+    if (!corr) return res.status(404).json({ message: 'Correspondence not found' });
+    await deleteStoredFile(corr.fileUrl);
+    await prisma.projectCorrespondence.delete({ where: { id: corrId } });
+    res.json({ message: 'Correspondence deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting correspondence:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+});
+
 // POST Equipment Logs
 router.post('/:id/equipment-logs', authenticate, checkProjectAccess(), async (req, res) => {
   try {
@@ -1358,6 +1542,223 @@ router.post('/:id/equipment-logs', authenticate, checkProjectAccess(), async (re
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==========================================
+// AI-POWERED DOCUMENT CLASSIFICATION & UPLOAD
+// ==========================================
+
+// 1. AI Classify & Pre-Upload Endpoint (analyzes multiple files, extracts metadata and assigns categories)
+router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), upload.array('files', 15), async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id);
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, name: true, client: true }
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files provided for classification' });
+    }
+
+    const items = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      let fileUrl = null;
+      try {
+        fileUrl = await uploadProjectFile(projectId, file);
+      } catch (uploadErr) {
+        console.error(`Upload error for ${file.originalname}:`, uploadErr);
+      }
+
+      const classification = await classifyProjectDocumentWithAI(file, project);
+
+      items.push({
+        tempId: `item-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
+        originalName: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype,
+        fileUrl: fileUrl,
+        category: classification.category,
+        categoryLabel: classification.categoryLabel,
+        confidence: classification.confidence,
+        reasoning: classification.reasoning,
+        fields: classification.fields,
+        unfilledFields: classification.unfilledFields
+      });
+    }
+
+    res.json({
+      success: true,
+      items
+    });
+  } catch (error: any) {
+    console.error('Error in AI document classify & upload:', error);
+    res.status(500).json({ error: error.message || 'Failed to process and classify documents' });
+  }
+});
+
+// 2. Bulk Save Classified & User-Reviewed Documents
+router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id);
+    const userId = (req as any).user!.userId;
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'No items provided to save' });
+    }
+
+    const savedResults = [];
+
+    for (const item of items) {
+      const { category, fields, fileUrl, originalName } = item;
+      const cleanFields = fields || {};
+
+      if (category === 'correspondence') {
+        const baseRef = cleanFields.referenceNumber || `CORR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        let finalRef = baseRef;
+        const existing = await prisma.projectCorrespondence.findUnique({ where: { referenceNumber: finalRef } });
+        if (existing) {
+          finalRef = `${baseRef}-${Math.floor(Math.random() * 1000)}`;
+        }
+
+        const record = await prisma.projectCorrespondence.create({
+          data: {
+            projectId,
+            referenceNumber: finalRef,
+            type: cleanFields.type || 'Incoming',
+            category: cleanFields.category || 'Letter',
+            subject: cleanFields.subject || originalName || 'Untitled Correspondence',
+            sender: cleanFields.sender || 'Contractor',
+            recipient: cleanFields.recipient || 'Consultant',
+            date: cleanFields.date ? new Date(cleanFields.date) : new Date(),
+            fileUrl: fileUrl || null
+          }
+        });
+        savedResults.push({ id: record.id, category, title: record.subject, ref: record.referenceNumber });
+
+      } else if (category === 'daily_reports') {
+        const reportDate = cleanFields.date ? new Date(cleanFields.date) : new Date();
+        const existing = await prisma.projectDailyReport.findUnique({
+          where: {
+            projectId_date: {
+              projectId,
+              date: reportDate
+            }
+          }
+        });
+
+        if (existing) {
+          const updated = await prisma.projectDailyReport.update({
+            where: { id: existing.id },
+            data: {
+              weatherMorning: cleanFields.weatherCondition || existing.weatherMorning,
+              activeManpower: cleanFields.manpowerCount !== undefined ? parseInt(cleanFields.manpowerCount) : existing.activeManpower,
+              activeEquipment: cleanFields.equipmentCount !== undefined ? parseInt(cleanFields.equipmentCount) : existing.activeEquipment,
+              activities: cleanFields.summary ? `${existing.activities}\n---\n${cleanFields.summary}` : existing.activities,
+              location: cleanFields.location || existing.location,
+              fileUrl: fileUrl || existing.fileUrl
+            }
+          });
+          savedResults.push({ id: updated.id, category, title: `Daily Report (${cleanFields.date || 'Today'})`, updated: true });
+        } else {
+          const record = await prisma.projectDailyReport.create({
+            data: {
+              projectId,
+              date: reportDate,
+              weatherMorning: cleanFields.weatherCondition || 'Fair',
+              activeManpower: parseInt(cleanFields.manpowerCount || '0'),
+              activeEquipment: parseInt(cleanFields.equipmentCount || '0'),
+              activities: cleanFields.summary || originalName || 'Daily site activities',
+              location: cleanFields.location || null,
+              fileUrl: fileUrl || null,
+              reportedById: userId
+            }
+          });
+          savedResults.push({ id: record.id, category, title: `Daily Report (${cleanFields.date || 'Today'})` });
+        }
+
+      } else if (category === 'variations') {
+        const baseRef = cleanFields.referenceNumber || `VO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const record = await prisma.projectVariationOrder.create({
+          data: {
+            projectId,
+            referenceNumber: baseRef,
+            title: cleanFields.title || originalName || 'Untitled Variation',
+            description: cleanFields.description || '',
+            costImpact: cleanFields.costImpact ? parseFloat(cleanFields.costImpact) : 0,
+            scheduleImpact: cleanFields.scheduleImpactDays ? parseInt(cleanFields.scheduleImpactDays) : 0,
+            date: cleanFields.date ? new Date(cleanFields.date) : new Date(),
+            status: cleanFields.status || 'Proposed',
+            fileUrl: fileUrl || null
+          }
+        });
+        savedResults.push({ id: record.id, category, title: record.title, ref: record.referenceNumber });
+
+      } else if (category === 'payment_invoices') {
+        const baseDoc = cleanFields.documentNumber || `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        let finalDoc = baseDoc;
+        const existing = await prisma.projectPaymentInvoice.findUnique({ where: { documentNumber: finalDoc } });
+        if (existing) {
+          finalDoc = `${baseDoc}-${Math.floor(Math.random() * 1000)}`;
+        }
+
+        const record = await prisma.projectPaymentInvoice.create({
+          data: {
+            projectId,
+            documentNumber: finalDoc,
+            title: cleanFields.title || originalName || 'Untitled Invoice',
+            type: cleanFields.type || 'Consultant Invoice',
+            revision: cleanFields.revision || '1.0',
+            status: cleanFields.status || 'Submitted',
+            issueDate: cleanFields.issueDate ? new Date(cleanFields.issueDate) : new Date(),
+            uploadedById: userId,
+            fileUrl: fileUrl || null
+          }
+        });
+        savedResults.push({ id: record.id, category, title: record.title, docNumber: record.documentNumber });
+
+      } else {
+        // Default to documents
+        const baseDoc = cleanFields.documentNumber || `DOC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        let finalDoc = baseDoc;
+        const existing = await prisma.projectDocument.findUnique({ where: { documentNumber: finalDoc } });
+        if (existing) {
+          finalDoc = `${baseDoc}-${Math.floor(Math.random() * 1000)}`;
+        }
+
+        const record = await prisma.projectDocument.create({
+          data: {
+            projectId,
+            documentNumber: finalDoc,
+            title: cleanFields.title || originalName || 'Untitled Document',
+            type: cleanFields.type || 'General',
+            revision: cleanFields.revision || '1.0',
+            status: cleanFields.status || 'Draft',
+            issueDate: cleanFields.issueDate ? new Date(cleanFields.issueDate) : new Date(),
+            uploadedById: userId,
+            fileUrl: fileUrl || null
+          }
+        });
+        savedResults.push({ id: record.id, category: 'documents', title: record.title, docNumber: record.documentNumber });
+      }
+    }
+
+    res.json({
+      success: true,
+      savedCount: savedResults.length,
+      results: savedResults
+    });
+  } catch (error: any) {
+    console.error('Error in bulk-save-classified:', error);
+    res.status(500).json({ error: error.message || 'Failed to save classified documents' });
   }
 });
 

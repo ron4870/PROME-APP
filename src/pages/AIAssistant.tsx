@@ -257,18 +257,18 @@ export default function AIAssistant() {
                 I can help you analyze documents, query live project data, or autonomously conduct full ISO 9001:2015 / ISO 9001:2018 quality audits with evidentiary questionnaires and report compilation.
               </p>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '650px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '750px' }}>
                 <button
-                  onClick={() => setInputText("Conduct an ISO 9001 internal audit. Interview our project managers on Clause 5 (Leadership) and Clause 8 (Operation) for active engineering projects, generate evidentiary links, and prepare to compile an audit report.")}
+                  onClick={() => setInputText("Load the official 23 October 2026 ISO Internal Audit Program (PROME-IMSR-PMBDD-28), show the 7 interview sessions with their 36 targeted questions, and prepare the audit.")}
                   style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
-                  📋 Conduct an ISO 9001 Internal Audit
+                  📅 Load 23 Oct 2026 Audit Program
                 </button>
                 <button
-                  onClick={() => setInputText("What is the status of our latest ISO audit campaign and interview submissions?")}
+                  onClick={() => setInputText("What are PROME's official ISO mandatory documents (Context Factors PROME-QSP-CSVM-01, Interested Parties PROME-QSP-CSVM-21, Scope & 16 Processes PROME-QSP-CSVM-18, and Communication Matrix PROME-QSR-AFD-20)?")}
                   style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
-                  🔍 Check ISO Audit Campaign Status
+                  📜 View Official ISO Documents & 16 Processes
                 </button>
                 <button
                   onClick={() => setInputText("What mandatory documents and records are required by ISO standards, where in the PROME IMS are they stored, and which ones are currently missing or need updating?")}
@@ -277,7 +277,13 @@ export default function AIAssistant() {
                   🛡️ Check ISO Mandatory Records & Missing Docs
                 </button>
                 <button
-                  onClick={() => setInputText("Compile the official ISO audit report for our latest completed audit and publish the PDF to /audits and the library.")}
+                  onClick={() => setInputText("What is the status of our latest ISO audit campaign and interview submissions?")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  🔍 Check ISO Audit Campaign Status
+                </button>
+                <button
+                  onClick={() => setInputText("Compile the official ISO audit report for our latest completed audit and publish the PDF to https://ims.promeconsult.com/audits and the library.")}
                   style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
                   📄 Compile Audit Report & Save to Library

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal, Sparkles, Edit2, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
 import { useProjectModules } from '../hooks/useProjectModules';
 import { ProjectGanttChart } from '../components/ProjectGanttChart';
+import { AIDocumentUploadModal } from '../components/AIDocumentUploadModal';
 
 interface Project {
   id: number;
@@ -53,6 +54,7 @@ export const ProjectWorkspace: React.FC = () => {
   const [docFilter, setDocFilter] = useState('');
   const [dailyReportFilter, setDailyReportFilter] = useState('');
   const [paymentInvoiceFilter, setPaymentInvoiceFilter] = useState('');
+  const [isAIDocUploadOpen, setIsAIDocUploadOpen] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [projectNotifications, setProjectNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,6 +183,21 @@ export const ProjectWorkspace: React.FC = () => {
     }
   };
 
+  const handleDeleteItem = async (endpoint: string, itemDescription: string) => {
+    if (!window.confirm(`Are you sure you want to delete this ${itemDescription}?`)) return;
+    try {
+      const res = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to delete item');
+      fetchAll();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error deleting ${itemDescription}: ${err.message}`);
+    }
+  };
+
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Loading Workspace...</div>;
 
   return (
@@ -213,7 +230,26 @@ export const ProjectWorkspace: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calendar size={16}/> Started: {project?.startDate}</div>
             </div>
           </div>
-          <div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => setIsAIDocUploadOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                color: '#ffffff',
+                fontWeight: 600,
+                border: 'none',
+                padding: '0.55rem 1.15rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)'
+              }}
+            >
+              <Sparkles size={16} /> Document Upload
+            </button>
             {canEdit && <button className="btn btn-primary" onClick={() => {
               setModalConfig({
                 title: 'Project Settings',
@@ -628,6 +664,7 @@ export const ProjectWorkspace: React.FC = () => {
                       <th style={{ padding: '1rem' }}>Equipment</th>
                       <th style={{ padding: '1rem' }}>Activities</th>
                       <th style={{ padding: '1rem' }}>Attachment</th>
+                      <th style={{ padding: '1rem' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -651,11 +688,44 @@ export const ProjectWorkspace: React.FC = () => {
                             <span style={{ color: '#94a3b8' }}>-</span>
                           )}
                         </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => setModalConfig({
+                                title: 'Edit Daily Report',
+                                endpoint: `/api/projects/${id}/daily-reports/${report.id}`,
+                                method: 'PUT',
+                                fields: [
+                                  { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: report.date ? new Date(report.date).toISOString().split('T')[0] : '' },
+                                  { name: 'location', label: 'Location / Chainage', type: 'text', required: true, defaultValue: report.location || '' },
+                                  { name: 'weatherCondition', label: 'Weather', type: 'text', defaultValue: report.weatherMorning || '' },
+                                  { name: 'manpowerCount', label: 'Active Manpower', type: 'number', defaultValue: report.activeManpower || 0 },
+                                  { name: 'equipmentCount', label: 'Active Equipment', type: 'number', defaultValue: report.activeEquipment || 0 },
+                                  { name: 'summary', label: 'Activities Summary', type: 'textarea', required: true, defaultValue: report.activities || '' }
+                                ]
+                              })}
+                              style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                            >
+                              <Edit2 size={15} /> Edit
+                            </button>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteItem(`/api/projects/${id}/daily-reports/${report.id}`, 'daily report')}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                title="Delete daily report"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     )})}
                     {(!dailyReports || dailyReports.length === 0) && (
                       <tr>
-                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No daily reports logged yet.</td>
+                        <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No daily reports logged yet.</td>
                       </tr>
                     )}
                   </tbody>
@@ -680,6 +750,7 @@ export const ProjectWorkspace: React.FC = () => {
                     <th style={{ padding: '1rem' }}>Schedule Impact</th>
                     <th style={{ padding: '1rem' }}>Status</th>
                     <th style={{ padding: '1rem' }}>Attachment</th>
+                    <th style={{ padding: '1rem' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -701,6 +772,40 @@ export const ProjectWorkspace: React.FC = () => {
                         ) : (
                           <span style={{ color: '#94a3b8' }}>-</span>
                         )}
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => setModalConfig({
+                              title: 'Edit Variation / Claim',
+                              endpoint: `/api/projects/${id}/variations/${vo.id}`,
+                              method: 'PUT',
+                              fields: [
+                                { name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true, defaultValue: vo.referenceNumber || '' },
+                                { name: 'title', label: 'Variation Title', type: 'text', required: true, defaultValue: vo.title || '' },
+                                { name: 'costImpact', label: 'Cost Impact', type: 'number', defaultValue: vo.costImpact || 0 },
+                                { name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number', defaultValue: vo.scheduleImpactDays || vo.scheduleImpact || 0 },
+                                { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: vo.date ? new Date(vo.date).toISOString().split('T')[0] : '' },
+                                { name: 'status', label: 'Status', type: 'select', options: ['Proposed', 'Under Review', 'Approved', 'Rejected'], defaultValue: vo.status || 'Proposed' },
+                                { name: 'description', label: 'Description', type: 'textarea', defaultValue: vo.description || '' }
+                              ]
+                            })}
+                            style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                          >
+                            <Edit2 size={15} /> Edit
+                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteItem(`/api/projects/${id}/variations/${vo.id}`, 'variation')}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                              title="Delete variation"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -955,35 +1060,66 @@ export const ProjectWorkspace: React.FC = () => {
                             <td style={{ padding: '1rem' }}>{corr.sender}</td>
                             <td style={{ padding: '1rem' }}>{corr.recipient}</td>
                             <td style={{ padding: '1rem' }}>
-                              {(() => {
-                                if (!corr.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
-                                
-                                let downloadLink = corr.fileUrl;
-                                
-                                const extractDriveId = (url: string) => {
-                                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                                  return match ? match[1] : null;
-                                };
-                                
-                                try {
-                                  const parsed = JSON.parse(corr.fileUrl);
-                                  if (parsed && parsed.download) {
-                                    downloadLink = parsed.download;
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                {(() => {
+                                  if (!corr.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                  
+                                  let downloadLink = corr.fileUrl;
+                                  
+                                  const extractDriveId = (url: string) => {
+                                    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                    return match ? match[1] : null;
+                                  };
+                                  
+                                  try {
+                                    const parsed = JSON.parse(corr.fileUrl);
+                                    if (parsed && parsed.download) {
+                                      downloadLink = parsed.download;
+                                    }
+                                  } catch (e) {
+                                    const driveId = extractDriveId(corr.fileUrl);
+                                    if (driveId) {
+                                      downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                                    }
                                   }
-                                } catch (e) {
-                                  // Legacy link handling
-                                  const driveId = extractDriveId(corr.fileUrl);
-                                  if (driveId) {
-                                    downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
-                                  }
-                                }
-                                
-                                return (
-                                  <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
-                                    <Download size={16} /> Download
-                                  </a>
-                                );
-                              })()}
+                                  
+                                  return (
+                                    <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                      <Download size={16} /> Download
+                                    </a>
+                                  );
+                                })()}
+                                <button
+                                  type="button"
+                                  onClick={() => setModalConfig({
+                                    title: 'Edit Formal Correspondence',
+                                    endpoint: `/api/projects/${id}/correspondence/${corr.id}`,
+                                    method: 'PUT',
+                                    fields: [
+                                      { name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true, defaultValue: corr.referenceNumber || '' },
+                                      { name: 'type', label: 'Type (Incoming/Outgoing)', type: 'select', options: ['Incoming', 'Outgoing'], required: true, defaultValue: corr.type || 'Incoming' },
+                                      { name: 'category', label: 'Category', type: 'select', options: ['Letter', 'MoM', 'Transmittal', 'Notice', 'Email'], defaultValue: corr.category || 'Letter' },
+                                      { name: 'subject', label: 'Subject', type: 'text', required: true, defaultValue: corr.subject || '' },
+                                      { name: 'sender', label: 'Sender', type: 'text', required: true, defaultValue: corr.sender || '' },
+                                      { name: 'recipient', label: 'Recipient', type: 'text', required: true, defaultValue: corr.recipient || '' },
+                                      { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: corr.date ? new Date(corr.date).toISOString().split('T')[0] : '' }
+                                    ]
+                                  })}
+                                  style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                                >
+                                  <Edit2 size={15} /> Edit
+                                </button>
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteItem(`/api/projects/${id}/correspondence/${corr.id}`, 'correspondence')}
+                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                    title="Delete correspondence"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1065,35 +1201,65 @@ export const ProjectWorkspace: React.FC = () => {
                             </td>
                             <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
                             <td style={{ padding: '1rem' }}>
-                              {(() => {
-                                if (!doc.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
-                                
-                                let downloadLink = doc.fileUrl;
-                                
-                                const extractDriveId = (url: string) => {
-                                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                                  return match ? match[1] : null;
-                                };
-                                
-                                try {
-                                  const parsed = JSON.parse(doc.fileUrl);
-                                  if (parsed && parsed.download) {
-                                    downloadLink = parsed.download;
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                {(() => {
+                                  if (!doc.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                  
+                                  let downloadLink = doc.fileUrl;
+                                  
+                                  const extractDriveId = (url: string) => {
+                                    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                    return match ? match[1] : null;
+                                  };
+                                  
+                                  try {
+                                    const parsed = JSON.parse(doc.fileUrl);
+                                    if (parsed && parsed.download) {
+                                      downloadLink = parsed.download;
+                                    }
+                                  } catch (e) {
+                                    const driveId = extractDriveId(doc.fileUrl);
+                                    if (driveId) {
+                                      downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                                    }
                                   }
-                                } catch (e) {
-                                  // Legacy link handling
-                                  const driveId = extractDriveId(doc.fileUrl);
-                                  if (driveId) {
-                                    downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
-                                  }
-                                }
-                                
-                                return (
-                                  <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
-                                    <Download size={16} /> Download
-                                  </a>
-                                );
-                              })()}
+                                  
+                                  return (
+                                    <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                      <Download size={16} /> Download
+                                    </a>
+                                  );
+                                })()}
+                                <button
+                                  type="button"
+                                  onClick={() => setModalConfig({
+                                    title: 'Edit Document Details',
+                                    endpoint: `/api/projects/${id}/documents/${doc.id}`,
+                                    method: 'PUT',
+                                    fields: [
+                                      { name: 'documentNumber', label: 'Document Number', type: 'text', required: true, defaultValue: doc.documentNumber || '' },
+                                      { name: 'title', label: 'Title', type: 'text', required: true, defaultValue: doc.title || '' },
+                                      { name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI'], defaultValue: doc.type || 'Report' },
+                                      { name: 'revision', label: 'Revision', type: 'text', defaultValue: doc.revision || '1.0' },
+                                      { name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved'], defaultValue: doc.status || 'Draft' },
+                                      { name: 'issueDate', label: 'Issue Date', type: 'date', defaultValue: doc.issueDate ? new Date(doc.issueDate).toISOString().split('T')[0] : '' }
+                                    ]
+                                  })}
+                                  style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                                >
+                                  <Edit2 size={15} /> Edit
+                                </button>
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteItem(`/api/projects/${id}/documents/${doc.id}`, 'document')}
+                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                    title="Delete document"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1310,35 +1476,65 @@ export const ProjectWorkspace: React.FC = () => {
                             </td>
                             <td style={{ padding: '1rem', color: '#64748b' }}>{inv.issueDate ? new Date(inv.issueDate).toLocaleDateString() : ''}</td>
                             <td style={{ padding: '1rem' }}>
-                              {(() => {
-                                if (!inv.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
-                                
-                                let downloadLink = inv.fileUrl;
-                                
-                                const extractDriveId = (url: string) => {
-                                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                                  return match ? match[1] : null;
-                                };
-                                
-                                try {
-                                  const parsed = JSON.parse(inv.fileUrl);
-                                  if (parsed && parsed.download) {
-                                    downloadLink = parsed.download;
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                {(() => {
+                                  if (!inv.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                  
+                                  let downloadLink = inv.fileUrl;
+                                  
+                                  const extractDriveId = (url: string) => {
+                                    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                    return match ? match[1] : null;
+                                  };
+                                  
+                                  try {
+                                    const parsed = JSON.parse(inv.fileUrl);
+                                    if (parsed && parsed.download) {
+                                      downloadLink = parsed.download;
+                                    }
+                                  } catch (e) {
+                                    const driveId = extractDriveId(inv.fileUrl);
+                                    if (driveId) {
+                                      downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
+                                    }
                                   }
-                                } catch (e) {
-                                  // Legacy link handling
-                                  const driveId = extractDriveId(inv.fileUrl);
-                                  if (driveId) {
-                                    downloadLink = `https://drive.google.com/uc?export=download&id=${driveId}`;
-                                  }
-                                }
-                                
-                                return (
-                                  <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
-                                    <Download size={16} /> Download
-                                  </a>
-                                );
-                              })()}
+                                  
+                                  return (
+                                    <a href={downloadLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                      <Download size={16} /> Download
+                                    </a>
+                                  );
+                                })()}
+                                <button
+                                  type="button"
+                                  onClick={() => setModalConfig({
+                                    title: 'Edit Payment Invoice',
+                                    endpoint: `/api/projects/${id}/payment-invoices/${inv.id}`,
+                                    method: 'PUT',
+                                    fields: [
+                                      { name: 'documentNumber', label: 'Invoice Number', type: 'text', required: true, defaultValue: inv.documentNumber || '' },
+                                      { name: 'title', label: 'Title', type: 'text', required: true, defaultValue: inv.title || '' },
+                                      { name: 'type', label: 'Type', type: 'select', options: ['Consultant Invoice', 'Contractor IPC', 'Other'], defaultValue: inv.type || 'Consultant Invoice' },
+                                      { name: 'revision', label: 'Revision', type: 'text', defaultValue: inv.revision || '1.0' },
+                                      { name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Submitted', 'Approved', 'Paid', 'Rejected'], defaultValue: inv.status || 'Draft' },
+                                      { name: 'issueDate', label: 'Issue Date', type: 'date', defaultValue: inv.issueDate ? new Date(inv.issueDate).toISOString().split('T')[0] : '' }
+                                    ]
+                                  })}
+                                  style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                                >
+                                  <Edit2 size={15} /> Edit
+                                </button>
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteItem(`/api/projects/${id}/payment-invoices/${inv.id}`, 'payment invoice')}
+                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                    title="Delete invoice"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1568,6 +1764,18 @@ export const ProjectWorkspace: React.FC = () => {
         config={modalConfig}
         token={token}
         onSuccess={fetchAll}
+      />
+      <AIDocumentUploadModal
+        isOpen={isAIDocUploadOpen}
+        onClose={() => setIsAIDocUploadOpen(false)}
+        projectId={id || ''}
+        projectName={project?.name}
+        token={token}
+        onSuccess={() => {
+          fetchAll();
+          fetchProjectData();
+        }}
+        onNavigateTab={(tabId) => setActiveTab(tabId)}
       />
       {showDependencyModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

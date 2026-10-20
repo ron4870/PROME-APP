@@ -29,6 +29,9 @@ interface CampaignInterviewee {
   email: string;
   isoSections: string;
   projects: string;
+  department?: string;
+  auditorName?: string;
+  scheduledTime?: string;
   userId?: number;
 }
 
@@ -100,13 +103,45 @@ const AuditDashboard: React.FC = () => {
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [campaignTitle, setCampaignTitle] = useState('Annual ISO 9001:2015 Quality Management Internal Audit');
-  const [campaignStandard, setCampaignStandard] = useState('ISO 9001:2015');
-  const [campaignScope, setCampaignScope] = useState('Corporate and project quality management system evaluation across engineering design, site operations, and resource controls.');
-  const [campaignPlannedDate, setCampaignPlannedDate] = useState(new Date().toISOString().substring(0, 10));
+  const [campaignAuditNumber, setCampaignAuditNumber] = useState('');
+  const [campaignStandard, setCampaignStandard] = useState('ISO 9001:2015 & ISO 45001:2018');
+  const [campaignScope, setCampaignScope] = useState('Integrated Quality Management System (ISO 9001:2015) and Occupational Health & Safety Management System (ISO 45001:2018) compliance audit across Planning & Engineering (PED), Project Delivery (PDMD), Project Management & Business Development (PMBDD), Administration & Finance (HRAD/FD), and Corporate Planning & Strategy (CPSD).');
+  const [campaignPlannedDate, setCampaignPlannedDate] = useState('2026-10-23');
   const [campaignAuditorId, setCampaignAuditorId] = useState('');
   const [campaignInterviewees, setCampaignInterviewees] = useState<CampaignInterviewee[]>([
     { name: '', email: '', isoSections: 'Clause 5 (Leadership), Clause 6 (Planning)', projects: 'All Active Projects' }
   ]);
+
+  const handleLoadOctober2026Program = async () => {
+    try {
+      const res = await fetch('/api/audits/program-template');
+      if (res.ok) {
+        const template = await res.json();
+        setCampaignTitle(template.title);
+        setCampaignAuditNumber(template.auditNumber || 'PROME-IMSR-PMBDD-28');
+        setCampaignStandard(template.standard || 'ISO 9001:2015 & ISO 45001:2018');
+        setCampaignScope(template.scope || '');
+        setCampaignPlannedDate(template.plannedDate || '2026-10-23');
+        if (Array.isArray(template.interviewees)) {
+          setCampaignInterviewees(template.interviewees.map((inv: any) => {
+            const matchedUser = users.find(u => u.email.toLowerCase() === inv.email.toLowerCase());
+            return {
+              name: inv.name,
+              email: inv.email,
+              isoSections: inv.isoSections,
+              projects: inv.projects,
+              department: inv.department,
+              auditorName: inv.auditorName,
+              scheduledTime: inv.scheduledTime,
+              userId: matchedUser ? matchedUser.id : undefined
+            };
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load program template:', e);
+    }
+  };
 
   useEffect(() => {
     fetchAudits();
@@ -196,6 +231,7 @@ const AuditDashboard: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: campaignTitle,
+          auditNumber: campaignAuditNumber || undefined,
           standard: campaignStandard,
           scope: campaignScope,
           plannedDate: campaignPlannedDate,
@@ -460,8 +496,51 @@ const AuditDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Quick Load 23 October 2026 Audit Program Preset */}
+            <div style={{
+              backgroundColor: '#fff1f2',
+              border: '1px solid #fecdd3',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#9f1239' }}>
+                  Upcoming Internal Audit: 23 October 2026 Integrated Program
+                </div>
+                <div style={{ fontSize: '12px', color: '#be123c', marginTop: '2px' }}>
+                  Program Ref: <strong>PROME-IMSR-PMBDD-28</strong> • ISO 9001:2015 & ISO 45001:2018 • 16 Clause Focus Areas
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleLoadOctober2026Program}
+                style={{
+                  backgroundColor: '#cc0000',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 4px rgba(204, 0, 0, 0.2)'
+                }}
+              >
+                <Sparkles size={14} /> Load 23 Oct 2026 Program Preset
+              </button>
+            </div>
+
             <form onSubmit={handleLaunchCampaign}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 220px', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Audit Campaign Title</label>
                   <input 
@@ -474,6 +553,17 @@ const AuditDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Audit Ref Number</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. PROME-IMSR-PMBDD-28" 
+                    className="form-input" 
+                    style={{ width: '100%' }} 
+                    value={campaignAuditNumber} 
+                    onChange={e => setCampaignAuditNumber(e.target.value)} 
+                  />
+                </div>
+                <div>
                   <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '13px' }}>Standard</label>
                   <select 
                     className="form-input" 
@@ -481,10 +571,10 @@ const AuditDashboard: React.FC = () => {
                     value={campaignStandard} 
                     onChange={e => setCampaignStandard(e.target.value)}
                   >
-                    <option value="ISO 9001:2015">ISO 9001:2015</option>
-                    <option value="ISO 9001:2018">ISO 9001:2018</option>
-                    <option value="ISO 14001:2015">ISO 14001:2015 (HSE)</option>
+                    <option value="ISO 9001:2015 & ISO 45001:2018">ISO 9001:2015 & ISO 45001:2018 (Integrated)</option>
+                    <option value="ISO 9001:2015">ISO 9001:2015 (Quality)</option>
                     <option value="ISO 45001:2018">ISO 45001:2018 (Safety)</option>
+                    <option value="ISO 14001:2015">ISO 14001:2015 (HSE)</option>
                   </select>
                 </div>
               </div>
@@ -547,7 +637,24 @@ const AuditDashboard: React.FC = () => {
                   {campaignInterviewees.map((item, idx) => (
                     <div key={idx} style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '14px', border: '1px solid #e2e8f0' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Interviewee #{idx + 1}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Interviewee #{idx + 1}</span>
+                          {item.department && (
+                            <span style={{ fontSize: '11px', backgroundColor: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              {item.department}
+                            </span>
+                          )}
+                          {item.scheduledTime && (
+                            <span style={{ fontSize: '11px', backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              ⏰ {item.scheduledTime}
+                            </span>
+                          )}
+                          {item.auditorName && (
+                            <span style={{ fontSize: '11px', backgroundColor: '#fef2f2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              Auditor: {item.auditorName}
+                            </span>
+                          )}
+                        </div>
                         {campaignInterviewees.length > 1 && (
                           <button 
                             type="button" 

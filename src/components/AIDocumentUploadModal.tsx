@@ -1,0 +1,1384 @@
+import React, { useState, useRef } from 'react';
+import { 
+  Sparkles, 
+  Upload, 
+  X, 
+  FileText, 
+  Check, 
+  AlertCircle, 
+  Loader2, 
+  Mail, 
+  ClipboardList, 
+  FileDiff, 
+  CreditCard, 
+  Trash2, 
+  CheckCircle2, 
+  Plus
+} from 'lucide-react';
+
+export type ProjectDocCategory = 'correspondence' | 'documents' | 'daily_reports' | 'variations' | 'payment_invoices';
+
+export interface ClassifiedItem {
+  tempId: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  fileUrl: string | null;
+  category: ProjectDocCategory;
+  categoryLabel: string;
+  confidence: number;
+  reasoning: string;
+  fields: Record<string, any>;
+  unfilledFields: string[];
+}
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  projectId: string | number;
+  projectName?: string;
+  token: string | null;
+  onSuccess: () => void;
+  onNavigateTab?: (tabId: string) => void;
+}
+
+const CATEGORY_CONFIG: Record<ProjectDocCategory, { label: string; icon: React.ReactNode; color: string; bgColor: string; borderColor: string }> = {
+  correspondence: {
+    label: 'Correspondence',
+    icon: <Mail size={16} />,
+    color: '#0284c7',
+    bgColor: '#e0f2fe',
+    borderColor: '#7dd3fc'
+  },
+  documents: {
+    label: 'Project Documents',
+    icon: <FileText size={16} />,
+    color: '#0369a1',
+    bgColor: '#f0f9ff',
+    borderColor: '#bae6fd'
+  },
+  daily_reports: {
+    label: 'Daily Reports',
+    icon: <ClipboardList size={16} />,
+    color: '#b45309',
+    bgColor: '#fef3c7',
+    borderColor: '#fde68a'
+  },
+  variations: {
+    label: 'Variations & Claims',
+    icon: <FileDiff size={16} />,
+    color: '#7c3aed',
+    bgColor: '#f5f3ff',
+    borderColor: '#ddd6fe'
+  },
+  payment_invoices: {
+    label: 'Payments / Invoices',
+    icon: <CreditCard size={16} />,
+    color: '#15803d',
+    bgColor: '#dcfce7',
+    borderColor: '#bbf7d0'
+  }
+};
+
+export const AIDocumentUploadModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  projectId,
+  projectName,
+  token,
+  onSuccess,
+  onNavigateTab
+}) => {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [classifiedItems, setClassifiedItems] = useState<ClassifiedItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [savedCount, setSavedCount] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isOpen) return null;
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles(prev => [...prev, ...filesArray]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files) {
+      const filesArray = Array.from(e.dataTransfer.files);
+      setSelectedFiles(prev => [...prev, ...filesArray]);
+    }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const startAIClassification = async () => {
+    if (selectedFiles.length === 0) return;
+    setIsClassifying(true);
+    setErrorMsg(null);
+
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+
+      const res = await fetch(`/api/projects/${projectId}/ai-classify-upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'AI Classification failed');
+      }
+
+      const data = await res.json();
+      if (data.items && Array.isArray(data.items)) {
+        setClassifiedItems(prev => [...prev, ...data.items]);
+        setSelectedFiles([]); // clear file queue after successful classification
+      }
+    } catch (err: any) {
+      console.error('Classification error:', err);
+      setErrorMsg(err.message || 'Failed to classify documents. Please try again.');
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
+  const handleCategoryChange = (tempId: string, newCategory: ProjectDocCategory) => {
+    setClassifiedItems(prev => prev.map(item => {
+      if (item.tempId !== tempId) return item;
+      
+      // Update category and reset/adapt fields sensibly
+      const todayStr = new Date().toISOString().split('T')[0];
+      let newFields = { ...item.fields };
+
+      if (newCategory === 'correspondence') {
+        newFields = {
+          referenceNumber: newFields.referenceNumber || newFields.documentNumber || `CORR-${Date.now().toString().slice(-4)}`,
+          type: newFields.type || 'Incoming',
+          category: 'Letter',
+          subject: newFields.subject || newFields.title || item.originalName.replace(/\.[^/.]+$/, ''),
+          sender: newFields.sender || 'Contractor',
+          recipient: newFields.recipient || 'Consultant',
+          date: newFields.date || newFields.issueDate || todayStr
+        };
+      } else if (newCategory === 'documents') {
+        newFields = {
+          documentNumber: newFields.documentNumber || newFields.referenceNumber || `DOC-${Date.now().toString().slice(-4)}`,
+          title: newFields.title || newFields.subject || item.originalName.replace(/\.[^/.]+$/, ''),
+          type: newFields.type || 'Report',
+          revision: newFields.revision || '1.0',
+          status: newFields.status || 'Draft',
+          issueDate: newFields.issueDate || newFields.date || todayStr
+        };
+      } else if (newCategory === 'daily_reports') {
+        newFields = {
+          date: newFields.date || todayStr,
+          location: newFields.location || '',
+          weatherCondition: newFields.weatherCondition || 'Fair',
+          manpowerCount: newFields.manpowerCount || 0,
+          equipmentCount: newFields.equipmentCount || 0,
+          summary: newFields.summary || newFields.subject || newFields.title || `Site activities for ${item.originalName}`
+        };
+      } else if (newCategory === 'variations') {
+        newFields = {
+          referenceNumber: newFields.referenceNumber || `VO-${Date.now().toString().slice(-4)}`,
+          title: newFields.title || newFields.subject || item.originalName.replace(/\.[^/.]+$/, ''),
+          description: newFields.description || '',
+          costImpact: newFields.costImpact || 0,
+          scheduleImpactDays: newFields.scheduleImpactDays || 0,
+          date: newFields.date || todayStr,
+          status: 'Proposed'
+        };
+      } else if (newCategory === 'payment_invoices') {
+        newFields = {
+          documentNumber: newFields.documentNumber || `INV-${Date.now().toString().slice(-4)}`,
+          title: newFields.title || item.originalName.replace(/\.[^/.]+$/, ''),
+          type: newFields.type || 'Consultant Invoice',
+          revision: newFields.revision || '1.0',
+          status: newFields.status || 'Submitted',
+          issueDate: newFields.issueDate || todayStr
+        };
+      }
+
+      return {
+        ...item,
+        category: newCategory,
+        categoryLabel: CATEGORY_CONFIG[newCategory].label,
+        fields: newFields
+      };
+    }));
+  };
+
+  const handleFieldChange = (tempId: string, fieldName: string, value: any) => {
+    setClassifiedItems(prev => prev.map(item => {
+      if (item.tempId !== tempId) return item;
+      return {
+        ...item,
+        fields: {
+          ...item.fields,
+          [fieldName]: value
+        }
+      };
+    }));
+  };
+
+  const removeClassifiedItem = (tempId: string) => {
+    setClassifiedItems(prev => prev.filter(item => item.tempId !== tempId));
+  };
+
+  const handleSaveAll = async () => {
+    if (classifiedItems.length === 0) return;
+    setIsSaving(true);
+    setErrorMsg(null);
+
+    try {
+      const payload = {
+        items: classifiedItems.map(item => ({
+          category: item.category,
+          fields: item.fields,
+          fileUrl: item.fileUrl,
+          originalName: item.originalName
+        }))
+      };
+
+      const res = await fetch(`/api/projects/${projectId}/bulk-save-classified`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Failed to place documents in project sections');
+      }
+
+      const data = await res.json();
+      setSavedCount(data.savedCount || classifiedItems.length);
+      setSaveSuccess(true);
+      onSuccess(); // refresh workspace modules
+    } catch (err: any) {
+      console.error('Save error:', err);
+      setErrorMsg(err.message || 'Failed to place documents. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetAndClose = () => {
+    setSelectedFiles([]);
+    setClassifiedItems([]);
+    setSaveSuccess(false);
+    setErrorMsg(null);
+    onClose();
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1100,
+      padding: '1rem'
+    }}>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        width: '100%',
+        maxWidth: '920px',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        overflow: 'hidden',
+        animation: 'fadeIn 0.2s ease-out'
+      }}>
+        {/* Modal Header */}
+        <div style={{
+          padding: '1.25rem 1.75rem',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              boxShadow: '0 4px 6px -1px rgba(2, 132, 199, 0.3)'
+            }}>
+              <Sparkles size={22} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>
+                AI Document Upload & Classification
+              </h2>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                {projectName ? `${projectName} • ` : ''}Automatic classification into Correspondence, Documents, Daily Reports, and more
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={handleResetAndClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#94a3b8',
+              padding: '0.5rem',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div style={{ padding: '1.5rem 1.75rem', overflowY: 'auto', flex: 1 }}>
+          {errorMsg && (
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#b91c1c',
+              padding: '0.875rem 1rem',
+              borderRadius: '8px',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem'
+            }}>
+              <AlertCircle size={18} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* SUCCESS STATE */}
+          {saveSuccess ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: '#dcfce7',
+                color: '#15803d',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem auto'
+              }}>
+                <CheckCircle2 size={36} />
+              </div>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
+                Documents Successfully Placed!
+              </h3>
+              <p style={{ color: '#475569', fontSize: '1rem', maxWidth: '520px', margin: '0 auto 2rem auto' }}>
+                {savedCount} document{savedCount !== 1 ? 's have' : ' has'} been classified, logged, and securely filed into the appropriate project sections.
+              </p>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleResetAndClose}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem' }}
+                >
+                  <Check size={16} /> Return to Workspace
+                </button>
+                {onNavigateTab && (
+                  <>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        onNavigateTab('correspondence');
+                        handleResetAndClose();
+                      }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      <Mail size={16} /> View Correspondence
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        onNavigateTab('documents');
+                        handleResetAndClose();
+                      }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      <FileText size={16} /> View Documents
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        onNavigateTab('daily_reports');
+                        handleResetAndClose();
+                      }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      <ClipboardList size={16} /> View Daily Reports
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* STEP 1: DROPZONE & PENDING FILES */}
+              {classifiedItems.length === 0 && (
+                <div>
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed #0284c7',
+                      borderRadius: '12px',
+                      backgroundColor: '#f8fafc',
+                      padding: '2.5rem 1.5rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      marginBottom: '1.25rem'
+                    }}
+                  >
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileSelect} 
+                      multiple 
+                      style={{ display: 'none' }} 
+                    />
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      backgroundColor: '#e0f2fe',
+                      color: '#0284c7',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 1rem auto'
+                    }}>
+                      <Upload size={24} />
+                    </div>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#0f172a' }}>
+                      Drag and drop your project documents here
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                      Supports PDF, Word (.docx), Excel (.xlsx), Drawings (.dwg/.dxf), Images, and Text files
+                    </p>
+                    <button 
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ marginTop: '1rem', fontSize: '0.875rem' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      Browse Files
+                    </button>
+                  </div>
+
+                  {/* Selected Queue Before AI */}
+                  {selectedFiles.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#334155', marginBottom: '0.75rem' }}>
+                        Selected Files ({selectedFiles.length})
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {selectedFiles.map((file, idx) => (
+                          <div 
+                            key={idx} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between', 
+                              padding: '0.75rem 1rem', 
+                              backgroundColor: '#ffffff', 
+                              border: '1px solid #e2e8f0', 
+                              borderRadius: '8px' 
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <FileText size={18} color="#0284c7" />
+                              <div>
+                                <span style={{ fontWeight: 500, fontSize: '0.9rem', color: '#0f172a' }}>{file.name}</span>
+                                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                  ({formatFileSize(file.size)})
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedFile(idx)}
+                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          disabled={isClassifying}
+                          onClick={startAIClassification}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.65rem 1.5rem',
+                            fontWeight: 600,
+                            background: 'linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)',
+                            border: 'none',
+                            color: 'white'
+                          }}
+                        >
+                          {isClassifying ? (
+                            <>
+                              <Loader2 size={18} className="animate-spin" /> Analyzing with AI Assistant...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={18} /> Classify & Extract Fields ({selectedFiles.length} {selectedFiles.length === 1 ? 'file' : 'files'})
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 2: CLASSIFIED ITEMS REVIEW & EDIT */}
+              {classifiedItems.length > 0 && (
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '1rem',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#166534', fontSize: '0.9rem', fontWeight: 500 }}>
+                      <CheckCircle2 size={18} />
+                      <span>AI has classified {classifiedItems.length} document{classifiedItems.length !== 1 ? 's' : ''}. Review extracted metadata and fill in any non-filled fields below.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Plus size={14} /> Add More Files
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileSelect} 
+                      multiple 
+                      style={{ display: 'none' }} 
+                    />
+                  </div>
+
+                  {/* If more files selected while in review mode */}
+                  {selectedFiles.length > 0 && (
+                    <div style={{
+                      marginBottom: '1rem',
+                      padding: '0.75rem 1rem',
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span style={{ fontSize: '0.875rem', color: '#1e40af' }}>
+                        {selectedFiles.length} additional file{selectedFiles.length !== 1 ? 's' : ''} queued for classification
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={startAIClassification}
+                        disabled={isClassifying}
+                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      >
+                        {isClassifying ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                        Analyze Queue
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Review Cards */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {classifiedItems.map((item) => {
+                      const catConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.documents;
+                      return (
+                        <div
+                          key={item.tempId}
+                          style={{
+                            border: `1px solid ${catConfig.borderColor}`,
+                            borderRadius: '12px',
+                            backgroundColor: '#ffffff',
+                            overflow: 'hidden',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          {/* Card Top Banner */}
+                          <div style={{
+                            padding: '0.875rem 1.25rem',
+                            backgroundColor: catConfig.bgColor,
+                            borderBottom: `1px solid ${catConfig.borderColor}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '0.5rem'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <div style={{ color: catConfig.color }}>
+                                {catConfig.icon}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>
+                                  {item.originalName}
+                                </span>
+                                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                  ({formatFileSize(item.size)})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              {/* Destination Category Dropdown */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>
+                                  Section:
+                                </label>
+                                <select
+                                  value={item.category}
+                                  onChange={(e) => handleCategoryChange(item.tempId, e.target.value as ProjectDocCategory)}
+                                  style={{
+                                    padding: '0.25rem 0.5rem',
+                                    borderRadius: '6px',
+                                    border: '1px solid #cbd5e1',
+                                    backgroundColor: '#ffffff',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    color: catConfig.color
+                                  }}
+                                >
+                                  <option value="correspondence">✉️ Correspondence</option>
+                                  <option value="documents">📄 Project Documents</option>
+                                  <option value="daily_reports">📋 Daily Reports</option>
+                                  <option value="variations">⚖️ Variations & Claims</option>
+                                  <option value="payment_invoices">💳 Payments / Invoices</option>
+                                </select>
+                              </div>
+
+                              {/* Confidence badge */}
+                              <span style={{
+                                fontSize: '0.75rem',
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '999px',
+                                backgroundColor: '#ffffff',
+                                color: catConfig.color,
+                                border: `1px solid ${catConfig.borderColor}`,
+                                fontWeight: 600
+                              }}>
+                                {Math.round(item.confidence * 100)}% Confidence
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => removeClassifiedItem(item.tempId)}
+                                title="Remove file"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Reasoning note */}
+                          <div style={{
+                            padding: '0.5rem 1.25rem',
+                            backgroundColor: '#f8fafc',
+                            borderBottom: '1px solid #f1f5f9',
+                            fontSize: '0.8rem',
+                            color: '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}>
+                            <Sparkles size={14} color="#6366f1" />
+                            <span><strong>AI Detection:</strong> {item.reasoning}</span>
+                          </div>
+
+                          {/* Editable Fields Form */}
+                          <div style={{ padding: '1.25rem' }}>
+                            {/* DYNAMIC FIELDS ACCORDING TO CATEGORY */}
+                            
+                            {/* 1. CORRESPONDENCE */}
+                            {item.category === 'correspondence' && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Reference Number {!item.fields.referenceNumber && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.referenceNumber || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'referenceNumber', e.target.value)}
+                                    placeholder="e.g. UNRA/KFO/042"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.referenceNumber ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.referenceNumber ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Type (Incoming/Outgoing)
+                                  </label>
+                                  <select
+                                    value={item.fields.type || 'Incoming'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'type', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Incoming">Incoming</option>
+                                    <option value="Outgoing">Outgoing</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Category
+                                  </label>
+                                  <select
+                                    value={item.fields.category || 'Letter'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'category', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Letter">Letter</option>
+                                    <option value="MoM">Minutes of Meeting (MoM)</option>
+                                    <option value="Transmittal">Transmittal</option>
+                                    <option value="Notice">Notice</option>
+                                    <option value="Email">Email</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Date
+                                  </label>
+                                  <input 
+                                    type="date" 
+                                    value={item.fields.date || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'date', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Sender {!item.fields.sender && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.sender || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'sender', e.target.value)}
+                                    placeholder="e.g. Contractor / UNRA"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.sender ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.sender ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Recipient {!item.fields.recipient && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.recipient || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'recipient', e.target.value)}
+                                    placeholder="e.g. Consultant / PROME"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.recipient ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.recipient ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Subject {!item.fields.subject && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.subject || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'subject', e.target.value)}
+                                    placeholder="Correspondence subject..."
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.subject ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.subject ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 2. PROJECT DOCUMENTS */}
+                            {item.category === 'documents' && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Document No. {!item.fields.documentNumber && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.documentNumber || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'documentNumber', e.target.value)}
+                                    placeholder="e.g. DWG-KFO-001"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.documentNumber ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.documentNumber ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: 'span 2' }}>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Document Title {!item.fields.title && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.title || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'title', e.target.value)}
+                                    placeholder="Document title..."
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.title ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.title ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Document Type
+                                  </label>
+                                  <select
+                                    value={item.fields.type || 'Report'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'type', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Project Drawing">Project Drawing</option>
+                                    <option value="Design Document">Design Document</option>
+                                    <option value="QA/QC Plan">QA/QC Plan</option>
+                                    <option value="Method Statement">Method Statement</option>
+                                    <option value="Quality Control Form">Quality Control Form</option>
+                                    <option value="Report">Report</option>
+                                    <option value="Contractual Document">Contractual Document</option>
+                                    <option value="Meeting Minutes">Meeting Minutes</option>
+                                    <option value="RFI">RFI</option>
+                                    <option value="Specification">Specification</option>
+                                    <option value="Media">Media</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Revision
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.revision || '1.0'} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'revision', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Status
+                                  </label>
+                                  <select
+                                    value={item.fields.status || 'Draft'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'status', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Draft">Draft</option>
+                                    <option value="Issued for Review">Issued for Review</option>
+                                    <option value="Issued for Construction">Issued for Construction</option>
+                                    <option value="Approved">Approved</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Issue Date
+                                  </label>
+                                  <input 
+                                    type="date" 
+                                    value={item.fields.issueDate || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'issueDate', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 3. DAILY REPORTS */}
+                            {item.category === 'daily_reports' && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Date
+                                  </label>
+                                  <input 
+                                    type="date" 
+                                    value={item.fields.date || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'date', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Location / Chainage {!item.fields.location && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.location || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'location', e.target.value)}
+                                    placeholder="e.g. Chainage 12+400 / Pier 3"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.location ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.location ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Weather Condition
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.weatherCondition || 'Fair'} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'weatherCondition', e.target.value)}
+                                    placeholder="e.g. Sunny / Rainy"
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Active Manpower (Workers)
+                                  </label>
+                                  <input 
+                                    type="number" 
+                                    value={item.fields.manpowerCount ?? 0} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'manpowerCount', parseInt(e.target.value) || 0)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Active Equipment / Plant
+                                  </label>
+                                  <input 
+                                    type="number" 
+                                    value={item.fields.equipmentCount ?? 0} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'equipmentCount', parseInt(e.target.value) || 0)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Activities Summary {!item.fields.summary && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <textarea 
+                                    rows={2}
+                                    value={item.fields.summary || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'summary', e.target.value)}
+                                    placeholder="Activities carried out today..."
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.summary ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.summary ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem',
+                                      fontFamily: 'inherit'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 4. VARIATIONS & CLAIMS */}
+                            {item.category === 'variations' && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Reference No. {!item.fields.referenceNumber && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.referenceNumber || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'referenceNumber', e.target.value)}
+                                    placeholder="e.g. VO-02"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.referenceNumber ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.referenceNumber ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: 'span 2' }}>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Title {!item.fields.title && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.title || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'title', e.target.value)}
+                                    placeholder="Variation title..."
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.title ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.title ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Cost Impact ($ / UGX)
+                                  </label>
+                                  <input 
+                                    type="number" 
+                                    value={item.fields.costImpact ?? 0} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'costImpact', parseFloat(e.target.value) || 0)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Schedule Impact (Days)
+                                  </label>
+                                  <input 
+                                    type="number" 
+                                    value={item.fields.scheduleImpactDays ?? 0} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'scheduleImpactDays', parseInt(e.target.value) || 0)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Status
+                                  </label>
+                                  <select
+                                    value={item.fields.status || 'Proposed'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'status', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Proposed">Proposed</option>
+                                    <option value="Under Review">Under Review</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Rejected">Rejected</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Date
+                                  </label>
+                                  <input 
+                                    type="date" 
+                                    value={item.fields.date || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'date', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Description / Justification
+                                  </label>
+                                  <textarea 
+                                    rows={2}
+                                    value={item.fields.description || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'description', e.target.value)}
+                                    placeholder="Variation scope and reason..."
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem', fontFamily: 'inherit' }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 5. PAYMENTS / INVOICES */}
+                            {item.category === 'payment_invoices' && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Invoice / IPC No. {!item.fields.documentNumber && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.documentNumber || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'documentNumber', e.target.value)}
+                                    placeholder="e.g. IPC-03"
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.documentNumber ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.documentNumber ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: 'span 2' }}>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Title {!item.fields.title && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={item.fields.title || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'title', e.target.value)}
+                                    placeholder="Invoice title..."
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: !item.fields.title ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: !item.fields.title ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Invoice Type
+                                  </label>
+                                  <select
+                                    value={item.fields.type || 'Consultant Invoice'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'type', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Consultant Invoice">Consultant Invoice</option>
+                                    <option value="Contractor IPC">Contractor IPC</option>
+                                    <option value="Payment Certificate">Payment Certificate</option>
+                                    <option value="Other">Other</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Status
+                                  </label>
+                                  <select
+                                    value={item.fields.status || 'Submitted'}
+                                    onChange={(e) => handleFieldChange(item.tempId, 'status', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="Draft">Draft</option>
+                                    <option value="Submitted">Submitted</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Paid">Paid</option>
+                                    <option value="Rejected">Rejected</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                                    Issue Date
+                                  </label>
+                                  <input 
+                                    type="date" 
+                                    value={item.fields.issueDate || ''} 
+                                    onChange={(e) => handleFieldChange(item.tempId, 'issueDate', e.target.value)}
+                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        {!saveSuccess && (
+          <div style={{
+            padding: '1rem 1.75rem',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#f8fafc'
+          }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleResetAndClose}
+              disabled={isSaving || isClassifying}
+            >
+              Cancel
+            </button>
+
+            {classifiedItems.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                  {classifiedItems.length} document{classifiedItems.length !== 1 ? 's' : ''} ready to place
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSaveAll}
+                  disabled={isSaving || isClassifying}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.625rem 1.5rem',
+                    fontWeight: 600,
+                    background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    boxShadow: '0 4px 6px -1px rgba(2, 132, 199, 0.3)'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Placing Documents...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} /> Confirm & Place All Documents
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
