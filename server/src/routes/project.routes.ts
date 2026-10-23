@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken as authenticate } from '../middleware/auth';
 import { checkProjectAccess } from '../middleware/projectAuth';
 import { upload, driveService, GOOGLE_DRIVE_FOLDER_ID, getOrCreateProjectFolder } from '../services/drive.service';
-import { classifyProjectDocumentWithAI, ProjectContextInfo } from '../services/project-doc-classifier.service';
+import { classifyProjectDocumentWithAI, ruleBasedClassification, ProjectContextInfo } from '../services/project-doc-classifier.service';
 import { Readable } from 'stream';
 import path from 'path';
 import fs from 'fs';
@@ -883,46 +883,58 @@ router.post('/:id/meetings', authenticate, checkProjectAccess(), async (req, res
   }
 });
 
-// Helper for project file uploads (Google Drive with local storage fallback)
+let isGoogleDriveDisabled = false;
+
+// Helper for project file uploads (Google Drive with fast local storage fallback)
 async function uploadProjectFile(projectId: number, file: Express.Multer.File): Promise<string> {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new Error('Project not found');
 
-  try {
-    const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
-    const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
-    const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
-    const driveFile = await driveService.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, webViewLink, webContentLink',
-      supportsAllDrives: true
-    });
-    const fileId = driveFile.data.id;
-    if (fileId) {
-      try {
-        await driveService.permissions.create({
-          fileId: fileId,
-          requestBody: { role: 'reader', type: 'anyone' },
-          supportsAllDrives: true
-        });
-      } catch (permErr) {
-        console.warn('Drive permission setting warning:', permErr);
-      }
-      return JSON.stringify({
-        id: fileId,
-        view: driveFile.data.webViewLink,
-        download: driveFile.data.webContentLink,
-        isPdf: file.mimetype === 'application/pdf'
+  if (!isGoogleDriveDisabled && process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
+    try {
+      const targetFolderId = await getOrCreateProjectFolder(project.id, project.name, project.driveFolderId);
+      const fileMetadata = { name: file.originalname, parents: [targetFolderId] };
+      const media = { mimeType: file.mimetype, body: Readable.from(file.buffer) };
+      const driveFile = await driveService.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink, webContentLink',
+        supportsAllDrives: true
       });
+      const fileId = driveFile.data.id;
+      if (fileId) {
+        try {
+          await driveService.permissions.create({
+            fileId: fileId,
+            requestBody: { role: 'reader', type: 'anyone' },
+            supportsAllDrives: true
+          });
+        } catch (permErr) {
+          console.warn('Drive permission setting warning:', permErr);
+        }
+        return JSON.stringify({
+          id: fileId,
+          view: driveFile.data.webViewLink,
+          download: driveFile.data.webContentLink,
+          isPdf: file.mimetype === 'application/pdf'
+        });
+      }
+    } catch (driveErr: any) {
+      console.warn('Google Drive upload error, falling back to local file storage:', driveErr?.message || driveErr);
+      if (
+        driveErr?.message?.includes('disabled_client') ||
+        driveErr?.response?.data?.error === 'disabled_client' ||
+        driveErr?.response?.data?.error === 'invalid_grant'
+      ) {
+        console.warn('Google Drive OAuth client is disabled/invalid. Fast-falling back to local storage for all files.');
+        isGoogleDriveDisabled = true;
+      }
     }
-  } catch (driveErr) {
-    console.error('Google Drive upload error, falling back to local file storage:', driveErr);
   }
 
   // Fallback to local storage in /uploads directory
   const sanitizeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const localFilename = `proj-${projectId}-${Date.now()}-${sanitizeName}`;
+  const localFilename = `proj-${projectId}-${Date.now()}-${Math.floor(Math.random() * 10000)}-${sanitizeName}`;
   const uploadsDir = path.join(__dirname, '../../uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -931,7 +943,7 @@ async function uploadProjectFile(projectId: number, file: Express.Multer.File): 
   fs.writeFileSync(localUploadPath, file.buffer);
   const relativeUrlPath = `/uploads/${localFilename}`;
   return JSON.stringify({
-    id: `local-${Date.now()}`,
+    id: `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     view: relativeUrlPath,
     download: relativeUrlPath,
     isPdf: file.mimetype === 'application/pdf'
@@ -1640,7 +1652,43 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
         console.error(`Upload error for ${file.originalname}:`, uploadErr);
       }
 
-      const classification = await classifyProjectDocumentWithAI(file, project, userHint);
+      let classification: any;
+      let needsReview = false;
+
+      try {
+        classification = await classifyProjectDocumentWithAI(file, project, userHint);
+      } catch (classifyErr) {
+        console.warn(`AI classification error for ${file.originalname}:`, classifyErr);
+        try {
+          classification = ruleBasedClassification(file.originalname, '', userHint);
+        } catch (ruleErr) {
+          classification = {
+            category: 'documents',
+            categoryLabel: 'Project Documents',
+            confidence: 0.25,
+            reasoning: 'File content could not be read automatically. Please verify section and complete empty fields.',
+            fields: {
+              documentNumber: '',
+              title: file.originalname.replace(/\.[^/.]+$/, ''),
+              type: 'General',
+              revision: '1.0',
+              status: 'Draft',
+              issueDate: new Date().toISOString().split('T')[0]
+            },
+            unfilledFields: ['documentNumber', 'title']
+          };
+        }
+      }
+
+      // Check if file needs review or manual user input
+      const unfilled = Array.isArray(classification.unfilledFields) ? classification.unfilledFields : [];
+      if (
+        classification.confidence < 0.75 ||
+        unfilled.length > 0 ||
+        (!classification.fields?.documentNumber && !classification.fields?.referenceNumber)
+      ) {
+        needsReview = true;
+      }
 
       items.push({
         tempId: `item-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
@@ -1648,18 +1696,25 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
         size: file.size,
         mimeType: file.mimetype,
         fileUrl: fileUrl,
-        category: classification.category,
-        categoryLabel: classification.categoryLabel,
-        confidence: classification.confidence,
-        reasoning: classification.reasoning,
-        fields: classification.fields,
-        unfilledFields: classification.unfilledFields
+        category: classification.category || 'documents',
+        categoryLabel: classification.categoryLabel || 'Project Documents',
+        confidence: classification.confidence ?? 0.5,
+        reasoning: classification.reasoning || 'Categorized based on document attributes.',
+        fields: classification.fields || {},
+        unfilledFields: unfilled,
+        needsReview
       });
     }
 
+    const needsReviewCount = items.filter(it => it.needsReview).length;
+    const classifiedCount = items.length - needsReviewCount;
+
     res.json({
       success: true,
-      items
+      items,
+      totalCount: items.length,
+      classifiedCount,
+      needsReviewCount
     });
   } catch (error: any) {
     console.error('Error in AI document classify & upload:', error);

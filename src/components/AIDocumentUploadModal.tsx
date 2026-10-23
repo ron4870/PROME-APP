@@ -34,6 +34,7 @@ export interface ClassifiedItem {
   reasoning: string;
   fields: Record<string, any>;
   unfilledFields: string[];
+  needsReview?: boolean;
 }
 
 interface Props {
@@ -97,6 +98,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
   const [isClassifying, setIsClassifying] = useState(false);
   const [isUnpacking, setIsUnpacking] = useState(false);
   const [userCategoryHint, setUserCategoryHint] = useState('');
+  const [classificationProgress, setClassificationProgress] = useState<string | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'needs_review' | 'ready'>('all');
   const [classifiedItems, setClassifiedItems] = useState<ClassifiedItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -219,39 +222,85 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
     if (selectedFiles.length === 0) return;
     setIsClassifying(true);
     setErrorMsg(null);
+    setClassificationProgress(null);
+
+    const BATCH_SIZE = 5;
+    const filesToProcess = [...selectedFiles];
+    const totalFiles = filesToProcess.length;
 
     try {
-      const formData = new FormData();
-      selectedFiles.forEach(file => {
-        formData.append('files', file);
-      });
-      if (userCategoryHint.trim()) {
-        formData.append('userHint', userCategoryHint.trim());
+      for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
+        const batch = filesToProcess.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(totalFiles / BATCH_SIZE);
+
+        setClassificationProgress(
+          totalBatches > 1
+            ? `Analyzing batch ${batchNum} of ${totalBatches} (${batch.length} files)...`
+            : `Reading and classifying ${batch.length} document${batch.length !== 1 ? 's' : ''}...`
+        );
+
+        const formData = new FormData();
+        batch.forEach(file => {
+          formData.append('files', file);
+        });
+        if (userCategoryHint.trim()) {
+          formData.append('userHint', userCategoryHint.trim());
+        }
+
+        try {
+          const res = await fetch(`/api/projects/${projectId}/ai-classify-upload`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`
+            },
+            body: formData
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || `Server responded with ${res.status}`);
+          }
+
+          const data = await res.json();
+          if (data.items && Array.isArray(data.items)) {
+            setClassifiedItems(prev => [...prev, ...data.items]);
+          }
+        } catch (batchErr: any) {
+          console.warn(`Batch ${batchNum} encountered error, creating fallback review cards:`, batchErr);
+          const fallbackItems: ClassifiedItem[] = batch.map((file, bIdx) => ({
+            tempId: `fallback-${Date.now()}-${i + bIdx}`,
+            originalName: file.name,
+            size: file.size,
+            mimeType: file.type || 'application/octet-stream',
+            fileUrl: null,
+            category: 'documents',
+            categoryLabel: 'Project Documents',
+            confidence: 0.2,
+            reasoning: 'Document content could not be read automatically. Please verify section and fill missing details.',
+            fields: {
+              title: file.name.replace(/\.[^/.]+$/, ''),
+              documentNumber: '',
+              type: 'General',
+              revision: '1.0',
+              status: 'Draft',
+              issueDate: new Date().toISOString().split('T')[0]
+            },
+            unfilledFields: ['documentNumber', 'title'],
+            needsReview: true
+          }));
+          setClassifiedItems(prev => [...prev, ...fallbackItems]);
+        }
       }
 
-      const res = await fetch(`/api/projects/${projectId}/ai-classify-upload`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || 'AI Classification failed');
-      }
-
-      const data = await res.json();
-      if (data.items && Array.isArray(data.items)) {
-        setClassifiedItems(prev => [...prev, ...data.items]);
-        setSelectedFiles([]); // clear file queue after successful classification
-      }
+      // Clear pending file queue after classification
+      setSelectedFiles([]);
     } catch (err: any) {
       console.error('Classification error:', err);
-      setErrorMsg(err.message || 'Failed to classify documents. Please try again.');
+      setErrorMsg(err.message || 'Error occurred while processing documents.');
     } finally {
       setIsClassifying(false);
+      setClassificationProgress(null);
     }
   };
 
@@ -384,6 +433,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
     setClassifiedItems([]);
     setUserCategoryHint('');
     setIsUnpacking(false);
+    setClassificationProgress(null);
+    setReviewFilter('all');
     setSaveSuccess(false);
     setErrorMsg(null);
     onClose();
@@ -1014,7 +1065,7 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                         >
                           {isClassifying ? (
                             <>
-                              <Loader2 size={18} className="animate-spin" /> Analyzing with Gemini AI...
+                              <Loader2 size={18} className="animate-spin" /> {classificationProgress || 'Analyzing with Gemini AI...'}
                             </>
                           ) : (
                             <>
@@ -1149,25 +1200,147 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                         disabled={isClassifying}
                         style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                       >
-                        {isClassifying ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                        Analyze Queue
+                        {isClassifying ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" /> {classificationProgress || 'Analyzing...'}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={14} /> Analyze Queue
+                          </>
+                        )}
                       </button>
                     </div>
                   )}
 
+                  {/* NOTIFICATION BANNER & FILTER: WHICH FILES NEED CLASSIFICATION */}
+                  {(() => {
+                    const needsReviewCount = classifiedItems.filter(item => 
+                      item.needsReview || 
+                      item.confidence < 0.75 || 
+                      (item.unfilledFields && item.unfilledFields.length > 0) ||
+                      (!item.fields?.documentNumber && !item.fields?.referenceNumber)
+                    ).length;
+                    const readyCount = classifiedItems.length - needsReviewCount;
+
+                    return (
+                      <div style={{
+                        marginBottom: '1.25rem',
+                        padding: '1rem 1.25rem',
+                        backgroundColor: needsReviewCount > 0 ? '#fffbeb' : '#f0fdf4',
+                        border: `1px solid ${needsReviewCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <div style={{ color: needsReviewCount > 0 ? '#d97706' : '#16a34a' }}>
+                            {needsReviewCount > 0 ? <AlertCircle size={22} /> : <CheckCircle2 size={22} />}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.925rem', color: needsReviewCount > 0 ? '#92400e' : '#166534' }}>
+                              {needsReviewCount > 0
+                                ? `${needsReviewCount} of ${classifiedItems.length} ${classifiedItems.length === 1 ? 'file needs' : 'files need'} your classification or missing fields`
+                                : `All ${classifiedItems.length} documents have been successfully categorized`
+                              }
+                            </div>
+                            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: needsReviewCount > 0 ? '#b45309' : '#15803d' }}>
+                              {needsReviewCount > 0
+                                ? 'AI extracted what it could read and left missing fields blank for your review. Please check amber highlighted items below.'
+                                : 'Extracted metadata is verified and ready to be placed into project sections.'
+                              }
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Filter Buttons */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => setReviewFilter('all')}
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              backgroundColor: reviewFilter === 'all' ? '#0284c7' : '#ffffff',
+                              color: reviewFilter === 'all' ? '#ffffff' : '#334155',
+                              border: '1px solid #cbd5e1'
+                            }}
+                          >
+                            All Files ({classifiedItems.length})
+                          </button>
+                          {needsReviewCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setReviewFilter('needs_review')}
+                              style={{
+                                padding: '0.35rem 0.65rem',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                backgroundColor: reviewFilter === 'needs_review' ? '#d97706' : '#ffffff',
+                                color: reviewFilter === 'needs_review' ? '#ffffff' : '#b45309',
+                                border: '1px solid #fde68a'
+                              }}
+                            >
+                              ⚠️ Needs Classification ({needsReviewCount})
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setReviewFilter('ready')}
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              backgroundColor: reviewFilter === 'ready' ? '#16a34a' : '#ffffff',
+                              color: reviewFilter === 'ready' ? '#ffffff' : '#15803d',
+                              border: '1px solid #bbf7d0'
+                            }}
+                          >
+                            ✅ Complete ({readyCount})
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Review Cards */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {classifiedItems.map((item) => {
+                    {classifiedItems
+                      .filter(item => {
+                        if (reviewFilter === 'all') return true;
+                        const isNeeding = item.needsReview || 
+                                          item.confidence < 0.75 || 
+                                          (item.unfilledFields && item.unfilledFields.length > 0) ||
+                                          (!item.fields?.documentNumber && !item.fields?.referenceNumber);
+                        if (reviewFilter === 'needs_review') return isNeeding;
+                        if (reviewFilter === 'ready') return !isNeeding;
+                        return true;
+                      })
+                      .map((item) => {
                       const catConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.documents;
+                      const isNeedingReview = item.needsReview || 
+                                              item.confidence < 0.75 || 
+                                              (item.unfilledFields && item.unfilledFields.length > 0) ||
+                                              (!item.fields?.documentNumber && !item.fields?.referenceNumber);
                       return (
                         <div
                           key={item.tempId}
                           style={{
-                            border: `1px solid ${catConfig.borderColor}`,
+                            border: `1.5px solid ${isNeedingReview ? '#f59e0b' : catConfig.borderColor}`,
                             borderRadius: '12px',
                             backgroundColor: '#ffffff',
                             overflow: 'hidden',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                            boxShadow: isNeedingReview ? '0 2px 6px rgba(245, 158, 11, 0.15)' : '0 1px 3px rgba(0,0,0,0.05)'
                           }}
                         >
                           {/* Card Top Banner */}
@@ -1207,8 +1380,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                                   style={{
                                     padding: '0.25rem 0.5rem',
                                     borderRadius: '6px',
-                                    border: '1px solid #cbd5e1',
-                                    backgroundColor: '#ffffff',
+                                    border: isNeedingReview ? '2px solid #f59e0b' : '1px solid #cbd5e1',
+                                    backgroundColor: isNeedingReview ? '#fffdf5' : '#ffffff',
                                     fontSize: '0.85rem',
                                     fontWeight: 600,
                                     color: catConfig.color
@@ -1222,18 +1395,32 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                                 </select>
                               </div>
 
-                              {/* Confidence badge */}
-                              <span style={{
-                                fontSize: '0.75rem',
-                                padding: '0.2rem 0.5rem',
-                                borderRadius: '999px',
-                                backgroundColor: '#ffffff',
-                                color: catConfig.color,
-                                border: `1px solid ${catConfig.borderColor}`,
-                                fontWeight: 600
-                              }}>
-                                {Math.round(item.confidence * 100)}% Confidence
-                              </span>
+                              {/* Confidence / Review status badge */}
+                              {isNeedingReview ? (
+                                <span style={{
+                                  fontSize: '0.72rem',
+                                  padding: '0.2rem 0.55rem',
+                                  borderRadius: '999px',
+                                  backgroundColor: '#fef3c7',
+                                  color: '#b45309',
+                                  border: '1px solid #fde68a',
+                                  fontWeight: 700
+                                }}>
+                                  ⚠️ Needs Review
+                                </span>
+                              ) : (
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: '999px',
+                                  backgroundColor: '#ffffff',
+                                  color: catConfig.color,
+                                  border: `1px solid ${catConfig.borderColor}`,
+                                  fontWeight: 600
+                                }}>
+                                  {Math.round(item.confidence * 100)}% Confidence
+                                </span>
+                              )}
 
                               <button
                                 type="button"
@@ -1254,19 +1441,25 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                             </div>
                           </div>
 
-                          {/* Reasoning note */}
+                          {/* Alert or Reasoning note */}
                           <div style={{
-                            padding: '0.5rem 1.25rem',
-                            backgroundColor: '#f8fafc',
-                            borderBottom: '1px solid #f1f5f9',
+                            padding: '0.6rem 1.25rem',
+                            backgroundColor: isNeedingReview ? '#fffbeb' : '#f8fafc',
+                            borderBottom: `1px solid ${isNeedingReview ? '#fde68a' : '#f1f5f9'}`,
                             fontSize: '0.8rem',
-                            color: '#64748b',
+                            color: isNeedingReview ? '#b45309' : '#64748b',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem'
                           }}>
-                            <Sparkles size={14} color="#6366f1" />
-                            <span><strong>AI Detection:</strong> {item.reasoning}</span>
+                            {isNeedingReview ? (
+                              <AlertCircle size={15} color="#d97706" style={{ flexShrink: 0 }} />
+                            ) : (
+                              <Sparkles size={14} color="#6366f1" style={{ flexShrink: 0 }} />
+                            )}
+                            <span>
+                              <strong>{isNeedingReview ? 'Needs Review:' : 'AI Detection:'}</strong> {item.reasoning}
+                            </span>
                           </div>
 
                           {/* Editable Fields Form */}
