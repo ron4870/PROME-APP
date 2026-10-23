@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal, Sparkles, Edit2, Trash2, Eye } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal, Sparkles, Edit2, Trash2, Eye, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
@@ -100,6 +100,7 @@ export const ProjectWorkspace: React.FC = () => {
   const [dailyReportFilter, setDailyReportFilter] = useState('');
   const [paymentInvoiceFilter, setPaymentInvoiceFilter] = useState('');
   const [variationFilter, setVariationFilter] = useState('');
+  const [riskFilter, setRiskFilter] = useState('');
   const [viewingDoc, setViewingDoc] = useState<any | null>(null);
   const [isAIDocUploadOpen, setIsAIDocUploadOpen] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
@@ -838,13 +839,26 @@ export const ProjectWorkspace: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Variations & Claims</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Filter variations by date, title, ref, status (e.g. '2026-10 Approved')..." 
-                    value={variationFilter} 
-                    onChange={(e) => setVariationFilter(e.target.value)} 
-                    style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '360px' }} 
-                  />
+                  <div style={{ position: 'relative', width: '360px' }}>
+                    <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input 
+                      type="text" 
+                      placeholder="Filter variations by date, title, ref, status..." 
+                      value={variationFilter} 
+                      onChange={(e) => setVariationFilter(e.target.value)} 
+                      style={{ width: '100%', padding: '0.5rem 1rem 0.5rem 2.25rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }} 
+                    />
+                    {variationFilter && (
+                      <button 
+                        type="button" 
+                        onClick={() => setVariationFilter('')}
+                        style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}
+                        title="Clear filter"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                   <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Variation/Claim', endpoint: `/api/projects/${id}/variations`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'title', label: 'Variation Title', type: 'text', required: true}, {name: 'costImpact', label: 'Cost Impact', type: 'number'}, {name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number'}, {name: 'file', label: 'Attach File', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Variation</button>
                 </div>
               </div>
@@ -863,119 +877,134 @@ export const ProjectWorkspace: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filterItemsMultiField(variations || [], variationFilter, (vo: any) => [
-                      vo.date,
-                      vo.referenceNumber,
-                      vo.voNumber,
-                      vo.ref,
-                      vo.title,
-                      vo.costImpact,
-                      vo.scheduleImpactDays,
-                      vo.scheduleImpact,
-                      vo.status,
-                      vo.description
-                    ]).map((vo: any) => {
-                      let dlLink = vo.fileUrl;
-                      if (vo.fileUrl) {
-                        try { const parsed = JSON.parse(vo.fileUrl); if (parsed && parsed.download) dlLink = parsed.download; } catch(e) {}
+                    {(() => {
+                      const filteredVariations = filterItemsMultiField(variations || [], variationFilter, (vo: any) => [
+                        vo.date,
+                        vo.referenceNumber,
+                        vo.voNumber,
+                        vo.ref,
+                        vo.title,
+                        vo.costImpact,
+                        vo.scheduleImpactDays,
+                        vo.scheduleImpact,
+                        vo.status,
+                        vo.description
+                      ]);
+
+                      if (!variations || variations.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No variations or claims logged yet.</td>
+                          </tr>
+                        );
                       }
-                      return (
-                      <tr key={vo.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{vo.referenceNumber || vo.voNumber || vo.ref}</td>
-                        <td style={{ padding: '1rem', fontWeight: 500 }}>{vo.title}</td>
-                        <td style={{ padding: '1rem' }}>${vo.costImpact?.toLocaleString() || 0}</td>
-                        <td style={{ padding: '1rem' }}>+{vo.scheduleImpactDays || vo.scheduleImpact || 0} Days</td>
-                        <td style={{ padding: '1rem' }}>
-                          <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fef3c7', color: '#b45309' }}>{vo.status || 'Under Review'}</span>
-                        </td>
-                        <td style={{ padding: '1rem', color: '#64748b' }}>{vo.date ? new Date(vo.date).toLocaleDateString() : ''}</td>
-                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                          {vo.fileUrl ? (
-                            <button
-                              type="button"
-                              onClick={() => setViewingDoc({
-                                title: vo.title || vo.referenceNumber || 'Variation Order',
-                                fileUrl: vo.fileUrl,
-                                documentNumber: vo.referenceNumber || vo.voNumber || vo.ref || '',
-                                date: vo.date ? new Date(vo.date).toLocaleDateString() : '',
-                                categoryLabel: 'Variations & Claims'
-                              })}
-                              title="View document in window"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '0.4rem 0.65rem',
-                                backgroundColor: '#f0f9ff',
-                                color: '#0284c7',
-                                border: '1px solid #bae6fd',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#0284c7';
-                                e.currentTarget.style.color = '#ffffff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f0f9ff';
-                                e.currentTarget.style.color = '#0284c7';
-                              }}
-                            >
-                              <Eye size={15} /> View
-                            </button>
-                          ) : (
-                            <span style={{ color: '#cbd5e1' }}>-</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            {dlLink && (
-                              <a href={dlLink} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
-                                <Download size={15} /> Download
-                              </a>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setModalConfig({
-                                title: 'Edit Variation / Claim',
-                                endpoint: `/api/projects/${id}/variations/${vo.id}`,
-                                method: 'PUT',
-                                fields: [
-                                  { name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true, defaultValue: vo.referenceNumber || '' },
-                                  { name: 'title', label: 'Variation Title', type: 'text', required: true, defaultValue: vo.title || '' },
-                                  { name: 'costImpact', label: 'Cost Impact', type: 'number', defaultValue: vo.costImpact || 0 },
-                                  { name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number', defaultValue: vo.scheduleImpactDays || vo.scheduleImpact || 0 },
-                                  { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: vo.date ? new Date(vo.date).toISOString().split('T')[0] : '' },
-                                  { name: 'status', label: 'Status', type: 'select', options: ['Proposed', 'Under Review', 'Approved', 'Rejected'], defaultValue: vo.status || 'Proposed' },
-                                  { name: 'description', label: 'Description', type: 'textarea', defaultValue: vo.description || '' }
-                                ]
-                              })}
-                              style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
-                            >
-                              <Edit2 size={15} /> Edit
-                            </button>
-                            {canEdit && (
+
+                      if (filteredVariations.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No variations found matching your filter.</td>
+                          </tr>
+                        );
+                      }
+
+                      return filteredVariations.map((vo: any) => {
+                        let dlLink = vo.fileUrl;
+                        if (vo.fileUrl) {
+                          try { const parsed = JSON.parse(vo.fileUrl); if (parsed && parsed.download) dlLink = parsed.download; } catch(e) {}
+                        }
+                        return (
+                        <tr key={vo.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{vo.referenceNumber || vo.voNumber || vo.ref}</td>
+                          <td style={{ padding: '1rem', fontWeight: 500 }}>{vo.title}</td>
+                          <td style={{ padding: '1rem' }}>${vo.costImpact?.toLocaleString() || 0}</td>
+                          <td style={{ padding: '1rem' }}>+{vo.scheduleImpactDays || vo.scheduleImpact || 0} Days</td>
+                          <td style={{ padding: '1rem' }}>
+                            <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fef3c7', color: '#b45309' }}>{vo.status || 'Under Review'}</span>
+                          </td>
+                          <td style={{ padding: '1rem', color: '#64748b' }}>{vo.date ? new Date(vo.date).toLocaleDateString() : ''}</td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {vo.fileUrl ? (
                               <button
                                 type="button"
-                                onClick={() => handleDeleteItem(`/api/projects/${id}/variations/${vo.id}`, 'variation')}
-                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
-                                title="Delete variation"
+                                onClick={() => setViewingDoc({
+                                  title: vo.title || vo.referenceNumber || 'Variation Order',
+                                  fileUrl: vo.fileUrl,
+                                  documentNumber: vo.referenceNumber || vo.voNumber || vo.ref || '',
+                                  date: vo.date ? new Date(vo.date).toLocaleDateString() : '',
+                                  categoryLabel: 'Variations & Claims'
+                                })}
+                                title="View document in window"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '0.4rem 0.65rem',
+                                  backgroundColor: '#f0f9ff',
+                                  color: '#0284c7',
+                                  border: '1px solid #bae6fd',
+                                  borderRadius: '6px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#0284c7';
+                                  e.currentTarget.style.color = '#ffffff';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                  e.currentTarget.style.color = '#0284c7';
+                                }}
                               >
-                                <Trash2 size={15} />
+                                <Eye size={15} /> View
                               </button>
+                            ) : (
+                              <span style={{ color: '#cbd5e1' }}>-</span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    )})}
-                    {(!variations || variations.length === 0) && (
-                      <tr>
-                        <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No variations or claims logged yet.</td>
-                      </tr>
-                    )}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              {dlLink && (
+                                <a href={dlLink} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                  <Download size={15} /> Download
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setModalConfig({
+                                  title: 'Edit Variation / Claim',
+                                  endpoint: `/api/projects/${id}/variations/${vo.id}`,
+                                  method: 'PUT',
+                                  fields: [
+                                    { name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true, defaultValue: vo.referenceNumber || '' },
+                                    { name: 'title', label: 'Variation Title', type: 'text', required: true, defaultValue: vo.title || '' },
+                                    { name: 'costImpact', label: 'Cost Impact', type: 'number', defaultValue: vo.costImpact || 0 },
+                                    { name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number', defaultValue: vo.scheduleImpactDays || vo.scheduleImpact || 0 },
+                                    { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: vo.date ? new Date(vo.date).toISOString().split('T')[0] : '' },
+                                    { name: 'status', label: 'Status', type: 'select', options: ['Proposed', 'Under Review', 'Approved', 'Rejected'], defaultValue: vo.status || 'Proposed' },
+                                    { name: 'description', label: 'Description', type: 'textarea', defaultValue: vo.description || '' }
+                                  ]
+                                })}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                              >
+                                <Edit2 size={15} /> Edit
+                              </button>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem(`/api/projects/${id}/variations/${vo.id}`, 'variation')}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                  title="Delete variation"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )})}
+                    )()}
                   </tbody>
                 </table>
               </div>
@@ -2012,47 +2041,97 @@ export const ProjectWorkspace: React.FC = () => {
         {/* RISKS TAB */}
         {activeTab === 'risks' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Risk Register</h2>
-              <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Project Risk', endpoint: `/api/projects/${id}/risks`, fields: [{name: 'title', label: 'Risk Title', type: 'text', required: true}, {name: 'type', label: 'Type', type: 'select', options: ['Risk', 'Opportunity'], required: true}, {name: 'category', label: 'Category', type: 'select', options: ['Operational', 'Strategic', 'Financial', 'Compliance', 'Project', 'HSE'], required: true}, {name: 'description', label: 'Description', type: 'textarea', required: true}, {name: 'likelihood', label: 'Likelihood (1-5)', type: 'number', required: true}, {name: 'impact', label: 'Impact (1-5)', type: 'number', required: true}, {name: 'mitigationPlan', label: 'Mitigation Plan', type: 'textarea', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Risk</button>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', width: '360px' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input 
+                    type="text" 
+                    placeholder="Filter risks by title, category, status, mitigation..." 
+                    value={riskFilter} 
+                    onChange={(e) => setRiskFilter(e.target.value)} 
+                    style={{ width: '100%', padding: '0.5rem 1rem 0.5rem 2.25rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }} 
+                  />
+                  {riskFilter && (
+                    <button 
+                      type="button" 
+                      onClick={() => setRiskFilter('')}
+                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}
+                      title="Clear filter"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Project Risk', endpoint: `/api/projects/${id}/risks`, fields: [{name: 'title', label: 'Risk Title', type: 'text', required: true}, {name: 'type', label: 'Type', type: 'select', options: ['Risk', 'Opportunity'], required: true}, {name: 'category', label: 'Category', type: 'select', options: ['Operational', 'Strategic', 'Financial', 'Compliance', 'Project', 'HSE'], required: true}, {name: 'description', label: 'Description', type: 'textarea', required: true}, {name: 'likelihood', label: 'Likelihood (1-5)', type: 'number', required: true}, {name: 'impact', label: 'Impact (1-5)', type: 'number', required: true}, {name: 'mitigationPlan', label: 'Mitigation Plan', type: 'textarea', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Risk</button>
+              </div>
             </div>
             
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                  <th style={{ padding: '1rem' }}>Title</th>
-                  <th style={{ padding: '1rem' }}>Category</th>
-                  <th style={{ padding: '1rem' }}>Likelihood</th>
-                  <th style={{ padding: '1rem' }}>Impact</th>
-                  <th style={{ padding: '1rem' }}>Score</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(!risks || risks.length === 0) ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No risks logged yet.</td>
+            <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '1rem' }}>Title</th>
+                    <th style={{ padding: '1rem' }}>Category</th>
+                    <th style={{ padding: '1rem' }}>Likelihood</th>
+                    <th style={{ padding: '1rem' }}>Impact</th>
+                    <th style={{ padding: '1rem' }}>Score</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
                   </tr>
-                ) : risks.map((risk: any) => (
-                  <tr key={risk.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '1rem', fontWeight: 500 }}>{risk.title}</td>
-                    <td style={{ padding: '1rem' }}>{risk.category}</td>
-                    <td style={{ padding: '1rem' }}>{risk.likelihood}</td>
-                    <td style={{ padding: '1rem' }}>{risk.impact}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ 
-                        padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', fontWeight: 600,
-                        backgroundColor: (risk.score || 0) >= 15 ? '#fee2e2' : (risk.score || 0) >= 10 ? '#fef3c7' : '#dcfce7',
-                        color: (risk.score || 0) >= 15 ? '#991b1b' : (risk.score || 0) >= 10 ? '#b45309' : '#166534'
-                      }}>{risk.score || '-'}</span>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#f1f5f9', color: '#334155' }}>{risk.status || 'Identified'}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const filteredRisks = filterItemsMultiField(risks || [], riskFilter, (risk: any) => [
+                      risk.title,
+                      risk.category,
+                      risk.type,
+                      risk.status,
+                      risk.description,
+                      risk.mitigationPlan,
+                      risk.likelihood,
+                      risk.impact,
+                      risk.score
+                    ]);
+
+                    if (!risks || risks.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No risks logged yet.</td>
+                        </tr>
+                      );
+                    }
+
+                    if (filteredRisks.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No risks found matching your filter.</td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredRisks.map((risk: any) => (
+                      <tr key={risk.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '1rem', fontWeight: 500 }}>{risk.title}</td>
+                        <td style={{ padding: '1rem' }}>{risk.category}</td>
+                        <td style={{ padding: '1rem' }}>{risk.likelihood}</td>
+                        <td style={{ padding: '1rem' }}>{risk.impact}</td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{ 
+                            padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', fontWeight: 600,
+                            backgroundColor: (risk.score || 0) >= 15 ? '#fee2e2' : (risk.score || 0) >= 10 ? '#fef3c7' : '#dcfce7',
+                            color: (risk.score || 0) >= 15 ? '#991b1b' : (risk.score || 0) >= 10 ? '#b45309' : '#166534'
+                          }}>{risk.score || '-'}</span>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#f1f5f9', color: '#334155' }}>{risk.status || 'Identified'}</span>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
