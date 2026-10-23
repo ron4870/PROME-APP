@@ -308,9 +308,9 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
     setClassifiedItems(prev => prev.map(item => {
       if (item.tempId !== tempId) return item;
       
-      // Update category and reset/adapt fields sensibly
-      const todayStr = new Date().toISOString().split('T')[0];
+      // Update category and preserve document date across all tabs
       let newFields = { ...item.fields };
+      const preservedDocDate = newFields.documentDate || newFields.date || newFields.issueDate || '';
 
       if (newCategory === 'correspondence') {
         newFields = {
@@ -320,7 +320,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
           subject: newFields.subject || newFields.title || item.originalName.replace(/\.[^/.]+$/, ''),
           sender: newFields.sender || 'Contractor',
           recipient: newFields.recipient || 'Consultant',
-          date: newFields.date || newFields.issueDate || todayStr
+          documentDate: preservedDocDate,
+          date: preservedDocDate
         };
       } else if (newCategory === 'documents') {
         newFields = {
@@ -329,11 +330,13 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
           type: newFields.type || 'Report',
           revision: newFields.revision || '1.0',
           status: newFields.status || 'Draft',
-          issueDate: newFields.issueDate || newFields.date || todayStr
+          documentDate: preservedDocDate,
+          issueDate: preservedDocDate
         };
       } else if (newCategory === 'daily_reports') {
         newFields = {
-          date: newFields.date || todayStr,
+          documentDate: preservedDocDate,
+          date: preservedDocDate,
           location: newFields.location || '',
           weatherCondition: newFields.weatherCondition || 'Fair',
           manpowerCount: newFields.manpowerCount || 0,
@@ -347,7 +350,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
           description: newFields.description || '',
           costImpact: newFields.costImpact || 0,
           scheduleImpactDays: newFields.scheduleImpactDays || 0,
-          date: newFields.date || todayStr,
+          documentDate: preservedDocDate,
+          date: preservedDocDate,
           status: 'Proposed'
         };
       } else if (newCategory === 'payment_invoices') {
@@ -357,7 +361,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
           type: newFields.type || 'Consultant Invoice',
           revision: newFields.revision || '1.0',
           status: newFields.status || 'Submitted',
-          issueDate: newFields.issueDate || todayStr
+          documentDate: preservedDocDate,
+          issueDate: preservedDocDate
         };
       }
 
@@ -373,12 +378,24 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
   const handleFieldChange = (tempId: string, fieldName: string, value: any) => {
     setClassifiedItems(prev => prev.map(item => {
       if (item.tempId !== tempId) return item;
+      const updatedFields: Record<string, any> = {
+        ...item.fields,
+        [fieldName]: value
+      };
+      // Keep documentDate synchronized with date/issueDate
+      if (fieldName === 'documentDate') {
+        if ('date' in updatedFields || item.category === 'correspondence' || item.category === 'daily_reports' || item.category === 'variations') {
+          updatedFields.date = value;
+        }
+        if ('issueDate' in updatedFields || item.category === 'documents' || item.category === 'payment_invoices') {
+          updatedFields.issueDate = value;
+        }
+      } else if (fieldName === 'date' || fieldName === 'issueDate') {
+        updatedFields.documentDate = value;
+      }
       return {
         ...item,
-        fields: {
-          ...item.fields,
-          [fieldName]: value
-        }
+        fields: updatedFields
       };
     }));
   };
@@ -1219,7 +1236,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                       item.needsReview || 
                       item.confidence < 0.75 || 
                       (item.unfilledFields && item.unfilledFields.length > 0) ||
-                      (!item.fields?.documentNumber && !item.fields?.referenceNumber)
+                      (!item.fields?.documentNumber && !item.fields?.referenceNumber) ||
+                      (!item.fields?.documentDate && !item.fields?.date && !item.fields?.issueDate)
                     ).length;
                     const readyCount = classifiedItems.length - needsReviewCount;
 
@@ -1321,7 +1339,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                         const isNeeding = item.needsReview || 
                                           item.confidence < 0.75 || 
                                           (item.unfilledFields && item.unfilledFields.length > 0) ||
-                                          (!item.fields?.documentNumber && !item.fields?.referenceNumber);
+                                          (!item.fields?.documentNumber && !item.fields?.referenceNumber) ||
+                                          (!item.fields?.documentDate && !item.fields?.date && !item.fields?.issueDate);
                         if (reviewFilter === 'needs_review') return isNeeding;
                         if (reviewFilter === 'ready') return !isNeeding;
                         return true;
@@ -1331,7 +1350,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                       const isNeedingReview = item.needsReview || 
                                               item.confidence < 0.75 || 
                                               (item.unfilledFields && item.unfilledFields.length > 0) ||
-                                              (!item.fields?.documentNumber && !item.fields?.referenceNumber);
+                                              (!item.fields?.documentNumber && !item.fields?.referenceNumber) ||
+                                              (!item.fields?.documentDate && !item.fields?.date && !item.fields?.issueDate);
                       return (
                         <div
                           key={item.tempId}
@@ -1522,13 +1542,23 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
 
                                 <div>
                                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                                    Date
+                                    Date of Document {(!item.fields.documentDate && !item.fields.date) && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
                                   </label>
                                   <input 
                                     type="date" 
-                                    value={item.fields.date || ''} 
-                                    onChange={(e) => handleFieldChange(item.tempId, 'date', e.target.value)}
-                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                    value={item.fields.documentDate || item.fields.date || ''} 
+                                    onChange={(e) => {
+                                      handleFieldChange(item.tempId, 'documentDate', e.target.value);
+                                      handleFieldChange(item.tempId, 'date', e.target.value);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: (!item.fields.documentDate && !item.fields.date) ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: (!item.fields.documentDate && !item.fields.date) ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
                                   />
                                 </div>
 
@@ -1690,13 +1720,23 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
 
                                 <div>
                                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                                    Issue Date
+                                    Date of Document / Issue Date {(!item.fields.documentDate && !item.fields.issueDate) && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
                                   </label>
                                   <input 
                                     type="date" 
-                                    value={item.fields.issueDate || ''} 
-                                    onChange={(e) => handleFieldChange(item.tempId, 'issueDate', e.target.value)}
-                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                    value={item.fields.documentDate || item.fields.issueDate || ''} 
+                                    onChange={(e) => {
+                                      handleFieldChange(item.tempId, 'documentDate', e.target.value);
+                                      handleFieldChange(item.tempId, 'issueDate', e.target.value);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: (!item.fields.documentDate && !item.fields.issueDate) ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: (!item.fields.documentDate && !item.fields.issueDate) ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
                                   />
                                 </div>
                               </div>
@@ -1707,13 +1747,23 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                                 <div>
                                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                                    Date
+                                    Date of Report {(!item.fields.documentDate && !item.fields.date) && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
                                   </label>
                                   <input 
                                     type="date" 
-                                    value={item.fields.date || ''} 
-                                    onChange={(e) => handleFieldChange(item.tempId, 'date', e.target.value)}
-                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                    value={item.fields.documentDate || item.fields.date || ''} 
+                                    onChange={(e) => {
+                                      handleFieldChange(item.tempId, 'documentDate', e.target.value);
+                                      handleFieldChange(item.tempId, 'date', e.target.value);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: (!item.fields.documentDate && !item.fields.date) ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: (!item.fields.documentDate && !item.fields.date) ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
                                   />
                                 </div>
 
@@ -1882,13 +1932,23 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
 
                                 <div>
                                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                                    Date
+                                    Date of Document {(!item.fields.documentDate && !item.fields.date) && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
                                   </label>
                                   <input 
                                     type="date" 
-                                    value={item.fields.date || ''} 
-                                    onChange={(e) => handleFieldChange(item.tempId, 'date', e.target.value)}
-                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                    value={item.fields.documentDate || item.fields.date || ''} 
+                                    onChange={(e) => {
+                                      handleFieldChange(item.tempId, 'documentDate', e.target.value);
+                                      handleFieldChange(item.tempId, 'date', e.target.value);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: (!item.fields.documentDate && !item.fields.date) ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: (!item.fields.documentDate && !item.fields.date) ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
                                   />
                                 </div>
 
@@ -1985,13 +2045,23 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
 
                                 <div>
                                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                                    Issue Date
+                                    Date of Document / Issue Date {(!item.fields.documentDate && !item.fields.issueDate) && <span style={{ color: '#d97706' }}>* (Unfilled)</span>}
                                   </label>
                                   <input 
                                     type="date" 
-                                    value={item.fields.issueDate || ''} 
-                                    onChange={(e) => handleFieldChange(item.tempId, 'issueDate', e.target.value)}
-                                    style={{ width: '100%', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                                    value={item.fields.documentDate || item.fields.issueDate || ''} 
+                                    onChange={(e) => {
+                                      handleFieldChange(item.tempId, 'documentDate', e.target.value);
+                                      handleFieldChange(item.tempId, 'issueDate', e.target.value);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.45rem 0.65rem',
+                                      borderRadius: '6px',
+                                      border: (!item.fields.documentDate && !item.fields.issueDate) ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                      backgroundColor: (!item.fields.documentDate && !item.fields.issueDate) ? '#fffbeb' : '#ffffff',
+                                      fontSize: '0.875rem'
+                                    }}
                                   />
                                 </div>
                               </div>

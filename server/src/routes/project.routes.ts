@@ -1747,6 +1747,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
           finalRef = `${baseRef}-${Math.floor(Math.random() * 1000)}`;
         }
 
+        const docDateStr = cleanFields.documentDate || cleanFields.date;
         const record = await prisma.projectCorrespondence.create({
           data: {
             projectId,
@@ -1756,14 +1757,15 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
             subject: cleanFields.subject || originalName || 'Untitled Correspondence',
             sender: cleanFields.sender || 'Contractor',
             recipient: cleanFields.recipient || 'Consultant',
-            date: cleanFields.date ? new Date(cleanFields.date) : new Date(),
+            date: docDateStr ? new Date(docDateStr) : new Date(),
             fileUrl: fileUrl || null
           }
         });
         savedResults.push({ id: record.id, category, title: record.subject, ref: record.referenceNumber });
 
       } else if (category === 'daily_reports') {
-        const reportDate = cleanFields.date ? new Date(cleanFields.date) : new Date();
+        const docDateStr = cleanFields.documentDate || cleanFields.date;
+        const reportDate = docDateStr ? new Date(docDateStr) : new Date();
         const existing = await prisma.projectDailyReport.findUnique({
           where: {
             projectId_date: {
@@ -1785,7 +1787,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
               fileUrl: fileUrl || existing.fileUrl
             }
           });
-          savedResults.push({ id: updated.id, category, title: `Daily Report (${cleanFields.date || 'Today'})`, updated: true });
+          savedResults.push({ id: updated.id, category, title: `Daily Report (${docDateStr || 'Today'})`, updated: true });
         } else {
           const record = await prisma.projectDailyReport.create({
             data: {
@@ -1800,11 +1802,12 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
               reportedById: userId
             }
           });
-          savedResults.push({ id: record.id, category, title: `Daily Report (${cleanFields.date || 'Today'})` });
+          savedResults.push({ id: record.id, category, title: `Daily Report (${docDateStr || 'Today'})` });
         }
 
       } else if (category === 'variations') {
         const baseRef = cleanFields.referenceNumber || `VO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const docDateStr = cleanFields.documentDate || cleanFields.date;
         const record = await prisma.projectVariationOrder.create({
           data: {
             projectId,
@@ -1813,7 +1816,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
             description: cleanFields.description || '',
             costImpact: cleanFields.costImpact ? parseFloat(cleanFields.costImpact) : 0,
             scheduleImpact: cleanFields.scheduleImpactDays ? parseInt(cleanFields.scheduleImpactDays) : 0,
-            date: cleanFields.date ? new Date(cleanFields.date) : new Date(),
+            date: docDateStr ? new Date(docDateStr) : new Date(),
             status: cleanFields.status || 'Proposed',
             fileUrl: fileUrl || null
           }
@@ -1828,6 +1831,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
           finalDoc = `${baseDoc}-${Math.floor(Math.random() * 1000)}`;
         }
 
+        const docDateStr = cleanFields.documentDate || cleanFields.issueDate;
         const record = await prisma.projectPaymentInvoice.create({
           data: {
             projectId,
@@ -1836,7 +1840,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
             type: cleanFields.type || 'Consultant Invoice',
             revision: cleanFields.revision || '1.0',
             status: cleanFields.status || 'Submitted',
-            issueDate: cleanFields.issueDate ? new Date(cleanFields.issueDate) : new Date(),
+            issueDate: docDateStr ? new Date(docDateStr) : new Date(),
             uploadedById: userId,
             fileUrl: fileUrl || null
           }
@@ -1852,6 +1856,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
           finalDoc = `${baseDoc}-${Math.floor(Math.random() * 1000)}`;
         }
 
+        const docDateStr = cleanFields.documentDate || cleanFields.issueDate;
         const record = await prisma.projectDocument.create({
           data: {
             projectId,
@@ -1860,7 +1865,7 @@ router.post('/:id/bulk-save-classified', authenticate, checkProjectAccess(), asy
             type: cleanFields.type || 'General',
             revision: cleanFields.revision || '1.0',
             status: cleanFields.status || 'Draft',
-            issueDate: cleanFields.issueDate ? new Date(cleanFields.issueDate) : new Date(),
+            issueDate: docDateStr ? new Date(docDateStr) : new Date(),
             uploadedById: userId,
             fileUrl: fileUrl || null
           }

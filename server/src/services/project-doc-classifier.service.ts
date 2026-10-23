@@ -5,6 +5,9 @@ import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 export type ProjectDocCategory = 'correspondence' | 'documents' | 'daily_reports' | 'variations' | 'payment_invoices';
 
 export interface ClassifiedDocFields {
+  // Document Date extracted from the letter, report, drawing, or invoice
+  documentDate?: string;
+
   // Common / Documents
   documentNumber?: string;
   title?: string;
@@ -89,6 +92,122 @@ async function extractTextFromBuffer(buffer: Buffer, mimeType: string, filename:
 }
 
 /**
+ * Normalizes any date string into standard ISO format (YYYY-MM-DD).
+ */
+export function parseDateStringToISO(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const months: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+  };
+
+  // Pattern 1: DD Month YYYY (e.g. 23rd October 2026, 14-Oct-2025, 5 May 2024)
+  const m1 = trimmed.match(/(\d{1,2})(?:st|nd|rd|th)?[\s\/\.-]+([a-zA-Z]{3,})[\s\/\.-]+(\d{4})/);
+  if (m1) {
+    const day = m1[1].padStart(2, '0');
+    const mStr = m1[2].toLowerCase().slice(0, 3);
+    const mNum = months[mStr];
+    if (mNum) return `${m1[3]}-${String(mNum).padStart(2, '0')}-${day}`;
+  }
+
+  // Pattern 2: Month DD, YYYY (e.g. October 23, 2026 or Oct. 23, 2026)
+  const m2 = trimmed.match(/([a-zA-Z]{3,})[\s\/\.-]+(\d{1,2})(?:st|nd|rd|th)?[\s,]+(\d{4})/);
+  if (m2) {
+    const day = m2[2].padStart(2, '0');
+    const mStr = m2[1].toLowerCase().slice(0, 3);
+    const mNum = months[mStr];
+    if (mNum) return `${m2[3]}-${String(mNum).padStart(2, '0')}-${day}`;
+  }
+
+  // Pattern 3: DD/MM/YYYY or DD-MM-YYYY (e.g. 23/10/2026)
+  const m3 = trimmed.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})/);
+  if (m3) {
+    const p1 = parseInt(m3[1], 10);
+    const p2 = parseInt(m3[2], 10);
+    const year = m3[3];
+    if (p1 > 12 && p2 <= 12) {
+      // First number is day, second is month
+      return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+    } else if (p2 <= 12 && p1 <= 31) {
+      // Standard UK/Commonwealth DD/MM/YYYY format
+      return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+    }
+  }
+
+  // Pattern 4: YYYY/MM/DD or YYYY.MM.DD
+  const m4 = trimmed.match(/(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})/);
+  if (m4) {
+    const year = m4[1];
+    const month = m4[2].padStart(2, '0');
+    const day = m4[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  const d = new Date(trimmed.replace(/(\d+)(st|nd|rd|th)/gi, '$1'));
+  if (!isNaN(d.getTime()) && d.getFullYear() > 1990 && d.getFullYear() < 2100) {
+    return d.toISOString().split('T')[0];
+  }
+  return null;
+}
+
+/**
+ * Searches the first 4000 characters of document text or filename to extract the written document date.
+ */
+export function extractDateFromDocumentText(text: string, filename: string = ''): string | null {
+  const snippet = (text || '').slice(0, 4000);
+
+  // 1. Look for explicit Date / Dated prefix in text (e.g. Date: 23rd Oct 2026, Dated: 15/09/2026)
+  const prefixRegex = /(?:date|dated|date of report|report date|inspection date|meeting date|invoice date|effective date)[:\s]+([^\n\r;,]{5,35})/i;
+  const matchPrefix = snippet.match(prefixRegex);
+  if (matchPrefix) {
+    const parsed = parseDateStringToISO(matchPrefix[1]);
+    if (parsed) return parsed;
+  }
+
+  // 2. Look for standalone Month DD, YYYY or DD Month YYYY in text
+  const monthNames = '(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)';
+  const pattern1 = new RegExp(`\\b(\\d{1,2}(?:st|nd|rd|th)?[\\s\\/\\.-]+${monthNames}[\\s\\/\\.-]+\\d{4})\\b`, 'i');
+  const m1 = snippet.match(pattern1);
+  if (m1) {
+    const parsed = parseDateStringToISO(m1[1]);
+    if (parsed) return parsed;
+  }
+
+  const pattern2 = new RegExp(`\\b(${monthNames}[\\s\\/\\.-]+\\d{1,2}(?:st|nd|rd|th)?[\\s,]+\\d{4})\\b`, 'i');
+  const m2 = snippet.match(pattern2);
+  if (m2) {
+    const parsed = parseDateStringToISO(m2[1]);
+    if (parsed) return parsed;
+  }
+
+  // 3. Look for standard dates in document text (e.g. 23/10/2026 or 2026-10-23)
+  const m3 = snippet.match(/\b(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{4})\b/);
+  if (m3) {
+    const parsed = parseDateStringToISO(m3[1]);
+    if (parsed) return parsed;
+  }
+
+  // 4. Look inside filename for date (e.g. Report_2026-10-23.pdf, 20261023_Letter.docx)
+  if (filename) {
+    const fnDate = filename.match(/\b(20\d{2}[-_\.]\d{2}[-_\.]\d{2})\b/);
+    if (fnDate) {
+      const parsed = parseDateStringToISO(fnDate[1].replace(/[_\.]/g, '-'));
+      if (parsed) return parsed;
+    }
+    const fnCompact = filename.match(/\b(20\d{2})(\d{2})(\d{2})\b/);
+    if (fnCompact) {
+      const parsed = parseDateStringToISO(`${fnCompact[1]}-${fnCompact[2]}-${fnCompact[3]}`);
+      if (parsed) return parsed;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Fallback rule-based classifier using file name, text snippets, and user guidance.
  */
 export function ruleBasedClassification(filename: string, extractedText: string = '', userHint: string = ''): ClassifiedDocResult {
@@ -98,6 +217,10 @@ export function ruleBasedClassification(filename: string, extractedText: string 
   const combined = `${lowerName} ${lowerText} ${lowerHint}`;
 
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Extract date of document from text or filename
+  const docDate = extractDateFromDocumentText(extractedText, filename);
+  const effectiveDate = docDate || todayStr;
 
   // User category hint checks
   const hintIsDaily = lowerHint.includes('daily') || lowerHint.includes('diary') || lowerHint.includes('site report') || lowerHint.includes('progress report');
@@ -120,6 +243,7 @@ export function ruleBasedClassification(filename: string, extractedText: string 
   ) {
     const unfilled = [];
     unfilled.push('location');
+    if (!docDate) unfilled.push('documentDate');
     return {
       category: 'daily_reports',
       categoryLabel: CATEGORY_LABELS.daily_reports,
@@ -128,7 +252,8 @@ export function ruleBasedClassification(filename: string, extractedText: string 
         ? `Categorized as Daily Report based on user guidance ("${userHint}") and file attributes.`
         : 'Filename/content indicates a daily site progress record or site diary.',
       fields: {
-        date: todayStr,
+        documentDate: docDate || '',
+        date: effectiveDate,
         location: '',
         weatherCondition: 'Fair',
         manpowerCount: 0,
@@ -154,6 +279,7 @@ export function ruleBasedClassification(filename: string, extractedText: string 
   ) {
     const invMatch = combined.match(/(?:inv|ipc|fee)[-_\s#:]*([a-z0-9\/-]+)/i);
     const docNum = invMatch ? invMatch[0].toUpperCase().replace(/\s+/g, '-') : `INV-${Date.now().toString().slice(-6)}`;
+    const unfilled = !docDate ? ['documentDate'] : [];
     return {
       category: 'payment_invoices',
       categoryLabel: CATEGORY_LABELS.payment_invoices,
@@ -162,14 +288,15 @@ export function ruleBasedClassification(filename: string, extractedText: string 
         ? `Categorized as Payment/Invoice based on user guidance ("${userHint}").`
         : 'Document is identified as a payment application, IPC, or invoice.',
       fields: {
+        documentDate: docDate || '',
         documentNumber: docNum,
         title: filename.replace(/\.[^/.]+$/, ''),
         type: lowerName.includes('ipc') ? 'Contractor IPC' : 'Consultant Invoice',
         revision: '1.0',
         status: 'Submitted',
-        issueDate: todayStr
+        issueDate: effectiveDate
       },
-      unfilledFields: []
+      unfilledFields: unfilled
     };
   }
 
@@ -187,6 +314,8 @@ export function ruleBasedClassification(filename: string, extractedText: string 
   ) {
     const voMatch = combined.match(/vo[-_\s#:]*([a-z0-9\/-]+)/i);
     const refNum = voMatch ? voMatch[0].toUpperCase().replace(/\s+/g, '-') : `VO-${Date.now().toString().slice(-6)}`;
+    const unfilled = ['costImpact', 'description'];
+    if (!docDate) unfilled.push('documentDate');
     return {
       category: 'variations',
       categoryLabel: CATEGORY_LABELS.variations,
@@ -195,15 +324,16 @@ export function ruleBasedClassification(filename: string, extractedText: string 
         ? `Categorized as Variation/Claim based on user guidance ("${userHint}").`
         : 'Document addresses contractual changes, variations, or claims.',
       fields: {
+        documentDate: docDate || '',
         referenceNumber: refNum,
         title: filename.replace(/\.[^/.]+$/, ''),
         description: 'Variation / Claim order details',
         costImpact: 0,
         scheduleImpactDays: 0,
-        date: todayStr,
+        date: effectiveDate,
         status: 'Proposed'
       },
-      unfilledFields: ['costImpact', 'description']
+      unfilledFields: unfilled
     };
   }
 
@@ -227,6 +357,7 @@ export function ruleBasedClassification(filename: string, extractedText: string 
     const refNum = refMatch ? refMatch[1].toUpperCase() : `CORR-${Date.now().toString().slice(-6)}`;
     const unfilled: string[] = [];
     if (!refMatch) unfilled.push('referenceNumber');
+    if (!docDate) unfilled.push('documentDate');
 
     return {
       category: 'correspondence',
@@ -236,13 +367,14 @@ export function ruleBasedClassification(filename: string, extractedText: string 
         ? `Categorized as Correspondence based on user guidance ("${userHint}").`
         : 'Identified as official project correspondence or communication letter.',
       fields: {
+        documentDate: docDate || '',
         referenceNumber: refNum,
         type: lowerName.includes('in') ? 'Incoming' : 'Outgoing',
         category: lowerName.includes('transmittal') ? 'Transmittal' : (lowerName.includes('memo') ? 'Notice' : 'Letter'),
         subject: filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
         sender: 'Contractor',
         recipient: 'Consultant',
-        date: todayStr
+        date: effectiveDate
       },
       unfilledFields: unfilled
     };
@@ -264,20 +396,24 @@ export function ruleBasedClassification(filename: string, extractedText: string 
     docType = 'Contractual Document';
   }
 
+  const unfilledDocs: string[] = [];
+  if (!docDate) unfilledDocs.push('documentDate');
+
   return {
     category: 'documents',
     categoryLabel: CATEGORY_LABELS.documents,
     confidence: 0.80,
     reasoning: `Categorized under Project Documents (${docType}) based on file properties.`,
     fields: {
+      documentDate: docDate || '',
       documentNumber: `DOC-${Date.now().toString().slice(-6)}`,
       title: filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
       type: docType,
       revision: '1.0',
       status: 'Draft',
-      issueDate: todayStr
+      issueDate: effectiveDate
     },
-    unfilledFields: []
+    unfilledFields: unfilledDocs
   };
 }
 
@@ -336,12 +472,21 @@ Analyze the document and classify it into EXACTLY ONE of the following 5 project
 
 Extract all relevant fields accurately based on the text or document header.
 
+DOCUMENT DATE EXTRACTION (CRITICAL REQUIREMENT):
+You MUST locate and extract the actual historical date written on or inside the letter, report, transmittal, invoice, drawing, or document (e.g. from the letterhead, header, date line, 'Date: ...', 'Dated: ...', 'Report Date: ...', 'Date of Report: ...', 'Inspection Date: ...', 'Invoice Date: ...', or footer).
+- Extract the exact date written on the document.
+- Convert that date into standard ISO format "YYYY-MM-DD" and return it in "documentDate".
+- Do NOT simply default to today's date if an earlier or specific date is written in the letter/report/document.
+- If and only if no date is found anywhere in the text or filename, return "" for documentDate and list "documentDate" in unfilledFields.
+
 Return a STRICT JSON object in this exact schema (no markdown, no extra text):
 {
   "category": "correspondence" | "documents" | "daily_reports" | "variations" | "payment_invoices",
   "confidence": 0.95,
   "reasoning": "Clear 1-sentence explanation of why it was placed here and what was found",
   "fields": {
+    "documentDate": "YYYY-MM-DD (Date written in the letter, report, drawing, or document. Leave empty string if not found)",
+
     // For correspondence:
     "referenceNumber": "Official reference number found in document (leave empty string if not found)",
     "type": "Incoming" or "Outgoing",
@@ -425,16 +570,33 @@ Return a STRICT JSON object in this exact schema (no markdown, no extra text):
 
     const fields = parsed.fields || {};
     
-    // Ensure dates are valid format or fallback
-    if (fields.date && !/^\d{4}-\d{2}-\d{2}$/.test(fields.date)) {
-      fields.date = todayStr;
+    // Robust Document Date Extraction & Normalization
+    const rawDate = fields.documentDate || fields.date || fields.issueDate || '';
+    let parsedDate = parseDateStringToISO(rawDate);
+
+    // If Gemini didn't extract a valid date or lazily returned today's date, scan document text and filename with regex
+    if (!parsedDate || parsedDate === todayStr) {
+      const regexDate = extractDateFromDocumentText(textSnippet, filename);
+      if (regexDate) {
+        parsedDate = regexDate;
+      }
     }
-    if (fields.issueDate && !/^\d{4}-\d{2}-\d{2}$/.test(fields.issueDate)) {
-      fields.issueDate = todayStr;
+
+    if (parsedDate) {
+      fields.documentDate = parsedDate;
+      fields.date = parsedDate;
+      fields.issueDate = parsedDate;
+    } else {
+      fields.documentDate = '';
+      fields.date = '';
+      fields.issueDate = '';
     }
 
     // Determine unfilled fields dynamically based on category
     const unfilled: string[] = Array.isArray(parsed.unfilledFields) ? [...parsed.unfilledFields] : [];
+    if (!fields.documentDate) {
+      unfilled.push('documentDate');
+    }
     if (category === 'correspondence') {
       if (!fields.referenceNumber) unfilled.push('referenceNumber');
       if (!fields.subject) unfilled.push('subject');
