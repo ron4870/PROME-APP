@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal, Sparkles, Edit2, Trash2 } from 'lucide-react';
+import { ListTodo, FileText, Users, DollarSign, Building2, Calendar, ArrowLeft, Plus, Download, ShieldAlert, CheckCircle, AlertTriangle, LayoutDashboard, CalendarDays, ClipboardList, FileDiff, ListChecks, Mail, Shield, CreditCard, Flag, GitMerge, BarChartHorizontal, Sparkles, Edit2, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProjectAdminDashboard } from '../components/ProjectAdminDashboard';
 import { GenericModal, type ModalConfig } from '../components/GenericModal';
 import { useProjectModules } from '../hooks/useProjectModules';
 import { ProjectGanttChart } from '../components/ProjectGanttChart';
 import { AIDocumentUploadModal } from '../components/AIDocumentUploadModal';
+import { DocumentViewerModal } from '../components/DocumentViewerModal';
 
 interface Project {
   id: number;
@@ -16,6 +17,50 @@ interface Project {
   startDate: string;
   members?: any[];
   userPermissions?: any[];
+}
+
+/**
+ * Multi-field filtering helper:
+ * Splits user query into tokens (e.g. date + subject, or two categories).
+ * Checks that every single token matches somewhere across the item's searchable text corpus.
+ */
+function filterItemsMultiField(items: any[], query: string, extractFields: (item: any) => (string | undefined | null | number)[]): any[] {
+  if (!items || !Array.isArray(items)) return [];
+  if (!query || !query.trim()) return items;
+
+  const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return items;
+
+  return items.filter(item => {
+    const rawValues = extractFields(item);
+    const corpus = rawValues
+      .filter(v => v !== null && v !== undefined)
+      .map(v => {
+        const str = String(v);
+        // Include common formatted representations for dates
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+          try {
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) {
+              const locales = [
+                d.toLocaleDateString(),
+                d.toLocaleDateString('en-GB'), // DD/MM/YYYY
+                d.toLocaleDateString('en-US'), // MM/DD/YYYY
+                d.toLocaleString('default', { month: 'short', year: 'numeric' }),
+                d.toLocaleString('default', { month: 'long', year: 'numeric' }),
+                d.toLocaleString('default', { day: 'numeric', month: 'short', year: 'numeric' })
+              ];
+              return `${str} ${locales.join(' ')}`;
+            }
+          } catch {}
+        }
+        return str;
+      })
+      .join(' ')
+      .toLowerCase();
+
+    return tokens.every(token => corpus.includes(token));
+  });
 }
 
 // Fallback Mock Data
@@ -54,6 +99,8 @@ export const ProjectWorkspace: React.FC = () => {
   const [docFilter, setDocFilter] = useState('');
   const [dailyReportFilter, setDailyReportFilter] = useState('');
   const [paymentInvoiceFilter, setPaymentInvoiceFilter] = useState('');
+  const [variationFilter, setVariationFilter] = useState('');
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
   const [isAIDocUploadOpen, setIsAIDocUploadOpen] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [projectNotifications, setProjectNotifications] = useState<any[]>([]);
@@ -643,13 +690,19 @@ export const ProjectWorkspace: React.FC = () => {
             </div>
           )}
 
-          {/* VARIATIONS TAB */}
+          {/* DAILY REPORTS TAB */}
           {activeTab === 'daily_reports' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Daily Reports</h2>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <input type="text" placeholder="Filter reports..." value={dailyReportFilter} onChange={(e) => setDailyReportFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Filter by date, location, weather, activities (e.g. '2026-10 Pier 3')..." 
+                    value={dailyReportFilter} 
+                    onChange={(e) => setDailyReportFilter(e.target.value)} 
+                    style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '360px' }} 
+                  />
                   <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Daily Report', endpoint: `/api/projects/${id}/daily-reports`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'location', label: 'Location', type: 'text', required: true}, {name: 'weatherCondition', label: 'Weather', type: 'text'}, {name: 'manpowerCount', label: 'Active Manpower', type: 'number'}, {name: 'equipmentCount', label: 'Active Equipment', type: 'number'}, {name: 'summary', label: 'Activities Summary', type: 'textarea', required: true}, {name: 'file', label: 'Attach PDF', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Report</button>
                 </div>
               </div>
@@ -657,39 +710,85 @@ export const ProjectWorkspace: React.FC = () => {
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '1rem' }}>Date</th>
                       <th style={{ padding: '1rem' }}>Location</th>
                       <th style={{ padding: '1rem' }}>Weather</th>
                       <th style={{ padding: '1rem' }}>Manpower</th>
                       <th style={{ padding: '1rem' }}>Equipment</th>
                       <th style={{ padding: '1rem' }}>Activities</th>
-                      <th style={{ padding: '1rem' }}>Attachment</th>
+                      <th style={{ padding: '1rem' }}>Date</th>
+                      <th style={{ padding: '1rem', textAlign: 'center', width: '85px', color: '#475569' }}>View</th>
                       <th style={{ padding: '1rem' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {dailyReports?.filter((r: any) => !dailyReportFilter || r.location?.toLowerCase().includes(dailyReportFilter.toLowerCase()) || r.activities?.toLowerCase().includes(dailyReportFilter.toLowerCase()) || r.date?.includes(dailyReportFilter)).map((report: any) => {
+                    {filterItemsMultiField(dailyReports || [], dailyReportFilter, (r: any) => [
+                      r.date,
+                      r.location,
+                      r.weatherMorning,
+                      r.activities,
+                      r.activeManpower,
+                      r.activeEquipment
+                    ]).map((report: any) => {
                       let dlLink = null;
                       if (report.fileUrl) {
                         try { dlLink = JSON.parse(report.fileUrl).download; } catch(e) { dlLink = report.fileUrl; }
                       }
                       return (
                       <tr key={report.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '1rem', fontWeight: 500 }}>{report.date ? new Date(report.date).toLocaleDateString() : ''}</td>
-                        <td style={{ padding: '1rem' }}>{report.location || '-'}</td>
+                        <td style={{ padding: '1rem', fontWeight: 500 }}>{report.location || '-'}</td>
                         <td style={{ padding: '1rem' }}>{report.weatherMorning || '-'}</td>
                         <td style={{ padding: '1rem' }}>{report.activeManpower || 0}</td>
                         <td style={{ padding: '1rem' }}>{report.activeEquipment || 0}</td>
                         <td style={{ padding: '1rem', color: '#475569' }}>{report.activities}</td>
-                        <td style={{ padding: '1rem' }}>
-                          {dlLink ? (
-                            <a href={dlLink} download style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}><Download size={16} /> Download</a>
+                        <td style={{ padding: '1rem', color: '#64748b', fontWeight: 500 }}>{report.date ? new Date(report.date).toLocaleDateString() : ''}</td>
+                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+                          {report.fileUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setViewingDoc({
+                                title: `Daily Report (${report.location || (report.date ? new Date(report.date).toLocaleDateString() : 'Site Diary')})`,
+                                fileUrl: report.fileUrl,
+                                documentNumber: report.location || '',
+                                date: report.date ? new Date(report.date).toLocaleDateString() : '',
+                                categoryLabel: 'Daily Reports'
+                              })}
+                              title="View document in window"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '0.4rem 0.65rem',
+                                backgroundColor: '#f0f9ff',
+                                color: '#0284c7',
+                                border: '1px solid #bae6fd',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#0284c7';
+                                e.currentTarget.style.color = '#ffffff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                e.currentTarget.style.color = '#0284c7';
+                              }}
+                            >
+                              <Eye size={15} /> View
+                            </button>
                           ) : (
-                            <span style={{ color: '#94a3b8' }}>-</span>
+                            <span style={{ color: '#cbd5e1' }}>-</span>
                           )}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {dlLink && (
+                              <a href={dlLink} download style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                <Download size={15} /> Download
+                              </a>
+                            )}
                             <button
                               type="button"
                               onClick={() => setModalConfig({
@@ -736,81 +835,150 @@ export const ProjectWorkspace: React.FC = () => {
 
           {activeTab === 'variations' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Variations & Claims</h2>
-                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Variation/Claim', endpoint: `/api/projects/${id}/variations`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'title', label: 'Variation Title', type: 'text', required: true}, {name: 'costImpact', label: 'Cost Impact', type: 'number'}, {name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number'}, {name: 'file', label: 'Attach File', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Variation</button>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Filter variations by date, title, ref, status (e.g. '2026-10 Approved')..." 
+                    value={variationFilter} 
+                    onChange={(e) => setVariationFilter(e.target.value)} 
+                    style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '360px' }} 
+                  />
+                  <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Log Variation/Claim', endpoint: `/api/projects/${id}/variations`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'title', label: 'Variation Title', type: 'text', required: true}, {name: 'costImpact', label: 'Cost Impact', type: 'number'}, {name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number'}, {name: 'file', label: 'Attach File', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Log Variation</button>
+                </div>
               </div>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '1rem' }}>Date</th>
-                    <th style={{ padding: '1rem' }}>Ref #</th>
-                    <th style={{ padding: '1rem' }}>Title</th>
-                    <th style={{ padding: '1rem' }}>Cost Impact</th>
-                    <th style={{ padding: '1rem' }}>Schedule Impact</th>
-                    <th style={{ padding: '1rem' }}>Status</th>
-                    <th style={{ padding: '1rem' }}>Attachment</th>
-                    <th style={{ padding: '1rem' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {variations.map((vo: any) => (
-                    <tr key={vo.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem' }}>{vo.date ? new Date(vo.date).toLocaleDateString() : ''}</td>
-                      <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{vo.referenceNumber || vo.voNumber || vo.ref}</td>
-                      <td style={{ padding: '1rem', fontWeight: 500 }}>{vo.title}</td>
-                      <td style={{ padding: '1rem' }}>${vo.costImpact?.toLocaleString() || 0}</td>
-                      <td style={{ padding: '1rem' }}>+{vo.scheduleImpactDays || vo.scheduleImpact || 0} Days</td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fef3c7', color: '#b45309' }}>{vo.status || 'Under Review'}</span>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        {vo.fileUrl ? (
-                          <a href={vo.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
-                            <FileText size={16} /> View
-                          </a>
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>-</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => setModalConfig({
-                              title: 'Edit Variation / Claim',
-                              endpoint: `/api/projects/${id}/variations/${vo.id}`,
-                              method: 'PUT',
-                              fields: [
-                                { name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true, defaultValue: vo.referenceNumber || '' },
-                                { name: 'title', label: 'Variation Title', type: 'text', required: true, defaultValue: vo.title || '' },
-                                { name: 'costImpact', label: 'Cost Impact', type: 'number', defaultValue: vo.costImpact || 0 },
-                                { name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number', defaultValue: vo.scheduleImpactDays || vo.scheduleImpact || 0 },
-                                { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: vo.date ? new Date(vo.date).toISOString().split('T')[0] : '' },
-                                { name: 'status', label: 'Status', type: 'select', options: ['Proposed', 'Under Review', 'Approved', 'Rejected'], defaultValue: vo.status || 'Proposed' },
-                                { name: 'description', label: 'Description', type: 'textarea', defaultValue: vo.description || '' }
-                              ]
-                            })}
-                            style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
-                          >
-                            <Edit2 size={15} /> Edit
-                          </button>
-                          {canEdit && (
+              <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                      <th style={{ padding: '1rem' }}>Ref #</th>
+                      <th style={{ padding: '1rem' }}>Title</th>
+                      <th style={{ padding: '1rem' }}>Cost Impact</th>
+                      <th style={{ padding: '1rem' }}>Schedule Impact</th>
+                      <th style={{ padding: '1rem' }}>Status</th>
+                      <th style={{ padding: '1rem' }}>Date</th>
+                      <th style={{ padding: '1rem', textAlign: 'center', width: '85px', color: '#475569' }}>View</th>
+                      <th style={{ padding: '1rem' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filterItemsMultiField(variations || [], variationFilter, (vo: any) => [
+                      vo.date,
+                      vo.referenceNumber,
+                      vo.voNumber,
+                      vo.ref,
+                      vo.title,
+                      vo.costImpact,
+                      vo.scheduleImpactDays,
+                      vo.scheduleImpact,
+                      vo.status,
+                      vo.description
+                    ]).map((vo: any) => {
+                      let dlLink = vo.fileUrl;
+                      if (vo.fileUrl) {
+                        try { const parsed = JSON.parse(vo.fileUrl); if (parsed && parsed.download) dlLink = parsed.download; } catch(e) {}
+                      }
+                      return (
+                      <tr key={vo.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{vo.referenceNumber || vo.voNumber || vo.ref}</td>
+                        <td style={{ padding: '1rem', fontWeight: 500 }}>{vo.title}</td>
+                        <td style={{ padding: '1rem' }}>${vo.costImpact?.toLocaleString() || 0}</td>
+                        <td style={{ padding: '1rem' }}>+{vo.scheduleImpactDays || vo.scheduleImpact || 0} Days</td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: '#fef3c7', color: '#b45309' }}>{vo.status || 'Under Review'}</span>
+                        </td>
+                        <td style={{ padding: '1rem', color: '#64748b' }}>{vo.date ? new Date(vo.date).toLocaleDateString() : ''}</td>
+                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+                          {vo.fileUrl ? (
                             <button
                               type="button"
-                              onClick={() => handleDeleteItem(`/api/projects/${id}/variations/${vo.id}`, 'variation')}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
-                              title="Delete variation"
+                              onClick={() => setViewingDoc({
+                                title: vo.title || vo.referenceNumber || 'Variation Order',
+                                fileUrl: vo.fileUrl,
+                                documentNumber: vo.referenceNumber || vo.voNumber || vo.ref || '',
+                                date: vo.date ? new Date(vo.date).toLocaleDateString() : '',
+                                categoryLabel: 'Variations & Claims'
+                              })}
+                              title="View document in window"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '0.4rem 0.65rem',
+                                backgroundColor: '#f0f9ff',
+                                color: '#0284c7',
+                                border: '1px solid #bae6fd',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#0284c7';
+                                e.currentTarget.style.color = '#ffffff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                e.currentTarget.style.color = '#0284c7';
+                              }}
                             >
-                              <Trash2 size={15} />
+                              <Eye size={15} /> View
                             </button>
+                          ) : (
+                            <span style={{ color: '#cbd5e1' }}>-</span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {dlLink && (
+                              <a href={dlLink} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', textDecoration: 'none', fontWeight: 500 }}>
+                                <Download size={15} /> Download
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setModalConfig({
+                                title: 'Edit Variation / Claim',
+                                endpoint: `/api/projects/${id}/variations/${vo.id}`,
+                                method: 'PUT',
+                                fields: [
+                                  { name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true, defaultValue: vo.referenceNumber || '' },
+                                  { name: 'title', label: 'Variation Title', type: 'text', required: true, defaultValue: vo.title || '' },
+                                  { name: 'costImpact', label: 'Cost Impact', type: 'number', defaultValue: vo.costImpact || 0 },
+                                  { name: 'scheduleImpactDays', label: 'Schedule Impact (Days)', type: 'number', defaultValue: vo.scheduleImpactDays || vo.scheduleImpact || 0 },
+                                  { name: 'date', label: 'Date', type: 'date', required: true, defaultValue: vo.date ? new Date(vo.date).toISOString().split('T')[0] : '' },
+                                  { name: 'status', label: 'Status', type: 'select', options: ['Proposed', 'Under Review', 'Approved', 'Rejected'], defaultValue: vo.status || 'Proposed' },
+                                  { name: 'description', label: 'Description', type: 'textarea', defaultValue: vo.description || '' }
+                                ]
+                              })}
+                              style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 500 }}
+                            >
+                              <Edit2 size={15} /> Edit
+                            </button>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteItem(`/api/projects/${id}/variations/${vo.id}`, 'variation')}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                title="Delete variation"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )})}
+                    {(!variations || variations.length === 0) && (
+                      <tr>
+                        <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No variations or claims logged yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -995,26 +1163,30 @@ export const ProjectWorkspace: React.FC = () => {
           {/* CORRESPONDENCE TAB */}
           {activeTab === 'correspondence' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Formal Correspondence Log</h2>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <input type="text" placeholder="Filter correspondence..." value={corrFilter} onChange={(e) => setCorrFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Filter correspondence by date, subject, ref, sender, recipient (e.g. '2026-10 UNRA')..." 
+                    value={corrFilter} 
+                    onChange={(e) => setCorrFilter(e.target.value)} 
+                    style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '380px' }} 
+                  />
                   <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Add Formal Correspondence', endpoint: `/api/projects/${id}/correspondence`, fields: [{name: 'date', label: 'Date', type: 'date', required: true}, {name: 'referenceNumber', label: 'Reference Number', type: 'text', required: true}, {name: 'type', label: 'Type (Incoming/Outgoing)', type: 'select', options: ['Incoming', 'Outgoing'], required: true}, {name: 'subject', label: 'Subject', type: 'text', required: true}, {name: 'sender', label: 'Sender', type: 'select', options: ['Client', 'Contractor', 'Consultant', 'Other'], required: true}, {name: 'recipient', label: 'Recipient', type: 'select', options: ['Client', 'Contractor', 'Consultant', 'Other'], required: true}, {name: 'file', label: 'Attach PDF', type: 'file'}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Add Log</button>
                 </div>
               </div>
             {(() => {
-              const filteredCorr = correspondence.filter((corr: any) => {
-                const q = corrFilter.toLowerCase();
-                return (
-                  (corr.date && corr.date.toLowerCase().includes(q)) ||
-                  (corr.referenceNumber && corr.referenceNumber.toLowerCase().includes(q)) ||
-                  (corr.ref && corr.ref.toLowerCase().includes(q)) ||
-                  (corr.type && corr.type.toLowerCase().includes(q)) ||
-                  (corr.subject && corr.subject.toLowerCase().includes(q)) ||
-                  (corr.sender && corr.sender.toLowerCase().includes(q)) ||
-                  (corr.recipient && corr.recipient.toLowerCase().includes(q))
-                );
-              });
+              const filteredCorr = filterItemsMultiField(correspondence || [], corrFilter, (corr: any) => [
+                corr.date,
+                corr.referenceNumber,
+                corr.ref,
+                corr.type,
+                corr.category,
+                corr.subject,
+                corr.sender,
+                corr.recipient
+              ]);
               
               const groupedCorr = filteredCorr.reduce((acc: any, corr: any) => {
                 const t = corr.type || 'Other';
@@ -1043,26 +1215,68 @@ export const ProjectWorkspace: React.FC = () => {
                     <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                          <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Ref #</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Subject</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Sender</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Recipient</th>
+                          <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '1rem', color: '#475569', textAlign: 'center', width: '85px' }}>View</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {corrs.map((corr: any) => (
                           <tr key={corr.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                            <td style={{ padding: '1rem' }}>{corr.date ? new Date(corr.date).toLocaleDateString() : ''}</td>
                             <td style={{ padding: '1rem', fontWeight: 500, color: '#0ea5e9' }}>{corr.referenceNumber || corr.ref}</td>
-                            <td style={{ padding: '1rem' }}>{corr.subject}</td>
+                            <td style={{ padding: '1rem', fontWeight: 500 }}>{corr.subject}</td>
                             <td style={{ padding: '1rem' }}>{corr.sender}</td>
                             <td style={{ padding: '1rem' }}>{corr.recipient}</td>
+                            <td style={{ padding: '1rem', color: '#64748b' }}>{corr.date ? new Date(corr.date).toLocaleDateString() : ''}</td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {corr.fileUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingDoc({
+                                    title: corr.subject || corr.referenceNumber || 'Correspondence',
+                                    fileUrl: corr.fileUrl,
+                                    documentNumber: corr.referenceNumber || corr.ref || '',
+                                    date: corr.date ? new Date(corr.date).toLocaleDateString() : '',
+                                    categoryLabel: 'Correspondence'
+                                  })}
+                                  title="View document in window"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '0.4rem 0.65rem',
+                                    backgroundColor: '#f0f9ff',
+                                    color: '#0284c7',
+                                    border: '1px solid #bae6fd',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#0284c7';
+                                    e.currentTarget.style.color = '#ffffff';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                    e.currentTarget.style.color = '#0284c7';
+                                  }}
+                                >
+                                  <Eye size={15} /> View
+                                </button>
+                              ) : (
+                                <span style={{ color: '#cbd5e1' }}>-</span>
+                              )}
+                            </td>
                             <td style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 {(() => {
-                                  if (!corr.fileUrl) return <span style={{ color: '#94a3b8' }}>-</span>;
+                                  if (!corr.fileUrl) return null;
                                   
                                   let downloadLink = corr.fileUrl;
                                   
@@ -1137,23 +1351,29 @@ export const ProjectWorkspace: React.FC = () => {
         {/* DOCUMENTS TAB */}
         {activeTab === 'documents' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Project Documents</h2>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <input type="text" placeholder="Filter documents..." value={docFilter} onChange={(e) => setDocFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input 
+                  type="text" 
+                  placeholder="Filter documents by date, title, doc no, status, type (e.g. '2026-10 Approved Drawing')..." 
+                  value={docFilter} 
+                  onChange={(e) => setDocFilter(e.target.value)} 
+                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '380px' }} 
+                />
                 <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Document', endpoint: `/api/projects/${id}/documents`, fields: [{name: 'documentNumber', label: 'Document Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
               </div>
             </div>
             {(() => {
-              const filteredDocs = documents.filter((doc: any) => {
-                const q = docFilter.toLowerCase();
-                return (
-                  (doc.documentNumber && doc.documentNumber.toLowerCase().includes(q)) ||
-                  (doc.title && doc.title.toLowerCase().includes(q)) ||
-                  (doc.type && doc.type.toLowerCase().includes(q)) ||
-                  (doc.status && doc.status.toLowerCase().includes(q))
-                );
-              });
+              const filteredDocs = filterItemsMultiField(documents || [], docFilter, (doc: any) => [
+                doc.documentNumber,
+                doc.title,
+                doc.type,
+                doc.status,
+                doc.revision,
+                doc.issueDate,
+                doc.date
+              ]);
               
               const groupedDocs = filteredDocs.reduce((acc: any, doc: any) => {
                 const t = doc.type || 'Other';
@@ -1187,6 +1407,7 @@ export const ProjectWorkspace: React.FC = () => {
                           <th style={{ padding: '1rem', color: '#475569' }}>Rev</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Status</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '1rem', color: '#475569', textAlign: 'center', width: '85px' }}>View</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Action</th>
                         </tr>
                       </thead>
@@ -1200,6 +1421,47 @@ export const ProjectWorkspace: React.FC = () => {
                               <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: doc.status === 'Approved' ? '#dcfce7' : '#fef3c7', color: doc.status === 'Approved' ? '#166534' : '#b45309' }}>{doc.status}</span>
                             </td>
                             <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {doc.fileUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingDoc({
+                                    title: doc.title || doc.documentNumber || 'Document',
+                                    fileUrl: doc.fileUrl,
+                                    documentNumber: doc.documentNumber || '',
+                                    date: doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : '',
+                                    categoryLabel: doc.type || 'Project Documents'
+                                  })}
+                                  title="View document in window"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '0.4rem 0.65rem',
+                                    backgroundColor: '#f0f9ff',
+                                    color: '#0284c7',
+                                    border: '1px solid #bae6fd',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#0284c7';
+                                    e.currentTarget.style.color = '#ffffff';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                    e.currentTarget.style.color = '#0284c7';
+                                  }}
+                                >
+                                  <Eye size={15} /> View
+                                </button>
+                              ) : (
+                                <span style={{ color: '#cbd5e1' }}>-</span>
+                              )}
+                            </td>
                             <td style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 {(() => {
@@ -1412,23 +1674,29 @@ export const ProjectWorkspace: React.FC = () => {
         {/* PAYMENTS / INVOICES TAB */}
         {activeTab === 'payment_invoices' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Payments / Invoices</h2>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <input type="text" placeholder="Filter invoices..." value={paymentInvoiceFilter} onChange={(e) => setPaymentInvoiceFilter(e.target.value)} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '300px' }} />
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input 
+                  type="text" 
+                  placeholder="Filter invoices by date, title, invoice no, status (e.g. '2026-10 IPC')..." 
+                  value={paymentInvoiceFilter} 
+                  onChange={(e) => setPaymentInvoiceFilter(e.target.value)} 
+                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '380px' }} 
+                />
                 <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Invoice', endpoint: `/api/projects/${id}/payment-invoices`, fields: [{name: 'documentNumber', label: 'Invoice Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Consultant Invoice', 'Contractor IPC', 'Other']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Submitted', 'Approved', 'Paid', 'Rejected']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
               </div>
             </div>
             {(() => {
-              const filteredInvoices = (paymentInvoices || []).filter((inv: any) => {
-                const q = paymentInvoiceFilter.toLowerCase();
-                return (
-                  (inv.documentNumber && inv.documentNumber.toLowerCase().includes(q)) ||
-                  (inv.title && inv.title.toLowerCase().includes(q)) ||
-                  (inv.type && inv.type.toLowerCase().includes(q)) ||
-                  (inv.status && inv.status.toLowerCase().includes(q))
-                );
-              });
+              const filteredInvoices = filterItemsMultiField(paymentInvoices || [], paymentInvoiceFilter, (inv: any) => [
+                inv.documentNumber,
+                inv.title,
+                inv.type,
+                inv.status,
+                inv.revision,
+                inv.issueDate,
+                inv.date
+              ]);
               
               const groupedInvoices = filteredInvoices.reduce((acc: any, inv: any) => {
                 const t = inv.type || 'Other';
@@ -1462,6 +1730,7 @@ export const ProjectWorkspace: React.FC = () => {
                           <th style={{ padding: '1rem', color: '#475569' }}>Rev</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Status</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Date</th>
+                          <th style={{ padding: '1rem', color: '#475569', textAlign: 'center', width: '85px' }}>View</th>
                           <th style={{ padding: '1rem', color: '#475569' }}>Action</th>
                         </tr>
                       </thead>
@@ -1475,6 +1744,47 @@ export const ProjectWorkspace: React.FC = () => {
                               <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: inv.status === 'Approved' || inv.status === 'Paid' ? '#dcfce7' : '#fef3c7', color: inv.status === 'Approved' || inv.status === 'Paid' ? '#166534' : '#b45309' }}>{inv.status}</span>
                             </td>
                             <td style={{ padding: '1rem', color: '#64748b' }}>{inv.issueDate ? new Date(inv.issueDate).toLocaleDateString() : ''}</td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {inv.fileUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingDoc({
+                                    title: inv.title || inv.documentNumber || 'Payment / Invoice',
+                                    fileUrl: inv.fileUrl,
+                                    documentNumber: inv.documentNumber || '',
+                                    date: inv.issueDate ? new Date(inv.issueDate).toLocaleDateString() : '',
+                                    categoryLabel: inv.type || 'Payment Invoices'
+                                  })}
+                                  title="View document in window"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '0.4rem 0.65rem',
+                                    backgroundColor: '#f0f9ff',
+                                    color: '#0284c7',
+                                    border: '1px solid #bae6fd',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#0284c7';
+                                    e.currentTarget.style.color = '#ffffff';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                    e.currentTarget.style.color = '#0284c7';
+                                  }}
+                                >
+                                  <Eye size={15} /> View
+                                </button>
+                              ) : (
+                                <span style={{ color: '#cbd5e1' }}>-</span>
+                              )}
+                            </td>
                             <td style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 {(() => {
@@ -1777,6 +2087,17 @@ export const ProjectWorkspace: React.FC = () => {
         }}
         onNavigateTab={(tabId) => setActiveTab(tabId)}
       />
+      {viewingDoc && (
+        <DocumentViewerModal
+          isOpen={!!viewingDoc}
+          onClose={() => setViewingDoc(null)}
+          documentTitle={viewingDoc.title}
+          fileUrl={viewingDoc.fileUrl}
+          documentNumber={viewingDoc.documentNumber}
+          documentDate={viewingDoc.date}
+          categoryLabel={viewingDoc.categoryLabel}
+        />
+      )}
       {showDependencyModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '500px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>

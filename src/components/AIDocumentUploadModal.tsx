@@ -17,8 +17,11 @@ import {
   Plus,
   Folder,
   Archive,
-  Layers
+  Layers,
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
+import { DocumentViewerModal } from './DocumentViewerModal';
 
 export type ProjectDocCategory = 'correspondence' | 'documents' | 'daily_reports' | 'variations' | 'payment_invoices';
 
@@ -35,6 +38,15 @@ export interface ClassifiedItem {
   fields: Record<string, any>;
   unfilledFields: string[];
   needsReview?: boolean;
+  isDuplicate?: boolean;
+  duplicateInfo?: {
+    existingId?: number;
+    existingTitle?: string;
+    existingRef?: string;
+    category?: string;
+    categoryLabel?: string;
+    reason?: string;
+  };
 }
 
 interface Props {
@@ -99,8 +111,9 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
   const [isUnpacking, setIsUnpacking] = useState(false);
   const [userCategoryHint, setUserCategoryHint] = useState('');
   const [classificationProgress, setClassificationProgress] = useState<string | null>(null);
-  const [reviewFilter, setReviewFilter] = useState<'all' | 'needs_review' | 'ready'>('all');
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'needs_review' | 'duplicates' | 'ready'>('all');
   const [classifiedItems, setClassifiedItems] = useState<ClassifiedItem[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -1234,100 +1247,170 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                   {(() => {
                     const needsReviewCount = classifiedItems.filter(item => 
                       item.needsReview || 
+                      item.isDuplicate ||
                       item.confidence < 0.75 || 
                       (item.unfilledFields && item.unfilledFields.length > 0) ||
                       (!item.fields?.documentNumber && !item.fields?.referenceNumber) ||
                       (!item.fields?.documentDate && !item.fields?.date && !item.fields?.issueDate)
                     ).length;
+                    const duplicateCount = classifiedItems.filter(item => item.isDuplicate).length;
                     const readyCount = classifiedItems.length - needsReviewCount;
 
                     return (
-                      <div style={{
-                        marginBottom: '1.25rem',
-                        padding: '1rem 1.25rem',
-                        backgroundColor: needsReviewCount > 0 ? '#fffbeb' : '#f0fdf4',
-                        border: `1px solid ${needsReviewCount > 0 ? '#fde68a' : '#bbf7d0'}`,
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '0.75rem'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          <div style={{ color: needsReviewCount > 0 ? '#d97706' : '#16a34a' }}>
-                            {needsReviewCount > 0 ? <AlertCircle size={22} /> : <CheckCircle2 size={22} />}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: '0.925rem', color: needsReviewCount > 0 ? '#92400e' : '#166534' }}>
-                              {needsReviewCount > 0
-                                ? `${needsReviewCount} of ${classifiedItems.length} ${classifiedItems.length === 1 ? 'file needs' : 'files need'} your classification or missing fields`
-                                : `All ${classifiedItems.length} documents have been successfully categorized`
-                              }
+                      <>
+                        {/* DUPLICATE DOCUMENT NOTIFICATION BANNER */}
+                        {duplicateCount > 0 && (
+                          <div style={{
+                            marginBottom: '1rem',
+                            padding: '0.875rem 1.25rem',
+                            backgroundColor: '#fff1f2',
+                            border: '1.5px solid #fecdd3',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '0.75rem',
+                            animation: 'fadeIn 0.2s ease-out'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                              <div style={{ color: '#e11d48', flexShrink: 0 }}>
+                                <AlertTriangle size={22} />
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.925rem', color: '#9f1239' }}>
+                                  ⚠️ {duplicateCount} Duplicate {duplicateCount === 1 ? 'Document' : 'Documents'} Detected
+                                </div>
+                                <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: '#be123c' }}>
+                                  One or more uploaded files match an existing document in this project by reference number, title, or filename. Review the highlighted cards below.
+                                </p>
+                              </div>
                             </div>
-                            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: needsReviewCount > 0 ? '#b45309' : '#15803d' }}>
-                              {needsReviewCount > 0
-                                ? 'AI extracted what it could read and left missing fields blank for your review. Please check amber highlighted items below.'
-                                : 'Extracted metadata is verified and ready to be placed into project sections.'
-                              }
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Filter Buttons */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => setReviewFilter('all')}
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              borderRadius: '6px',
-                              fontSize: '0.78rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              backgroundColor: reviewFilter === 'all' ? '#0284c7' : '#ffffff',
-                              color: reviewFilter === 'all' ? '#ffffff' : '#334155',
-                              border: '1px solid #cbd5e1'
-                            }}
-                          >
-                            All Files ({classifiedItems.length})
-                          </button>
-                          {needsReviewCount > 0 && (
                             <button
                               type="button"
-                              onClick={() => setReviewFilter('needs_review')}
+                              onClick={() => setReviewFilter(reviewFilter === 'duplicates' ? 'all' : 'duplicates')}
+                              style={{
+                                padding: '0.35rem 0.75rem',
+                                borderRadius: '6px',
+                                backgroundColor: reviewFilter === 'duplicates' ? '#e11d48' : '#ffffff',
+                                color: reviewFilter === 'duplicates' ? '#ffffff' : '#be123c',
+                                border: '1px solid #fecdd3',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {reviewFilter === 'duplicates' ? 'Show All Files' : `Review Duplicates (${duplicateCount})`}
+                            </button>
+                          </div>
+                        )}
+
+                        <div style={{
+                          marginBottom: '1.25rem',
+                          padding: '1rem 1.25rem',
+                          backgroundColor: needsReviewCount > 0 ? '#fffbeb' : '#f0fdf4',
+                          border: `1px solid ${needsReviewCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '0.75rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                            <div style={{ color: needsReviewCount > 0 ? '#d97706' : '#16a34a' }}>
+                              {needsReviewCount > 0 ? <AlertCircle size={22} /> : <CheckCircle2 size={22} />}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '0.925rem', color: needsReviewCount > 0 ? '#92400e' : '#166534' }}>
+                                {needsReviewCount > 0
+                                  ? `${needsReviewCount} of ${classifiedItems.length} ${classifiedItems.length === 1 ? 'file needs' : 'files need'} your classification, duplicate review, or missing fields`
+                                  : `All ${classifiedItems.length} documents have been successfully categorized`
+                                }
+                              </div>
+                              <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: needsReviewCount > 0 ? '#b45309' : '#15803d' }}>
+                                {needsReviewCount > 0
+                                  ? 'AI extracted what it could read and left missing fields blank for your review. Please check amber highlighted items below.'
+                                  : 'Extracted metadata is verified and ready to be placed into project sections.'
+                                }
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Filter Buttons */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => setReviewFilter('all')}
                               style={{
                                 padding: '0.35rem 0.65rem',
                                 borderRadius: '6px',
                                 fontSize: '0.78rem',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                backgroundColor: reviewFilter === 'needs_review' ? '#d97706' : '#ffffff',
-                                color: reviewFilter === 'needs_review' ? '#ffffff' : '#b45309',
-                                border: '1px solid #fde68a'
+                                backgroundColor: reviewFilter === 'all' ? '#0284c7' : '#ffffff',
+                                color: reviewFilter === 'all' ? '#ffffff' : '#334155',
+                                border: '1px solid #cbd5e1'
                               }}
                             >
-                              ⚠️ Needs Classification ({needsReviewCount})
+                              All Files ({classifiedItems.length})
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setReviewFilter('ready')}
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              borderRadius: '6px',
-                              fontSize: '0.78rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              backgroundColor: reviewFilter === 'ready' ? '#16a34a' : '#ffffff',
-                              color: reviewFilter === 'ready' ? '#ffffff' : '#15803d',
-                              border: '1px solid #bbf7d0'
-                            }}
-                          >
-                            ✅ Complete ({readyCount})
-                          </button>
+                            {duplicateCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewFilter('duplicates')}
+                                style={{
+                                  padding: '0.35rem 0.65rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  backgroundColor: reviewFilter === 'duplicates' ? '#e11d48' : '#ffffff',
+                                  color: reviewFilter === 'duplicates' ? '#ffffff' : '#be123c',
+                                  border: '1px solid #fecdd3'
+                                }}
+                              >
+                                ⚠️ Duplicates ({duplicateCount})
+                              </button>
+                            )}
+                            {needsReviewCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewFilter('needs_review')}
+                                style={{
+                                  padding: '0.35rem 0.65rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  backgroundColor: reviewFilter === 'needs_review' ? '#d97706' : '#ffffff',
+                                  color: reviewFilter === 'needs_review' ? '#ffffff' : '#b45309',
+                                  border: '1px solid #fde68a'
+                                }}
+                              >
+                                ⚠️ Needs Review ({needsReviewCount})
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setReviewFilter('ready')}
+                              style={{
+                                padding: '0.35rem 0.65rem',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                backgroundColor: reviewFilter === 'ready' ? '#16a34a' : '#ffffff',
+                                color: reviewFilter === 'ready' ? '#ffffff' : '#15803d',
+                                border: '1px solid #bbf7d0'
+                              }}
+                            >
+                              ✅ Complete ({readyCount})
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     );
                   })()}
 
@@ -1336,7 +1419,9 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                     {classifiedItems
                       .filter(item => {
                         if (reviewFilter === 'all') return true;
+                        if (reviewFilter === 'duplicates') return !!item.isDuplicate;
                         const isNeeding = item.needsReview || 
+                                          item.isDuplicate ||
                                           item.confidence < 0.75 || 
                                           (item.unfilledFields && item.unfilledFields.length > 0) ||
                                           (!item.fields?.documentNumber && !item.fields?.referenceNumber) ||
@@ -1348,6 +1433,7 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                       .map((item) => {
                       const catConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.documents;
                       const isNeedingReview = item.needsReview || 
+                                              item.isDuplicate ||
                                               item.confidence < 0.75 || 
                                               (item.unfilledFields && item.unfilledFields.length > 0) ||
                                               (!item.fields?.documentNumber && !item.fields?.referenceNumber) ||
@@ -1356,27 +1442,27 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                         <div
                           key={item.tempId}
                           style={{
-                            border: `1.5px solid ${isNeedingReview ? '#f59e0b' : catConfig.borderColor}`,
+                            border: `1.5px solid ${item.isDuplicate ? '#f43f5e' : (isNeedingReview ? '#f59e0b' : catConfig.borderColor)}`,
                             borderRadius: '12px',
                             backgroundColor: '#ffffff',
                             overflow: 'hidden',
-                            boxShadow: isNeedingReview ? '0 2px 6px rgba(245, 158, 11, 0.15)' : '0 1px 3px rgba(0,0,0,0.05)'
+                            boxShadow: item.isDuplicate ? '0 2px 6px rgba(244, 63, 94, 0.2)' : (isNeedingReview ? '0 2px 6px rgba(245, 158, 11, 0.15)' : '0 1px 3px rgba(0,0,0,0.05)')
                           }}
                         >
                           {/* Card Top Banner */}
                           <div style={{
                             padding: '0.875rem 1.25rem',
-                            backgroundColor: catConfig.bgColor,
-                            borderBottom: `1px solid ${catConfig.borderColor}`,
+                            backgroundColor: item.isDuplicate ? '#fff1f2' : catConfig.bgColor,
+                            borderBottom: `1px solid ${item.isDuplicate ? '#fecdd3' : catConfig.borderColor}`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             flexWrap: 'wrap',
                             gap: '0.5rem'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <div style={{ color: catConfig.color }}>
-                                {catConfig.icon}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                              <div style={{ color: item.isDuplicate ? '#e11d48' : catConfig.color }}>
+                                {item.isDuplicate ? <AlertTriangle size={18} /> : catConfig.icon}
                               </div>
                               <div>
                                 <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>
@@ -1386,6 +1472,45 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                                   ({formatFileSize(item.size)})
                                 </span>
                               </div>
+
+                              {/* View Document in window button */}
+                              {item.fileUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDoc({
+                                    title: item.fields?.title || item.fields?.subject || item.originalName,
+                                    fileUrl: item.fileUrl,
+                                    documentNumber: item.fields?.documentNumber || item.fields?.referenceNumber || '',
+                                    date: item.fields?.documentDate || item.fields?.date || item.fields?.issueDate || '',
+                                    categoryLabel: item.categoryLabel
+                                  })}
+                                  title="View document in window without downloading"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    padding: '0.2rem 0.5rem',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '5px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    color: '#0284c7',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f0f9ff';
+                                    e.currentTarget.style.borderColor = '#0284c7';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#ffffff';
+                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                  }}
+                                >
+                                  <Eye size={13} /> View
+                                </button>
+                              )}
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -1415,8 +1540,20 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                                 </select>
                               </div>
 
-                              {/* Confidence / Review status badge */}
-                              {isNeedingReview ? (
+                              {/* Confidence / Review / Duplicate status badge */}
+                              {item.isDuplicate ? (
+                                <span style={{
+                                  fontSize: '0.72rem',
+                                  padding: '0.2rem 0.55rem',
+                                  borderRadius: '999px',
+                                  backgroundColor: '#ffe4e6',
+                                  color: '#be123c',
+                                  border: '1px solid #fda4af',
+                                  fontWeight: 700
+                                }}>
+                                  ⚠️ Duplicate
+                                </span>
+                              ) : isNeedingReview ? (
                                 <span style={{
                                   fontSize: '0.72rem',
                                   padding: '0.2rem 0.55rem',
@@ -1460,6 +1597,46 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                               </button>
                             </div>
                           </div>
+
+                          {/* INLINE DUPLICATE NOTICE IF APPLICABLE */}
+                          {item.isDuplicate && (
+                            <div style={{
+                              padding: '0.65rem 1.25rem',
+                              backgroundColor: '#fff1f2',
+                              borderBottom: '1px solid #fecdd3',
+                              fontSize: '0.825rem',
+                              color: '#9f1239',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              flexWrap: 'wrap',
+                              gap: '0.5rem'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                <AlertTriangle size={15} color="#e11d48" style={{ flexShrink: 0 }} />
+                                <span>
+                                  <strong>Duplicate Notice:</strong> {item.duplicateInfo?.reason || 'An existing document matches this file.'}
+                                  {item.duplicateInfo?.existingRef ? ` (${item.duplicateInfo.existingRef})` : ''} in <strong>{item.duplicateInfo?.categoryLabel || item.duplicateInfo?.category}</strong>.
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeClassifiedItem(item.tempId)}
+                                style={{
+                                  padding: '0.2rem 0.6rem',
+                                  backgroundColor: '#ffe4e6',
+                                  border: '1px solid #fda4af',
+                                  borderRadius: '4px',
+                                  color: '#be123c',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Remove Duplicate
+                              </button>
+                            </div>
+                          )}
 
                           {/* Alert or Reasoning note */}
                           <div style={{
@@ -2134,6 +2311,19 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
           </div>
         )}
       </div>
+
+      {/* In-Window Document Viewer Modal */}
+      {previewDoc && (
+        <DocumentViewerModal
+          isOpen={!!previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          documentTitle={previewDoc.title || 'Document Preview'}
+          fileUrl={previewDoc.fileUrl}
+          documentNumber={previewDoc.documentNumber}
+          documentDate={previewDoc.date}
+          categoryLabel={previewDoc.categoryLabel}
+        />
+      )}
     </div>
   );
 };

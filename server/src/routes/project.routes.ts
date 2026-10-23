@@ -1642,6 +1642,30 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
       }
     }
 
+    // Preload existing documents in this project to check for duplicates
+    const [existingDocs, existingCorrs, existingDailyReports, existingVariations, existingInvoices] = await Promise.all([
+      prisma.projectDocument.findMany({
+        where: { projectId },
+        select: { id: true, documentNumber: true, title: true, fileUrl: true, issueDate: true }
+      }),
+      prisma.projectCorrespondence.findMany({
+        where: { projectId },
+        select: { id: true, referenceNumber: true, subject: true, fileUrl: true, date: true }
+      }),
+      prisma.projectDailyReport.findMany({
+        where: { projectId },
+        select: { id: true, date: true, location: true, activities: true, fileUrl: true }
+      }),
+      prisma.projectVariationOrder.findMany({
+        where: { projectId },
+        select: { id: true, referenceNumber: true, title: true, fileUrl: true, date: true }
+      }),
+      prisma.projectPaymentInvoice.findMany({
+        where: { projectId },
+        select: { id: true, documentNumber: true, title: true, fileUrl: true, issueDate: true }
+      })
+    ]);
+
     const items = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -1690,6 +1714,151 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
         needsReview = true;
       }
 
+      // Duplicate Document Detection
+      let isDuplicate = false;
+      let duplicateInfo: any = null;
+
+      const norm = (s?: string | null) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanOriginalName = file.originalname.toLowerCase();
+      const extractedNumber = norm(classification.fields?.documentNumber || classification.fields?.referenceNumber);
+      const extractedTitle = norm(classification.fields?.title || classification.fields?.subject);
+      const extractedDate = classification.fields?.documentDate || classification.fields?.date || classification.fields?.issueDate;
+
+      // 1. Check against existing correspondence
+      if (!isDuplicate) {
+        for (const existing of existingCorrs) {
+          const exRef = norm(existing.referenceNumber);
+          const exSubj = norm(existing.subject);
+          const hasSameRef = extractedNumber && exRef && extractedNumber === exRef;
+          const hasSameNameOrSubj = (cleanOriginalName && existing.fileUrl && existing.fileUrl.toLowerCase().includes(cleanOriginalName)) || 
+                                    (extractedTitle && exSubj && extractedTitle === exSubj);
+
+          if (hasSameRef || hasSameNameOrSubj) {
+            isDuplicate = true;
+            duplicateInfo = {
+              existingId: existing.id,
+              existingTitle: existing.subject,
+              existingRef: existing.referenceNumber,
+              category: 'correspondence',
+              categoryLabel: 'Correspondence',
+              reason: hasSameRef ? `Matches reference number "${existing.referenceNumber}"` : `Matches existing file/subject "${existing.subject}"`
+            };
+            break;
+          }
+        }
+      }
+
+      // 2. Check against existing project documents
+      if (!isDuplicate) {
+        for (const existing of existingDocs) {
+          const exNum = norm(existing.documentNumber);
+          const exTitle = norm(existing.title);
+          const hasSameNum = extractedNumber && exNum && extractedNumber === exNum;
+          const hasSameTitle = (cleanOriginalName && existing.fileUrl && existing.fileUrl.toLowerCase().includes(cleanOriginalName)) || 
+                               (extractedTitle && exTitle && extractedTitle === exTitle);
+
+          if (hasSameNum || hasSameTitle) {
+            isDuplicate = true;
+            duplicateInfo = {
+              existingId: existing.id,
+              existingTitle: existing.title,
+              existingRef: existing.documentNumber,
+              category: 'documents',
+              categoryLabel: 'Project Documents',
+              reason: hasSameNum ? `Matches document number "${existing.documentNumber}"` : `Matches existing file/title "${existing.title}"`
+            };
+            break;
+          }
+        }
+      }
+
+      // 3. Check against existing daily reports
+      if (!isDuplicate && extractedDate) {
+        for (const existing of existingDailyReports) {
+          const exDateStr = existing.date ? new Date(existing.date).toISOString().split('T')[0] : '';
+          if (exDateStr === extractedDate) {
+            isDuplicate = true;
+            duplicateInfo = {
+              existingId: existing.id,
+              existingTitle: `Daily Report for ${exDateStr}`,
+              existingRef: `Report ${exDateStr}`,
+              category: 'daily_reports',
+              categoryLabel: 'Daily Reports',
+              reason: `A daily report for date ${exDateStr} already exists in this project`
+            };
+            break;
+          }
+        }
+      }
+
+      // 4. Check against existing variations
+      if (!isDuplicate) {
+        for (const existing of existingVariations) {
+          const exRef = norm(existing.referenceNumber);
+          const exTitle = norm(existing.title);
+          const hasSameRef = extractedNumber && exRef && extractedNumber === exRef;
+          const hasSameTitle = extractedTitle && exTitle && extractedTitle === exTitle;
+
+          if (hasSameRef || hasSameTitle) {
+            isDuplicate = true;
+            duplicateInfo = {
+              existingId: existing.id,
+              existingTitle: existing.title,
+              existingRef: existing.referenceNumber,
+              category: 'variations',
+              categoryLabel: 'Variations & Claims',
+              reason: hasSameRef ? `Matches variation ref "${existing.referenceNumber}"` : `Matches variation title "${existing.title}"`
+            };
+            break;
+          }
+        }
+      }
+
+      // 5. Check against existing invoices
+      if (!isDuplicate) {
+        for (const existing of existingInvoices) {
+          const exNum = norm(existing.documentNumber);
+          const exTitle = norm(existing.title);
+          const hasSameNum = extractedNumber && exNum && extractedNumber === exNum;
+          const hasSameTitle = extractedTitle && exTitle && extractedTitle === exTitle;
+
+          if (hasSameNum || hasSameTitle) {
+            isDuplicate = true;
+            duplicateInfo = {
+              existingId: existing.id,
+              existingTitle: existing.title,
+              existingRef: existing.documentNumber,
+              category: 'payment_invoices',
+              categoryLabel: 'Payments / Invoices',
+              reason: hasSameNum ? `Matches invoice number "${existing.documentNumber}"` : `Matches invoice title "${existing.title}"`
+            };
+            break;
+          }
+        }
+      }
+
+      // 6. Check within current batch for duplicates
+      if (!isDuplicate) {
+        for (const prevItem of items) {
+          if (prevItem.originalName.toLowerCase() === cleanOriginalName) {
+            isDuplicate = true;
+            duplicateInfo = {
+              existingId: 0,
+              existingTitle: prevItem.originalName,
+              existingRef: prevItem.fields?.documentNumber || prevItem.fields?.referenceNumber || '',
+              category: prevItem.category,
+              categoryLabel: prevItem.categoryLabel,
+              reason: `Duplicate file within this upload batch (${prevItem.originalName})`
+            };
+            break;
+          }
+        }
+      }
+
+      if (isDuplicate) {
+        needsReview = true;
+      }
+
       items.push({
         tempId: `item-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
         originalName: file.originalname,
@@ -1702,11 +1871,14 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
         reasoning: classification.reasoning || 'Categorized based on document attributes.',
         fields: classification.fields || {},
         unfilledFields: unfilled,
-        needsReview
+        needsReview,
+        isDuplicate,
+        duplicateInfo
       });
     }
 
     const needsReviewCount = items.filter(it => it.needsReview).length;
+    const duplicateCount = items.filter(it => it.isDuplicate).length;
     const classifiedCount = items.length - needsReviewCount;
 
     res.json({
@@ -1714,7 +1886,8 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
       items,
       totalCount: items.length,
       classifiedCount,
-      needsReviewCount
+      needsReviewCount,
+      duplicateCount
     });
   } catch (error: any) {
     console.error('Error in AI document classify & upload:', error);
