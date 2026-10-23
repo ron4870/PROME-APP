@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import JSZip from 'jszip';
 import { 
   Sparkles, 
   Upload, 
@@ -13,7 +14,10 @@ import {
   CreditCard, 
   Trash2, 
   CheckCircle2, 
-  Plus
+  Plus,
+  Folder,
+  Archive,
+  Layers
 } from 'lucide-react';
 
 export type ProjectDocCategory = 'correspondence' | 'documents' | 'daily_reports' | 'variations' | 'payment_invoices';
@@ -91,27 +95,119 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [isUnpacking, setIsUnpacking] = useState(false);
+  const [userCategoryHint, setUserCategoryHint] = useState('');
   const [classifiedItems, setClassifiedItems] = useState<ClassifiedItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [savedCount, setSavedCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const extractZipFiles = async (zipFile: File): Promise<File[]> => {
+    const zip = new JSZip();
+    const loaded = await zip.loadAsync(zipFile);
+    const result: File[] = [];
+
+    for (const [relativePath, entry] of Object.entries(loaded.files)) {
+      if (entry.dir || relativePath.includes('__MACOSX') || relativePath.includes('.DS_Store')) {
+        continue;
+      }
+      const blob = await entry.async('blob');
+      const fileName = relativePath.split('/').pop() || relativePath;
+
+      let mime = 'application/octet-stream';
+      const lower = fileName.toLowerCase();
+      if (lower.endsWith('.pdf')) mime = 'application/pdf';
+      else if (lower.endsWith('.docx')) mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      else if (lower.endsWith('.doc')) mime = 'application/msword';
+      else if (lower.endsWith('.xlsx')) mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      else if (lower.endsWith('.xls')) mime = 'application/vnd.ms-excel';
+      else if (lower.endsWith('.txt')) mime = 'text/plain';
+      else if (lower.endsWith('.csv')) mime = 'text/csv';
+      else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mime = 'image/jpeg';
+      else if (lower.endsWith('.png')) mime = 'image/png';
+      else if (lower.endsWith('.dwg') || lower.endsWith('.dxf')) mime = 'application/acad';
+
+      const unpackedFile = new File([blob], fileName, { type: mime, lastModified: Date.now() });
+      (unpackedFile as any).customPath = relativePath;
+      result.push(unpackedFile);
+    }
+    return result;
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
       setSelectedFiles(prev => [...prev, ...filesArray]);
+      if (e.target) e.target.value = '';
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files) {
-      const filesArray = Array.from(e.dataTransfer.files);
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files).filter(
+        f => !f.name.startsWith('.') && !f.name.includes('__MACOSX')
+      );
       setSelectedFiles(prev => [...prev, ...filesArray]);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleZipSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsUnpacking(true);
+      setErrorMsg(null);
+      try {
+        const incoming = Array.from(e.target.files);
+        const extracted: File[] = [];
+        for (const f of incoming) {
+          if (f.name.toLowerCase().endsWith('.zip') || f.type.includes('zip')) {
+            const files = await extractZipFiles(f);
+            extracted.push(...files);
+          } else {
+            extracted.push(f);
+          }
+        }
+        setSelectedFiles(prev => [...prev, ...extracted]);
+      } catch (err: any) {
+        console.error('Failed to unpack zip:', err);
+        setErrorMsg(`Failed to extract ZIP archive: ${err.message || 'Corrupt or unreadable zip file'}`);
+      } finally {
+        setIsUnpacking(false);
+        if (e.target) e.target.value = '';
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setIsUnpacking(true);
+      setErrorMsg(null);
+      try {
+        const incoming = Array.from(e.dataTransfer.files);
+        const processed: File[] = [];
+        for (const f of incoming) {
+          if (f.name.toLowerCase().endsWith('.zip') || f.type.includes('zip')) {
+            const extracted = await extractZipFiles(f);
+            processed.push(...extracted);
+          } else {
+            processed.push(f);
+          }
+        }
+        setSelectedFiles(prev => [...prev, ...processed]);
+      } catch (err: any) {
+        console.error('Drop processing error:', err);
+        setErrorMsg(`Failed to process dropped files: ${err.message || 'Drop error'}`);
+      } finally {
+        setIsUnpacking(false);
+      }
     }
   };
 
@@ -129,6 +225,9 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
       selectedFiles.forEach(file => {
         formData.append('files', file);
       });
+      if (userCategoryHint.trim()) {
+        formData.append('userHint', userCategoryHint.trim());
+      }
 
       const res = await fetch(`/api/projects/${projectId}/ai-classify-upload`, {
         method: 'POST',
@@ -283,6 +382,8 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
   const handleResetAndClose = () => {
     setSelectedFiles([]);
     setClassifiedItems([]);
+    setUserCategoryHint('');
+    setIsUnpacking(false);
     setSaveSuccess(false);
     setErrorMsg(null);
     onClose();
@@ -460,9 +561,193 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
             </div>
           ) : (
             <>
-              {/* STEP 1: DROPZONE & PENDING FILES */}
+              {/* STEP 1: DROPZONE, BULK UPLOAD & PENDING FILES */}
               {classifiedItems.length === 0 && (
                 <div>
+                  {/* Hidden inputs for multi-files, folder, and zip */}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileSelect} 
+                    multiple 
+                    style={{ display: 'none' }} 
+                  />
+                  <input 
+                    type="file" 
+                    ref={folderInputRef} 
+                    {...({ webkitdirectory: '', directory: '', multiple: true } as any)}
+                    onChange={handleFolderSelect} 
+                    style={{ display: 'none' }} 
+                  />
+                  <input 
+                    type="file" 
+                    ref={zipInputRef} 
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    onChange={handleZipSelect} 
+                    style={{ display: 'none' }} 
+                  />
+
+                  {/* BULK UPLOAD ACTION PANEL */}
+                  <div style={{
+                    marginBottom: '1.25rem',
+                    padding: '1.1rem 1.25rem',
+                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '10px',
+                        backgroundColor: '#0284c7',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)'
+                      }}>
+                        <Layers size={22} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0369a1' }}>
+                            Bulk Upload
+                          </span>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '999px',
+                            backgroundColor: '#0284c7',
+                            color: 'white',
+                            fontWeight: 600
+                          }}>
+                            Folder • ZIP • Multi-File
+                          </span>
+                        </div>
+                        <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.82rem', color: '#0c4a6e' }}>
+                          Import a complete directory, unpack a ZIP archive, or select multiple files at once.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => folderInputRef.current?.click()}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.55rem 0.85rem',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #7dd3fc',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 600,
+                          color: '#0369a1',
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f0f9ff';
+                          e.currentTarget.style.borderColor = '#0284c7';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                          e.currentTarget.style.borderColor = '#7dd3fc';
+                        }}
+                      >
+                        <Folder size={16} color="#0284c7" /> Select Folder
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => zipInputRef.current?.click()}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.55rem 0.85rem',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #7dd3fc',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 600,
+                          color: '#0369a1',
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f0f9ff';
+                          e.currentTarget.style.borderColor = '#0284c7';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                          e.currentTarget.style.borderColor = '#7dd3fc';
+                        }}
+                      >
+                        <Archive size={16} color="#0284c7" /> Select ZIP Archive
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.55rem 0.85rem',
+                          backgroundColor: '#0284c7',
+                          border: '1px solid #0284c7',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 600,
+                          color: '#ffffff',
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#0369a1';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#0284c7';
+                        }}
+                      >
+                        <Upload size={16} /> Select Multiple Files
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* UNPACKING SPINNER NOTIFICATION */}
+                  {isUnpacking && (
+                    <div style={{
+                      padding: '0.875rem 1.25rem',
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      color: '#1d4ed8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.65rem',
+                      marginBottom: '1.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 500
+                    }}>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Unpacking ZIP archive contents... Extracting documents for AI classification.</span>
+                    </div>
+                  )}
+
+                  {/* DROPZONE */}
                   <div
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDrop}
@@ -471,20 +756,13 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                       border: '2px dashed #0284c7',
                       borderRadius: '12px',
                       backgroundColor: '#f8fafc',
-                      padding: '2.5rem 1.5rem',
+                      padding: '2.25rem 1.5rem',
                       textAlign: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       marginBottom: '1.25rem'
                     }}
                   >
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileSelect} 
-                      multiple 
-                      style={{ display: 'none' }} 
-                    />
                     <div style={{
                       width: '48px',
                       height: '48px',
@@ -499,62 +777,221 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                       <Upload size={24} />
                     </div>
                     <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#0f172a' }}>
-                      Drag and drop your project documents here
+                      Drag and drop files, folders, or ZIP archives here
                     </h4>
                     <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                      Supports PDF, Word (.docx), Excel (.xlsx), Drawings (.dwg/.dxf), Images, and Text files
+                      Supports PDF, Word (.docx), Excel (.xlsx), Drawings (.dwg/.dxf), Images, Text files, and ZIP archives
                     </p>
-                    <button 
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ marginTop: '1rem', fontSize: '0.875rem' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fileInputRef.current?.click();
+                    <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button 
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        <FileText size={15} /> Browse Files
+                      </button>
+                      <button 
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          folderInputRef.current?.click();
+                        }}
+                      >
+                        <Folder size={15} /> Browse Folder
+                      </button>
+                      <button 
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          zipInputRef.current?.click();
+                        }}
+                      >
+                        <Archive size={15} /> Browse ZIP
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* USER CATEGORY & CONTEXT GUIDANCE (OPTIONAL) */}
+                  <div style={{
+                    marginBottom: '1.5rem',
+                    padding: '1.1rem 1.25rem',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.25rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <Sparkles size={16} color="#4f46e5" />
+                        AI Category & Context Guidance (Optional)
+                      </label>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        Guides Gemini LLM classification & field extraction
+                      </span>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={userCategoryHint}
+                      onChange={(e) => setUserCategoryHint(e.target.value)}
+                      placeholder='e.g., "These are incoming contractor letters and transmittals", "Pier 4 daily progress reports", "Civil drawings", "IPC No. 3 invoices"...'
+                      style={{
+                        width: '100%',
+                        padding: '0.625rem 0.85rem',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.875rem',
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
-                    >
-                      Browse Files
-                    </button>
+                    />
+
+                    {/* Quick suggestion chips */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Quick suggestions:</span>
+                      {[
+                        { label: '✉️ Correspondence', hint: 'Contractor correspondence, transmittals, and formal letters' },
+                        { label: '📄 Project Documents', hint: 'Engineering drawings, specs, method statements, and technical documents' },
+                        { label: '📋 Daily Reports', hint: 'Daily site progress reports, labor records, and supervisor diary' },
+                        { label: '⚖️ Variations & Claims', hint: 'Variation orders, site claims, and extension of time' },
+                        { label: '💳 Invoices & IPCs', hint: 'Interim payment certificates (IPC) and consultant invoices' },
+                        { label: '📐 Drawings & Plans', hint: 'Civil, structural, and architectural drawings' }
+                      ].map((chip, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            if (!userCategoryHint) {
+                              setUserCategoryHint(chip.hint);
+                            } else if (!userCategoryHint.includes(chip.hint)) {
+                              setUserCategoryHint(prev => `${prev}; ${chip.hint}`);
+                            }
+                          }}
+                          style={{
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '999px',
+                            padding: '0.2rem 0.6rem',
+                            fontSize: '0.75rem',
+                            color: '#334155',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#0284c7';
+                            e.currentTarget.style.color = '#0284c7';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#cbd5e1';
+                            e.currentTarget.style.color = '#334155';
+                          }}
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                      {userCategoryHint && (
+                        <button
+                          type="button"
+                          onClick={() => setUserCategoryHint('')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            marginLeft: 'auto'
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Selected Queue Before AI */}
                   {selectedFiles.length > 0 && (
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#334155', marginBottom: '0.75rem' }}>
-                        Selected Files ({selectedFiles.length})
-                      </h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {selectedFiles.map((file, idx) => (
-                          <div 
-                            key={idx} 
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'space-between', 
-                              padding: '0.75rem 1rem', 
-                              backgroundColor: '#ffffff', 
-                              border: '1px solid #e2e8f0', 
-                              borderRadius: '8px' 
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <FileText size={18} color="#0284c7" />
-                              <div>
-                                <span style={{ fontWeight: 500, fontSize: '0.9rem', color: '#0f172a' }}>{file.name}</span>
-                                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
-                                  ({formatFileSize(file.size)})
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeSelectedFile(idx)}
-                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#334155' }}>
+                          Selected Files ({selectedFiles.length})
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFiles([])}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                        >
+                          <Trash2 size={13} /> Clear all
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {selectedFiles.map((file, idx) => {
+                          const subPath = (file as any).customPath || (file as any).webkitRelativePath;
+                          return (
+                            <div 
+                              key={idx} 
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between', 
+                                padding: '0.65rem 0.9rem', 
+                                backgroundColor: '#ffffff', 
+                                border: '1px solid #e2e8f0', 
+                                borderRadius: '8px' 
+                              }}
                             >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ))}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                                <FileText size={18} color="#0284c7" style={{ flexShrink: 0 }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', overflow: 'hidden' }}>
+                                  <span style={{ fontWeight: 500, fontSize: '0.875rem', color: '#0f172a', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                    {file.name}
+                                  </span>
+                                  {subPath && subPath !== file.name && (
+                                    <span style={{
+                                      fontSize: '0.7rem',
+                                      color: '#0369a1',
+                                      backgroundColor: '#e0f2fe',
+                                      padding: '0.1rem 0.4rem',
+                                      borderRadius: '4px',
+                                      border: '1px solid #bae6fd'
+                                    }}>
+                                      {subPath}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    ({formatFileSize(file.size)})
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeSelectedFile(idx)}
+                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
 
                       <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
@@ -571,12 +1008,13 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                             fontWeight: 600,
                             background: 'linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)',
                             border: 'none',
-                            color: 'white'
+                            color: 'white',
+                            cursor: 'pointer'
                           }}
                         >
                           {isClassifying ? (
                             <>
-                              <Loader2 size={18} className="animate-spin" /> Analyzing with AI Assistant...
+                              <Loader2 size={18} className="animate-spin" /> Analyzing with Gemini AI...
                             </>
                           ) : (
                             <>
@@ -601,39 +1039,93 @@ export const AIDocumentUploadModal: React.FC<Props> = ({
                     padding: '0.75rem 1rem',
                     backgroundColor: '#f0fdf4',
                     border: '1px solid #bbf7d0',
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#166534', fontSize: '0.9rem', fontWeight: 500 }}>
                       <CheckCircle2 size={18} />
                       <span>AI has classified {classifiedItems.length} document{classifiedItems.length !== 1 ? 's' : ''}. Review extracted metadata and fill in any non-filled fields below.</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: '#334155',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Plus size={14} /> Add More Files
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileSelect} 
-                      multiple 
-                      style={{ display: 'none' }} 
-                    />
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.65rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          color: '#334155',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Plus size={14} /> Add Files
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => folderInputRef.current?.click()}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.65rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          color: '#0369a1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Folder size={14} /> Add Folder
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => zipInputRef.current?.click()}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.65rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          color: '#0369a1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Archive size={14} /> Add ZIP
+                      </button>
+                    </div>
                   </div>
+
+                  {isUnpacking && (
+                    <div style={{
+                      padding: '0.75rem 1rem',
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      color: '#1d4ed8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      marginBottom: '1rem',
+                      fontSize: '0.85rem'
+                    }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Unpacking ZIP archive contents...</span>
+                    </div>
+                  )}
 
                   {/* If more files selected while in review mode */}
                   {selectedFiles.length > 0 && (

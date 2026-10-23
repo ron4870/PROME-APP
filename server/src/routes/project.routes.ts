@@ -7,6 +7,7 @@ import { classifyProjectDocumentWithAI, ProjectContextInfo } from '../services/p
 import { Readable } from 'stream';
 import path from 'path';
 import fs from 'fs';
+import AdmZip from 'adm-zip';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -1550,7 +1551,7 @@ router.post('/:id/equipment-logs', authenticate, checkProjectAccess(), async (re
 // ==========================================
 
 // 1. AI Classify & Pre-Upload Endpoint (analyzes multiple files, extracts metadata and assigns categories)
-router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), upload.array('files', 15), async (req, res) => {
+router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), upload.array('files', 100), async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
     const project = await prisma.project.findUnique({
@@ -1562,9 +1563,71 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const files = req.files as Express.Multer.File[];
-    if (!files || files.length === 0) {
+    const rawFiles = req.files as Express.Multer.File[];
+    if (!rawFiles || rawFiles.length === 0) {
       return res.status(400).json({ error: 'No files provided for classification' });
+    }
+
+    const userHint = (req.body.userHint || req.body.userCategoryHint || '').trim();
+
+    // Expand archives: if any file is a ZIP archive, unpack entries into virtual files
+    const files: Express.Multer.File[] = [];
+    for (const rawFile of rawFiles) {
+      const isZip = rawFile.mimetype === 'application/zip' ||
+                    rawFile.mimetype === 'application/x-zip-compressed' ||
+                    rawFile.mimetype === 'multipart/x-zip' ||
+                    rawFile.originalname.toLowerCase().endsWith('.zip');
+
+      if (isZip) {
+        try {
+          const zip = new AdmZip(rawFile.buffer);
+          const zipEntries = zip.getEntries();
+          let extractedCount = 0;
+
+          for (const entry of zipEntries) {
+            if (!entry.isDirectory && !entry.entryName.includes('__MACOSX') && !entry.entryName.includes('.DS_Store')) {
+              const entryBuffer = entry.getData();
+              const entryName = entry.name || entry.entryName.split('/').pop() || 'document';
+              let mime = 'application/octet-stream';
+              const lower = entryName.toLowerCase();
+              if (lower.endsWith('.pdf')) mime = 'application/pdf';
+              else if (lower.endsWith('.docx')) mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+              else if (lower.endsWith('.doc')) mime = 'application/msword';
+              else if (lower.endsWith('.xlsx')) mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+              else if (lower.endsWith('.xls')) mime = 'application/vnd.ms-excel';
+              else if (lower.endsWith('.txt')) mime = 'text/plain';
+              else if (lower.endsWith('.csv')) mime = 'text/csv';
+              else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mime = 'image/jpeg';
+              else if (lower.endsWith('.png')) mime = 'image/png';
+              else if (lower.endsWith('.dwg') || lower.endsWith('.dxf')) mime = 'application/acad';
+
+              files.push({
+                fieldname: rawFile.fieldname,
+                originalname: entryName,
+                encoding: '7bit',
+                mimetype: mime,
+                size: entryBuffer.length,
+                buffer: entryBuffer,
+                destination: '',
+                filename: entryName,
+                path: '',
+                stream: null as any
+              });
+              extractedCount++;
+            }
+          }
+
+          if (extractedCount === 0) {
+            // If empty zip or failed unpacking, keep original
+            files.push(rawFile);
+          }
+        } catch (zipErr) {
+          console.warn(`AdmZip unpack error for ${rawFile.originalname}:`, zipErr);
+          files.push(rawFile);
+        }
+      } else {
+        files.push(rawFile);
+      }
     }
 
     const items = [];
@@ -1577,7 +1640,7 @@ router.post('/:id/ai-classify-upload', authenticate, checkProjectAccess(), uploa
         console.error(`Upload error for ${file.originalname}:`, uploadErr);
       }
 
-      const classification = await classifyProjectDocumentWithAI(file, project);
+      const classification = await classifyProjectDocumentWithAI(file, project, userHint);
 
       items.push({
         tempId: `item-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,

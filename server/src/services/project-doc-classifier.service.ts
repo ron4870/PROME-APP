@@ -89,17 +89,25 @@ async function extractTextFromBuffer(buffer: Buffer, mimeType: string, filename:
 }
 
 /**
- * Fallback rule-based classifier using file name and text snippets.
+ * Fallback rule-based classifier using file name, text snippets, and user guidance.
  */
-export function ruleBasedClassification(filename: string, extractedText: string = ''): ClassifiedDocResult {
+export function ruleBasedClassification(filename: string, extractedText: string = '', userHint: string = ''): ClassifiedDocResult {
   const lowerName = filename.toLowerCase();
   const lowerText = extractedText.toLowerCase().slice(0, 3000);
-  const combined = `${lowerName} ${lowerText}`;
+  const lowerHint = (userHint || '').toLowerCase();
+  const combined = `${lowerName} ${lowerText} ${lowerHint}`;
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // User category hint checks
+  const hintIsDaily = lowerHint.includes('daily') || lowerHint.includes('diary') || lowerHint.includes('site report') || lowerHint.includes('progress report');
+  const hintIsPayment = lowerHint.includes('invoice') || lowerHint.includes('ipc') || lowerHint.includes('payment') || lowerHint.includes('fee');
+  const hintIsVariation = lowerHint.includes('variation') || lowerHint.includes('claim') || lowerHint.includes('eot') || lowerHint.includes('vo');
+  const hintIsCorrespondence = lowerHint.includes('corr') || lowerHint.includes('letter') || lowerHint.includes('memo') || lowerHint.includes('transmittal') || lowerHint.includes('notice') || lowerHint.includes('minute') || lowerHint.includes('mom') || lowerHint.includes('submittal');
+
   // 1. Daily Reports
   if (
+    hintIsDaily ||
     lowerName.includes('daily') ||
     lowerName.includes('site_report') ||
     lowerName.includes('site report') ||
@@ -115,8 +123,10 @@ export function ruleBasedClassification(filename: string, extractedText: string 
     return {
       category: 'daily_reports',
       categoryLabel: CATEGORY_LABELS.daily_reports,
-      confidence: 0.85,
-      reasoning: 'Filename/content indicates a daily site progress record or site diary.',
+      confidence: hintIsDaily ? 0.95 : 0.85,
+      reasoning: hintIsDaily 
+        ? `Categorized as Daily Report based on user guidance ("${userHint}") and file attributes.`
+        : 'Filename/content indicates a daily site progress record or site diary.',
       fields: {
         date: todayStr,
         location: '',
@@ -131,6 +141,7 @@ export function ruleBasedClassification(filename: string, extractedText: string 
 
   // 2. Payments / Invoices / IPC
   if (
+    hintIsPayment ||
     lowerName.includes('invoice') ||
     lowerName.includes('ipc') ||
     lowerName.includes('fee note') ||
@@ -146,8 +157,10 @@ export function ruleBasedClassification(filename: string, extractedText: string 
     return {
       category: 'payment_invoices',
       categoryLabel: CATEGORY_LABELS.payment_invoices,
-      confidence: 0.88,
-      reasoning: 'Document is identified as a payment application, IPC, or invoice.',
+      confidence: hintIsPayment ? 0.95 : 0.88,
+      reasoning: hintIsPayment
+        ? `Categorized as Payment/Invoice based on user guidance ("${userHint}").`
+        : 'Document is identified as a payment application, IPC, or invoice.',
       fields: {
         documentNumber: docNum,
         title: filename.replace(/\.[^/.]+$/, ''),
@@ -162,6 +175,7 @@ export function ruleBasedClassification(filename: string, extractedText: string 
 
   // 3. Variations & Claims
   if (
+    hintIsVariation ||
     lowerName.includes('variation') ||
     lowerName.includes('claim') ||
     lowerName.includes('eot') ||
@@ -176,8 +190,10 @@ export function ruleBasedClassification(filename: string, extractedText: string 
     return {
       category: 'variations',
       categoryLabel: CATEGORY_LABELS.variations,
-      confidence: 0.86,
-      reasoning: 'Document addresses contractual changes, variations, or claims.',
+      confidence: hintIsVariation ? 0.95 : 0.86,
+      reasoning: hintIsVariation
+        ? `Categorized as Variation/Claim based on user guidance ("${userHint}").`
+        : 'Document addresses contractual changes, variations, or claims.',
       fields: {
         referenceNumber: refNum,
         title: filename.replace(/\.[^/.]+$/, ''),
@@ -193,6 +209,7 @@ export function ruleBasedClassification(filename: string, extractedText: string 
 
   // 4. Formal Correspondence (Letters, Memos, Transmittals, Notices)
   if (
+    hintIsCorrespondence ||
     lowerName.includes('letter') ||
     lowerName.includes('memo') ||
     lowerName.includes('transmittal') ||
@@ -214,8 +231,10 @@ export function ruleBasedClassification(filename: string, extractedText: string 
     return {
       category: 'correspondence',
       categoryLabel: CATEGORY_LABELS.correspondence,
-      confidence: 0.84,
-      reasoning: 'Identified as official project correspondence or communication letter.',
+      confidence: hintIsCorrespondence ? 0.95 : 0.84,
+      reasoning: hintIsCorrespondence
+        ? `Categorized as Correspondence based on user guidance ("${userHint}").`
+        : 'Identified as official project correspondence or communication letter.',
       fields: {
         referenceNumber: refNum,
         type: lowerName.includes('in') ? 'Incoming' : 'Outgoing',
@@ -267,7 +286,8 @@ export function ruleBasedClassification(filename: string, extractedText: string 
  */
 export async function classifyProjectDocumentWithAI(
   file: Express.Multer.File,
-  project: ProjectContextInfo
+  project: ProjectContextInfo,
+  userHint?: string
 ): Promise<ClassifiedDocResult> {
   const filename = file.originalname;
   const mimeType = file.mimetype;
@@ -279,7 +299,7 @@ export async function classifyProjectDocumentWithAI(
 
   // If no Gemini API key or text is completely empty and file not sendable, fallback to rule-based
   if (!process.env.GEMINI_API_KEY) {
-    return ruleBasedClassification(filename, textSnippet);
+    return ruleBasedClassification(filename, textSnippet, userHint);
   }
 
   try {
@@ -291,7 +311,11 @@ Project Context:
 - Client: "${project.client || 'Not specified'}"
 - Project ID: ${project.id}
 - Today's Date: ${todayStr}
-
+${userHint && userHint.trim() ? `
+USER-PROVIDED CATEGORY & CONTEXT GUIDANCE:
+"${userHint.trim()}"
+IMPORTANT INSTRUCTION: The user provided the above category/context guidance for this upload batch. Give this guidance strong priority when determining the target category (correspondence, documents, daily_reports, variations, payment_invoices) and when extracting appropriate metadata fields, unless the document content clearly and undeniably indicates a different category.
+` : ''}
 Uploaded File Information:
 - Original Filename: "${filename}"
 - MIME Type: "${mimeType}"
@@ -445,6 +469,6 @@ Return a STRICT JSON object in this exact schema (no markdown, no extra text):
 
   } catch (aiErr) {
     console.error(`Gemini classification failed for ${filename}, falling back to rule-based:`, aiErr);
-    return ruleBasedClassification(filename, textSnippet);
+    return ruleBasedClassification(filename, textSnippet, userHint);
   }
 }
