@@ -5,12 +5,13 @@ import multer from 'multer';
 import { google } from 'googleapis';
 import path from 'path';
 import { Readable } from 'stream';
+import fs from 'fs';
+import { PROME_DOCUMENT_MASTERLIST } from '../data/promeMasterlistSeed';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 const uploadDir = path.join(__dirname, '../../uploads');
-import fs from 'fs';
 
 // Ensure upload directory exists
 if (!fs.existsSync(uploadDir)) {
@@ -33,6 +34,28 @@ const upload = multer({
 });
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    // If database has very few records, auto-seed standard masterlist
+    const count = await prisma.masterDocument.count();
+    if (count < 10) {
+      for (const item of PROME_DOCUMENT_MASTERLIST) {
+        await prisma.masterDocument.upsert({
+          where: { documentNumber: item.documentNumber },
+          update: {},
+          create: {
+            documentNumber: item.documentNumber,
+            title: item.title,
+            type: item.type,
+            category: item.category,
+            division: item.department,
+            retentionPeriod: item.retentionPeriod,
+            status: item.status || 'Approved',
+            revision: item.revision,
+            issueDate: item.issueDate ? new Date(item.issueDate) : null,
+          }
+        });
+      }
+    }
+
     const documents = await prisma.masterDocument.findMany({
       include: {
         owner: { select: { id: true, name: true } },
@@ -44,6 +67,41 @@ router.get('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch documents:', error);
     res.status(500).json({ message: 'Failed to fetch documents' });
+  }
+});
+
+// Explicit endpoint to seed or refresh standard ISO masterlist
+router.post('/seed-masterlist', authenticateToken, async (req, res) => {
+  try {
+    let seeded = 0;
+    for (const item of PROME_DOCUMENT_MASTERLIST) {
+      await prisma.masterDocument.upsert({
+        where: { documentNumber: item.documentNumber },
+        update: {
+          title: item.title,
+          category: item.category,
+          division: item.department,
+          retentionPeriod: item.retentionPeriod,
+          type: item.type,
+        },
+        create: {
+          documentNumber: item.documentNumber,
+          title: item.title,
+          type: item.type,
+          category: item.category,
+          division: item.department,
+          retentionPeriod: item.retentionPeriod,
+          status: item.status || 'Approved',
+          revision: item.revision,
+          issueDate: item.issueDate ? new Date(item.issueDate) : null,
+        }
+      });
+      seeded++;
+    }
+    res.json({ message: `Successfully seeded ${seeded} masterlist documents` });
+  } catch (error) {
+    console.error('Failed to seed master documents:', error);
+    res.status(500).json({ message: 'Failed to seed master documents' });
   }
 });
 
