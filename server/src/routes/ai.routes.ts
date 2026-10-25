@@ -296,6 +296,91 @@ const systemTools: any[] = [
         status: { type: Type.STRING, description: "Optional filter by status: 'MISSING', 'NEEDS_UPDATE', or 'COMPLIANT'." }
       }
     }
+  },
+  {
+    name: "getQualityObjectives",
+    description: "Returns corporate and departmental Quality Objectives and KPIs (ISO 9001:2015 Clause 6.2). Includes strategic objectives, departmental quality objectives, strategy/methodology, measurement method, review frequency, previous target (2025), end 2025 status, current target (2026), quarterly review metrics (Q1, Q2, Q3, Q4), comments, verification records, and approval status.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        division: { type: Type.STRING, description: "Optional filter by division/department (e.g., 'PMBDD', 'BE&ED', 'AFD')." },
+        status: { type: Type.STRING, description: "Optional filter by status ('Active', 'Achieved', 'Off-Track', 'Draft')." },
+        query: { type: Type.STRING, description: "Optional search query to match objective number, title, or strategic goals." }
+      }
+    }
+  },
+  {
+    name: "updateQualityObjectiveQuarter",
+    description: "Updates a Quality Objective's quarterly review status (Q1, Q2, Q3, or Q4), current KPI value, objective status, review comments, and verification records.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        objectiveNumber: { type: Type.STRING, description: "The objective number (e.g. 'PROME-QOBJ-PMBDD-01' or numeric ID)." },
+        quarter: { type: Type.STRING, description: "The quarter to update ('Q1', 'Q2', 'Q3', 'Q4')." },
+        quarterStatus: { type: Type.STRING, description: "Status or metric for the quarter (e.g. '100%', '4', '1')." },
+        currentValue: { type: Type.NUMBER, description: "Updated overall current value achieved." },
+        status: { type: Type.STRING, description: "Objective status ('Active', 'Achieved', 'Off-Track', 'Draft')." },
+        comments: { type: Type.STRING, description: "Quarterly review remarks and comments." },
+        records: { type: Type.STRING, description: "Verification evidence records (e.g., 'MIS Access Log', 'Training Reports')." }
+      },
+      required: ["objectiveNumber", "quarter", "quarterStatus"]
+    }
+  },
+  {
+    name: "getManagementReviews",
+    description: "Returns ISO 9001:2015 Clause 9.3 Management Review Meeting records, dates, attendees, chairperson, comprehensive review agendas (QMS policy/objectives, audit results, feedback, process conformity, CAPA, provider performance, resources, risks/opportunities), and assigned action items.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        meetingNumber: { type: Type.STRING, description: "Optional meeting number (e.g. 'MRM-2025-01')." },
+        status: { type: Type.STRING, description: "Optional filter by status ('Conducted', 'Scheduled', 'Closed')." }
+      }
+    }
+  },
+  {
+    name: "getMasterDocumentRegister",
+    description: "Searches and returns documents from the official PROME Document Masterlist (Manuals, Procedures, Forms, Work Instructions) with document numbers, revision levels, issue dates, categories, divisions, and direct portal links on https://ims.promeconsult.com/documents.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "Optional search query to filter documents by title or document number." },
+        category: { type: Type.STRING, description: "Optional category filter (e.g. 'Manuals', 'Procedures', 'Forms', 'Work Instructions')." },
+        division: { type: Type.STRING, description: "Optional division filter (e.g. 'AFD', 'PMBDD', 'ALL')." }
+      }
+    }
+  },
+  {
+    name: "getFormsDirectory",
+    description: "Returns the official PROME Forms Directory and updated digital forms (Equipment Maintenance, Training Evaluation, Non-Conformance, Customer Feedback, Risk Assessment, etc.) with form numbers, revisions, and direct links to https://ims.promeconsult.com/forms.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "Optional search query to filter forms by title or form number." }
+      }
+    }
+  },
+  {
+    name: "getRiskRegister",
+    description: "Queries the Corporate & Project Risk Register (ISO 9001:2015 Clause 6.1) including risks and opportunities, categories, likelihood, impact, score, mitigation plans, action deadlines, residual risk ratings, and status.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        type: { type: Type.STRING, description: "Optional filter by type: 'Risk', 'Opportunity', or 'ALL'." },
+        category: { type: Type.STRING, description: "Optional category: 'Operational', 'Strategic', 'Financial', 'Compliance', 'Project', 'HSE'." },
+        status: { type: Type.STRING, description: "Optional status: 'Identified', 'Assessed', 'Mitigated', 'Closed'." }
+      }
+    }
+  },
+  {
+    name: "getVariationsAndClaims",
+    description: "Returns project Variations, Claims, and contract change requests across active projects, including descriptions, financial/cost impacts, time extensions, submitted dates, and approval status.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "Optional search query to filter variations by subject or project." },
+        projectId: { type: Type.NUMBER, description: "Optional filter by project ID." }
+      }
+    }
   }
 ];
 
@@ -355,7 +440,7 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
     // System instruction
     const systemInstruction = {
       role: "system",
-      parts: [{ text: `You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems, ISO 14001:2015, and ISO 45001:2018. You assist Administrators and Managing Directors in managing projects, conducting autonomous audits, and maintaining the corporate ISO Compliance & Mandatory Records Register.
+      parts: [{ text: `You are the PROME App AI Assistant, equipped with advanced Lead Auditor capabilities for ISO 9001:2015 and ISO 9001:2018 Quality Management Systems, ISO 14001:2015, and ISO 45001:2018. You assist Administrators and Managing Directors in managing projects, conducting autonomous audits, tracking quality objectives, managing risks, inspecting management review meetings, and maintaining the corporate ISO Compliance & Mandatory Records Register.
 
 PROME COMPANY QMS FOUNDATION & POLICIES:
 - Quality Policy: "DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME"
@@ -363,21 +448,28 @@ PROME COMPANY QMS FOUNDATION & POLICIES:
 - Vision: "To be the preferred consultancy firm in Eastern Africa."
 - Core Values: "Customer Satisfaction, Integrity, Professionalism, Teamwork, Innovation & Continual Improvement."
 - 16 Core QMS Processes: Business Development (PMBDD), Project Inception & Planning (PDMD), Feasibility & Preliminary Engineering (PDMD), Detailed Engineering Design (PED), Procurement Support & Tender Admin (PED), Project Management & Construction Supervision (PDMD), Environmental & Social Impact Assessment (CPSD), Geotechnical & Materials Investigation (PED), Topographical & Engineering Surveys (PED), Quality Assurance & Audit (Lead Auditor), Client Relationship & Feedback (CSVM), Document Control & Records Management (AFD), Human Resource & Competence (HRAD), ICT & Digital Infrastructure (ICT), Financial Management & Invoicing (AFD), Legal & Regulatory Compliance (MD/Legal).
-- Official Controlled Documents:
-  * Clause 4.1 Organization Context (PROME-QSP-CSVM-01, Rev 05) - 7 Internal Factors & 5 External Factors.
+- Official Controlled Documents & Modules:
+  * Clause 4.1 Organization Context (PROME-QSP-CSVM-01, Rev 05) - 7 Internal Factors & 5 External Factors at https://ims.promeconsult.com/organization-context.
   * Clause 4.2 Interested Party Mapping (PROME-QSP-CSVM-21, Rev 05) - 7 External & 3 Internal Interested Parties with P1/P2/P3 priorities.
   * Clause 4.3 & 4.4 Scope & Core QMS Processes (PROME-QSP-CSVM-18, Rev 05) - No exclusions (Design & Development included), statutory compliance (KCCA, NSSF, UACE, PPDA).
+  * Clause 6.1 Risk & Opportunity Management (PROME-QSP-CSVM-03) - Enterprise & Project Risk Register at https://ims.promeconsult.com/risks.
+  * Clause 6.2 Corporate & Departmental Quality Objectives (PROME-IMSR-QOBJ-01, Version 3.0) - 5 PMBDD Quality Objectives (PROME-QOBJ-PMBDD-01 to 05) with 2025 targets, 2025 actuals, 2026 targets, quarterly review metrics (Q1, Q2, Q3, Q4), comments, records, and departmental approvals at https://ims.promeconsult.com/objectives.
   * Clause 7.4 Communication Matrix (PROME-QSR-AFD-20) - Internal & External communication tables.
-  * Clause 9.2 Internal Audit Program (PROME-IMSR-PMBDD-28) - Integrated Audit covering 7 departments & 36 questions.
+  * Clause 7.5 Document Masterlist & Records Register (PROME-QSR-AFD-01) - Master list of all PROME manuals, procedures, forms, and instructions at https://ims.promeconsult.com/documents.
+  * Digital Forms Directory - Interactive forms (Equipment Maintenance, Training Evaluation, Non-Conformance, Customer Feedback, Risk Assessment) at https://ims.promeconsult.com/forms.
+  * Clause 9.2 Internal Audit Program (PROME-IMSR-PMBDD-28) - Integrated Audit covering 7 departments & 36 questions at https://ims.promeconsult.com/audits.
+  * Clause 9.3 Management Review Records (PROME-QSR-AFD-03) - Meeting minutes & 11 ISO inputs at https://ims.promeconsult.com/management-reviews.
   * Clause 10.3 Continual Improvement (Section 10) - Registered improvements across MIS, ISO 45001, ESIA, Tilenga, Equipment, Clients, Suppliers.
+  * 3D Geospatial & Terrain Surface Engineering: 3D Cesium GIS globe workspace with DEM, DXF 3D TIN, and Contours terrain surface extraction at https://ims.promeconsult.com/projects-database/3d.
+  * Project Variations & Claims: Comprehensive contract change management with multi-category filtering at https://ims.promeconsult.com/variations-and-claims.
 
 CAPABILITIES & DIRECTIVES:
-1. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use \`getIsoComplianceMatrix\` to inspect the live IMS database and \`getIsoMandatoryDocuments\` to provide exact approved company record details with direct IMS module links (e.g. https://ims.promeconsult.com/iso-compliance-matrix and https://ims.promeconsult.com/organization-context).
-2. When asked about company context factors, interested parties, quality policy, scope, communication matrix, or continual improvement, use \`getIsoMandatoryDocuments\`.
-3. When asked to schedule, view, or launch the October 23, 2026 Internal Audit Program, use \`loadIsoAuditProgramTemplate\` to retrieve the complete 7-department schedule and questions, or \`createIsoAuditCampaign\` to generate secure interview links and send email invitations.
-4. When checking interview submission progress and attached evidence, use \`getIsoAuditStatus\`.
-5. When interview responses and evidentiary files are ready, use \`compileIsoAuditReport\` to perform compliance evaluation, generate findings, compile an official multi-page PDF audit report, link it to the audit on https://ims.promeconsult.com/audits, and archive it into the Corporate Library on https://ims.promeconsult.com/library under 'Audit Reports & Compliance'.
-6. When an administrator requests deleting an audit, use \`deleteIsoAudit\`.
+1. QUALITY OBJECTIVES (Clause 6.2): When asked about quality objectives, KPI targets, quarterly status, or updating progress for Q1, Q2, Q3, or Q4, use \`getQualityObjectives\` or \`updateQualityObjectiveQuarter\`. Provide direct links to https://ims.promeconsult.com/objectives.
+2. MANAGEMENT REVIEWS (Clause 9.3): When asked about management review meetings, executive decisions, or ISO 9.3 agenda inputs, use \`getManagementReviews\`. Direct users to https://ims.promeconsult.com/management-reviews.
+3. DOCUMENT MASTERLIST & FORMS: When asked for corporate SOPs, manuals, procedures, or forms, use \`getMasterDocumentRegister\` and \`getFormsDirectory\` with direct links to https://ims.promeconsult.com/documents and https://ims.promeconsult.com/forms.
+4. RISKS & OPPORTUNITIES: When asked about risks, mitigation plans, or project variations & claims, use \`getRiskRegister\` and \`getVariationsAndClaims\` with direct links to https://ims.promeconsult.com/risks and https://ims.promeconsult.com/variations-and-claims.
+5. ISO AUDITS & COMPLIANCE: Use \`getIsoComplianceMatrix\`, \`loadIsoAuditProgramTemplate\`, \`createIsoAuditCampaign\`, \`getIsoAuditStatus\`, and \`compileIsoAuditReport\` for audit management.
+6. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use \`getIsoComplianceMatrix\` and \`getIsoMandatoryDocuments\` with direct IMS module links.
 7. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
     };
 
@@ -656,6 +748,352 @@ CAPABILITIES & DIRECTIVES:
               imsRoute: `https://ims.promeconsult.com${r.route}`,
               liveSummary: r.liveSummary,
               actionRequired: r.aiRecommendation
+            }))
+          };
+        } else if (call.name === 'getQualityObjectives') {
+          const args = call.args as any;
+          const query = (args?.query || '').toLowerCase();
+          const objectives = await prisma.qualityObjective.findMany({
+            where: {
+              AND: [
+                args.division && args.division !== 'ALL' ? { division: { contains: args.division, mode: 'insensitive' } } : {},
+                args.status ? { status: args.status } : {},
+                query ? {
+                  OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { objectiveNumber: { contains: query, mode: 'insensitive' } },
+                    { corporateStrategicObjective: { contains: query, mode: 'insensitive' } },
+                    { departmentalQualityObjective: { contains: query, mode: 'insensitive' } }
+                  ]
+                } : {}
+              ]
+            },
+            include: { owner: { select: { id: true, name: true } } },
+            orderBy: { objectiveNumber: 'asc' }
+          });
+
+          functionResponse = {
+            totalCount: objectives.length,
+            portalUrl: 'https://ims.promeconsult.com/objectives',
+            objectives: objectives.map(o => ({
+              id: o.id,
+              objectiveNumber: o.objectiveNumber,
+              title: o.title,
+              corporateStrategicObjective: o.corporateStrategicObjective,
+              departmentalQualityObjective: o.departmentalQualityObjective,
+              strategyMethodology: o.strategyMethodology,
+              measurementMethod: o.measurementMethod,
+              frequencyOfReview: o.frequencyOfReview || 4,
+              kpiTarget2025: o.kpiTargetPrevious,
+              statusEnd2025: o.statusPreviousYear,
+              kpiTarget2026: o.kpiTargetCurrent,
+              quarterlyProgress: {
+                q1: o.q1Status || '0',
+                q2: o.q2Status || '0',
+                q3: o.q3Status || '0',
+                q4: o.q4Status || '0'
+              },
+              comments: o.comments,
+              records: o.records,
+              targetValue: o.targetValue,
+              currentValue: o.currentValue,
+              unit: o.unit,
+              status: o.status,
+              owner: o.owner?.name,
+              approvals: {
+                departmentHead: o.departmentHeadApproval,
+                departmentHeadDate: o.departmentHeadDate,
+                managingDirector: o.managingDirectorApproval,
+                managingDirectorDate: o.managingDirectorDate
+              },
+              sheetUrl: `https://ims.promeconsult.com/objectives/${o.id}`
+            }))
+          };
+        } else if (call.name === 'updateQualityObjectiveQuarter') {
+          const args = call.args as any;
+          const objNum = args.objectiveNumber;
+          const obj = await prisma.qualityObjective.findFirst({
+            where: {
+              OR: [
+                { objectiveNumber: objNum },
+                { id: isNaN(Number(objNum)) ? -1 : Number(objNum) }
+              ]
+            }
+          });
+          if (!obj) {
+            functionResponse = { error: `Objective ${objNum} not found.` };
+          } else {
+            const q = args.quarter.toUpperCase();
+            const qField = q === 'Q1' ? 'q1Status' : q === 'Q2' ? 'q2Status' : q === 'Q3' ? 'q3Status' : 'q4Status';
+            const updateData: any = {
+              [qField]: args.quarterStatus
+            };
+            if (args.currentValue !== undefined) updateData.currentValue = parseFloat(args.currentValue);
+            if (args.status) updateData.status = args.status;
+            if (args.comments) updateData.comments = args.comments;
+            if (args.records) updateData.records = args.records;
+
+            const updated = await prisma.qualityObjective.update({
+              where: { id: obj.id },
+              data: updateData
+            });
+
+            functionResponse = {
+              success: true,
+              message: `Objective ${updated.objectiveNumber} updated successfully for ${q}.`,
+              objective: {
+                objectiveNumber: updated.objectiveNumber,
+                title: updated.title,
+                quarter: q,
+                quarterStatus: (updated as any)[qField],
+                currentValue: updated.currentValue,
+                overallStatus: updated.status,
+                comments: updated.comments,
+                records: updated.records
+              },
+              portalUrl: `https://ims.promeconsult.com/objectives/${updated.id}`
+            };
+          }
+        } else if (call.name === 'getManagementReviews') {
+          const args = call.args as any;
+          const reviews = await prisma.managementReview.findMany({
+            where: {
+              AND: [
+                args.meetingNumber ? { meetingNumber: { contains: args.meetingNumber, mode: 'insensitive' } } : {},
+                args.status ? { status: args.status } : {}
+              ]
+            },
+            include: {
+              chairperson: { select: { id: true, name: true } },
+              attendees: { select: { id: true, name: true } },
+              actionItems: { include: { assignedTo: { select: { id: true, name: true } } } }
+            },
+            orderBy: { scheduledDate: 'desc' }
+          });
+
+          functionResponse = {
+            totalCount: reviews.length,
+            portalUrl: 'https://ims.promeconsult.com/management-reviews',
+            reviews: reviews.map(r => ({
+              id: r.id,
+              meetingNumber: r.meetingNumber,
+              scheduledDate: r.scheduledDate,
+              conductedDate: r.conductedDate,
+              status: r.status,
+              chairperson: r.chairperson?.name,
+              attendees: r.attendees.map(a => a.name),
+              purpose: r.purpose,
+              agendaInputs: {
+                auditResults: r.auditResultsSummary,
+                capaSummary: r.capaSummary,
+                riskSummary: r.riskSummary,
+                customerFeedback: r.customerFeedbackSummary,
+                qualityObjectives: r.qualityObjectivesSummary,
+                monitoringResults: r.monitoringResults,
+                supplierPerformance: r.providerPerformanceSummary,
+                resourceAdequacy: r.adequacyOfResources,
+                policyReview: r.policyReviewSummary,
+                processPerformance: r.processPerformanceProductConformitySummary,
+                continualImprovement: r.continualImprovementSummary
+              },
+              conclusion: r.conclusion,
+              actionItems: r.actionItems.map(a => ({
+                description: a.description,
+                assignedTo: a.assignedTo?.name,
+                dueDate: a.dueDate,
+                status: a.status
+              }))
+            }))
+          };
+        } else if (call.name === 'getMasterDocumentRegister') {
+          const args = call.args as any;
+          const query = (args?.query || '').toLowerCase();
+          const docs = await prisma.masterDocument.findMany({
+            where: {
+              AND: [
+                args.category ? { category: { contains: args.category, mode: 'insensitive' } } : {},
+                args.division && args.division !== 'ALL' ? { division: { contains: args.division, mode: 'insensitive' } } : {},
+                query ? {
+                  OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { documentNumber: { contains: query, mode: 'insensitive' } }
+                  ]
+                } : {}
+              ]
+            },
+            take: 25,
+            orderBy: { documentNumber: 'asc' }
+          });
+
+          functionResponse = {
+            totalCount: docs.length,
+            portalUrl: 'https://ims.promeconsult.com/documents',
+            documents: docs.map(d => ({
+              documentNumber: d.documentNumber,
+              title: d.title,
+              type: d.type,
+              category: d.category,
+              division: d.division,
+              revision: d.revision,
+              status: d.status,
+              issueDate: d.issueDate,
+              url: d.fileUrl ? (d.fileUrl.startsWith('http') ? d.fileUrl : `https://ims.promeconsult.com${d.fileUrl}`) : 'https://ims.promeconsult.com/documents'
+            }))
+          };
+        } else if (call.name === 'getFormsDirectory') {
+          const args = call.args as any;
+          const query = (args?.query || '').toLowerCase();
+          const forms = await prisma.masterDocument.findMany({
+            where: {
+              AND: [
+                { OR: [{ type: 'Form' }, { category: { contains: 'Form', mode: 'insensitive' } }] },
+                query ? {
+                  OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { documentNumber: { contains: query, mode: 'insensitive' } }
+                  ]
+                } : {}
+              ]
+            },
+            take: 30,
+            orderBy: { documentNumber: 'asc' }
+          });
+
+          functionResponse = {
+            totalCount: forms.length,
+            portalUrl: 'https://ims.promeconsult.com/forms',
+            forms: forms.map(f => ({
+              formNumber: f.documentNumber,
+              title: f.title,
+              category: f.category,
+              revision: f.revision,
+              division: f.division,
+              status: f.status,
+              directUrl: 'https://ims.promeconsult.com/forms'
+            }))
+          };
+        } else if (call.name === 'getRiskRegister') {
+          const args = call.args as any;
+          const risks = await prisma.risk.findMany({
+            where: {
+              AND: [
+                args.type && args.type !== 'ALL' ? { type: args.type } : {},
+                args.category ? { category: { contains: args.category, mode: 'insensitive' } } : {},
+                args.status ? { status: args.status } : {}
+              ]
+            },
+            include: {
+              owner: { select: { id: true, name: true } },
+              project: { select: { id: true, name: true } }
+            },
+            orderBy: { score: 'desc' },
+            take: 20
+          });
+
+          functionResponse = {
+            totalCount: risks.length,
+            portalUrl: 'https://ims.promeconsult.com/risks',
+            risks: risks.map(r => ({
+              id: r.id,
+              riskNumber: r.riskNumber,
+              title: r.title,
+              type: r.type,
+              category: r.category,
+              description: r.description,
+              likelihood: r.likelihood,
+              impact: r.impact,
+              score: r.score,
+              mitigationPlan: r.mitigationPlan,
+              actionDeadline: r.actionDeadline,
+              residualScore: r.residualScore,
+              status: r.status,
+              owner: r.owner?.name,
+              project: r.project?.name
+            }))
+          };
+        } else if (call.name === 'getVariationsAndClaims') {
+          const args = call.args as any;
+          const query = (args?.query || '').toLowerCase();
+          
+          const variationOrders = await prisma.projectVariationOrder.findMany({
+            where: {
+              AND: [
+                args.projectId ? { projectId: args.projectId } : {},
+                query ? {
+                  OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { referenceNumber: { contains: query, mode: 'insensitive' } },
+                    { description: { contains: query, mode: 'insensitive' } },
+                    { project: { name: { contains: query, mode: 'insensitive' } } }
+                  ]
+                } : {}
+              ]
+            },
+            include: {
+              project: { select: { id: true, name: true, client: true } }
+            },
+            orderBy: { date: 'desc' },
+            take: 20
+          });
+
+          // Also check for variation/claim documents in ProjectDocument
+          const variationDocs = await prisma.projectDocument.findMany({
+            where: {
+              AND: [
+                args.projectId ? { projectId: args.projectId } : {},
+                {
+                  OR: [
+                    { type: { contains: 'Variation', mode: 'insensitive' } },
+                    { type: { contains: 'Claim', mode: 'insensitive' } },
+                    { title: { contains: 'Variation', mode: 'insensitive' } },
+                    { title: { contains: 'Claim', mode: 'insensitive' } }
+                  ]
+                },
+                query ? {
+                  OR: [
+                    { title: { contains: query, mode: 'insensitive' } },
+                    { documentNumber: { contains: query, mode: 'insensitive' } }
+                  ]
+                } : {}
+              ]
+            },
+            include: {
+              project: { select: { id: true, name: true, client: true } },
+              uploadedBy: { select: { id: true, name: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10
+          });
+
+          functionResponse = {
+            totalCount: variationOrders.length + variationDocs.length,
+            portalUrl: args.projectId ? `https://ims.promeconsult.com/projects/${args.projectId}` : 'https://ims.promeconsult.com/projects',
+            variationOrders: variationOrders.map(vo => ({
+              id: vo.id,
+              referenceNumber: vo.referenceNumber,
+              title: vo.title,
+              description: vo.description,
+              date: vo.date,
+              costImpact: vo.costImpact,
+              scheduleImpactDays: vo.scheduleImpact,
+              status: vo.status,
+              approvalDate: vo.approvalDate,
+              project: vo.project?.name,
+              client: vo.project?.client,
+              fileUrl: vo.fileUrl ? (vo.fileUrl.startsWith('http') ? vo.fileUrl : `https://ims.promeconsult.com${vo.fileUrl}`) : null,
+              projectUrl: `https://ims.promeconsult.com/projects/${vo.projectId}`
+            })),
+            variationDocuments: variationDocs.map(d => ({
+              id: d.id,
+              documentNumber: d.documentNumber,
+              title: d.title,
+              type: d.type,
+              status: d.status,
+              issueDate: d.issueDate,
+              project: d.project?.name,
+              client: d.project?.client,
+              uploadedBy: d.uploadedBy?.name,
+              fileUrl: d.fileUrl ? (d.fileUrl.startsWith('http') ? d.fileUrl : `https://ims.promeconsult.com${d.fileUrl}`) : null
             }))
           };
         } else {

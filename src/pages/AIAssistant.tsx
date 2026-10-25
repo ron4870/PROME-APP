@@ -252,41 +252,47 @@ export default function AIAssistant() {
           {messages.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
               <Bot size={64} color="#e2e8f0" style={{ marginBottom: '1rem' }} />
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>How can I help you today?</h2>
-              <p style={{ textAlign: 'center', maxWidth: '500px', lineHeight: 1.5, marginBottom: '1.5rem' }}>
-                I can help you analyze documents, query live project data, or autonomously conduct full ISO 9001:2015 / ISO 9001:2018 quality audits with evidentiary questionnaires and report compilation.
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>How can I help you today?</h2>
+              <p style={{ textAlign: 'center', maxWidth: '600px', lineHeight: 1.5, marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                I am the PROME AI Assistant with Lead Auditor & QMS Administrator capabilities. I can help you monitor 2026 Quality Objectives & quarterly reviews, inspect Management Review records, query the Corporate Risk Register & variations, track ISO compliance, and conduct autonomous internal audits.
               </p>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '750px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '820px' }}>
+                <button
+                  onClick={() => setInputText("List all 2026 Quality Objectives (PROME-QOBJ-PMBDD-01 to 05), showing their strategic goals, 2026 targets, Q1-Q4 quarterly review progress, and verification records.")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #fecaca', borderRadius: '20px', padding: '8px 14px', fontSize: '12px', color: '#991b1b', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', fontWeight: '600' }}
+                >
+                  🎯 2026 Quality Objectives & Quarterly Status (ISO 6.2)
+                </button>
+                <button
+                  onClick={() => setInputText("Show our latest Management Review Meeting records (MRM), including executive decisions, ISO 9.3 agenda inputs, and open action items.")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  📋 Management Review Records (ISO 9.3)
+                </button>
+                <button
+                  onClick={() => setInputText("Review the Corporate Risk Register: show our highest-scoring risks, mitigation plans, deadlines, and project variations & claims.")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  ⚠️ Risk Register & Variations / Claims
+                </button>
+                <button
+                  onClick={() => setInputText("Search the Document Masterlist and digital Forms Directory for all active procedures, manuals, and updated operational forms.")}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                >
+                  📝 Forms Directory & Document Masterlist
+                </button>
                 <button
                   onClick={() => setInputText("Load the official 23 October 2026 ISO Internal Audit Program (PROME-IMSR-PMBDD-28), show the 7 interview sessions with their 36 targeted questions, and prepare the audit.")}
-                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
                   📅 Load 23 Oct 2026 Audit Program
                 </button>
                 <button
-                  onClick={() => setInputText("What are PROME's official ISO mandatory documents (Context Factors PROME-QSP-CSVM-01, Interested Parties PROME-QSP-CSVM-21, Scope & 16 Processes PROME-QSP-CSVM-18, and Communication Matrix PROME-QSR-AFD-20)?")}
-                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
-                >
-                  📜 View Official ISO Documents & 16 Processes
-                </button>
-                <button
                   onClick={() => setInputText("What mandatory documents and records are required by ISO standards, where in the PROME IMS are they stored, and which ones are currently missing or need updating?")}
-                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
+                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
                   🛡️ Check ISO Mandatory Records & Missing Docs
-                </button>
-                <button
-                  onClick={() => setInputText("What is the status of our latest ISO audit campaign and interview submissions?")}
-                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
-                >
-                  🔍 Check ISO Audit Campaign Status
-                </button>
-                <button
-                  onClick={() => setInputText("Compile the official ISO audit report for our latest completed audit and publish the PDF to https://ims.promeconsult.com/audits and the library.")}
-                  style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px 14px', fontSize: '12.5px', color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}
-                >
-                  📄 Compile Audit Report & Save to Library
                 </button>
               </div>
             </div>
