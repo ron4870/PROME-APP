@@ -47,6 +47,10 @@ import { CompanyExperienceDetails } from './pages/CompanyExperienceDetails';
 import FormsDirectory from './pages/forms/FormsDirectory';
 import FundsRequisitionForm from './pages/forms/FundsRequisitionForm';
 import LocalPurchaseOrderForm from './pages/forms/LocalPurchaseOrderForm';
+import SoftwareEvaluationForm from './pages/forms/SoftwareEvaluationForm';
+import RiskForm from './pages/forms/RiskForm';
+import CustomerPropertyForm from './pages/forms/CustomerPropertyForm';
+import MissingPropertyReportForm from './pages/forms/MissingPropertyReportForm';
 import NotificationsPage from './pages/NotificationsPage';
 import AppLayout from './components/AppLayout';
 
@@ -179,9 +183,13 @@ function App() {
         {/* Forms Routes */}
         <Route path="/forms" element={<ProtectedRoute><FormsDirectory /></ProtectedRoute>} />
         <Route path="/forms/funds-requisition" element={<ProtectedRoute><FundsRequisitionForm /></ProtectedRoute>} />
+        <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
+        <Route path="/forms/software-evaluation" element={<ProtectedRoute><SoftwareEvaluationForm /></ProtectedRoute>} />
+        <Route path="/forms/risk" element={<ProtectedRoute><RiskForm /></ProtectedRoute>} />
+        <Route path="/forms/customer-property" element={<ProtectedRoute><CustomerPropertyForm /></ProtectedRoute>} />
+        <Route path="/forms/missing-property-report" element={<ProtectedRoute><MissingPropertyReportForm /></ProtectedRoute>} />
         <Route path="/manuals" element={<ProtectedRoute><ManualsDirectory /></ProtectedRoute>} />
         <Route path="/library" element={<ProtectedRoute><LibraryModule /></ProtectedRoute>} />
-        <Route path="/forms/local-purchase-order" element={<ProtectedRoute><LocalPurchaseOrderForm /></ProtectedRoute>} />
         <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
         <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
         <Route path="/faqs" element={<ProtectedRoute><FAQs /></ProtectedRoute>} />

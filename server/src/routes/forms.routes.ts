@@ -37,7 +37,10 @@ router.post('/', authenticateToken, async (req: any, res: any) => {
     let prefix = 'FRM';
     if (formType === 'FundsRequisition') prefix = 'FRF';
     else if (formType === 'LocalPurchaseOrder') prefix = 'LPO';
-    // Add other form types here...
+    else if (formType === 'SoftwareEvaluation') prefix = 'SEF';
+    else if (formType === 'RiskForm') prefix = 'RSK';
+    else if (formType === 'CustomerProperty') prefix = 'CPI';
+    else if (formType === 'MissingPropertyReport') prefix = 'MPR';
 
     // Find the highest sequence number for this prefix
     const count = await prisma.formSubmission.count({

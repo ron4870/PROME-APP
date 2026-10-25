@@ -632,8 +632,8 @@ export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
     category: 'Quality System Records',
     categoryOrder: 4,
     status: 'Approved',
-    portalPath: null,
-    portalLabel: null
+    portalPath: '/forms/software-evaluation',
+    portalLabel: 'Software Evaluation Form'
   },
   {
     prefix: 'g)',
@@ -728,8 +728,8 @@ export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
     category: 'Quality System Records',
     categoryOrder: 4,
     status: 'Approved',
-    portalPath: '/risks',
-    portalLabel: 'Risk Register Form'
+    portalPath: '/forms/risk',
+    portalLabel: 'Risk Form'
   },
   {
     prefix: 'm)',
@@ -792,8 +792,8 @@ export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
     category: 'Quality System Records',
     categoryOrder: 4,
     status: 'Approved',
-    portalPath: null,
-    portalLabel: null
+    portalPath: '/forms/customer-property',
+    portalLabel: 'Customer Property Sheet'
   },
   {
     prefix: 'q)',
@@ -808,8 +808,8 @@ export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
     category: 'Quality System Records',
     categoryOrder: 4,
     status: 'Approved',
-    portalPath: null,
-    portalLabel: null
+    portalPath: '/forms/missing-property-report',
+    portalLabel: 'Missing Property Report'
   },
   {
     prefix: 'p)',
