@@ -28,7 +28,14 @@ router.get('/', authenticateToken, async (req, res) => {
 // Create a new objective
 router.post('/', authenticateToken, async (req: any, res) => {
   try {
-    const { title, description, division, targetValue, unit, targetDate } = req.body;
+    const { 
+      title, description, division, targetValue, currentValue, unit, targetDate,
+      corporateStrategicObjective, departmentalQualityObjective, strategyMethodology, measurementMethod,
+      frequencyOfReview, kpiTargetPrevious, statusPreviousYear, kpiTargetCurrent,
+      q1Status, q2Status, q3Status, q4Status, comments, records,
+      departmentHeadApproval, departmentHeadDate, managingDirectorApproval, managingDirectorDate,
+      quarterlyData
+    } = req.body;
     
     const year = new Date().getFullYear();
     const count = await prisma.qualityObjective.count({
@@ -44,10 +51,29 @@ router.post('/', authenticateToken, async (req: any, res) => {
         description,
         division,
         ownerId: req.user.userId,
-        targetValue: parseFloat(targetValue) || 100,
-        currentValue: 0,
+        targetValue: targetValue !== undefined ? parseFloat(targetValue) : 100,
+        currentValue: currentValue !== undefined ? parseFloat(currentValue) : 0,
         unit: unit || '%',
         targetDate: targetDate ? new Date(targetDate) : null,
+        corporateStrategicObjective,
+        departmentalQualityObjective,
+        strategyMethodology,
+        measurementMethod,
+        frequencyOfReview: frequencyOfReview !== undefined ? parseInt(frequencyOfReview) : 4,
+        kpiTargetPrevious,
+        statusPreviousYear,
+        kpiTargetCurrent,
+        q1Status,
+        q2Status,
+        q3Status,
+        q4Status,
+        comments,
+        records,
+        departmentHeadApproval,
+        departmentHeadDate,
+        managingDirectorApproval,
+        managingDirectorDate,
+        quarterlyData: quarterlyData || null
       },
       include: {
         owner: { select: { id: true, name: true } }
@@ -90,14 +116,40 @@ router.get('/:id', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, division, ownerId, targetValue, currentValue, unit, targetDate, status } = req.body;
+    const { 
+      title, description, division, ownerId, targetValue, currentValue, unit, targetDate, status,
+      corporateStrategicObjective, departmentalQualityObjective, strategyMethodology, measurementMethod,
+      frequencyOfReview, kpiTargetPrevious, statusPreviousYear, kpiTargetCurrent,
+      q1Status, q2Status, q3Status, q4Status, comments, records,
+      departmentHeadApproval, departmentHeadDate, managingDirectorApproval, managingDirectorDate,
+      quarterlyData
+    } = req.body;
 
     const data: any = {
       title, description, division, unit, status,
       targetValue: targetValue !== undefined ? parseFloat(targetValue) : undefined,
       currentValue: currentValue !== undefined ? parseFloat(currentValue) : undefined,
+      corporateStrategicObjective,
+      departmentalQualityObjective,
+      strategyMethodology,
+      measurementMethod,
+      kpiTargetPrevious,
+      statusPreviousYear,
+      kpiTargetCurrent,
+      q1Status,
+      q2Status,
+      q3Status,
+      q4Status,
+      comments,
+      records,
+      departmentHeadApproval,
+      departmentHeadDate,
+      managingDirectorApproval,
+      managingDirectorDate,
     };
 
+    if (frequencyOfReview !== undefined) data.frequencyOfReview = parseInt(frequencyOfReview);
+    if (quarterlyData !== undefined) data.quarterlyData = quarterlyData;
     if (ownerId) data.ownerId = parseInt(ownerId);
     if (targetDate !== undefined) data.targetDate = targetDate ? new Date(targetDate) : null;
 

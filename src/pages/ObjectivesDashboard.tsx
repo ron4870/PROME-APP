@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Target, Activity, CheckCircle2, TrendingUp, Trash2, Printer } from 'lucide-react';
+import { 
+  Search, Plus, Target, Activity, CheckCircle2, TrendingUp, Trash2, Printer, 
+  Calendar, FileText, LayoutGrid, List, Check, X
+} from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { QualityObjectiveIsoSheet, type QualityObjectiveData } from '../components/QualityObjectiveIsoSheet';
 
 interface QualityObjective {
   id: number;
@@ -16,14 +20,56 @@ interface QualityObjective {
   targetDate: string | null;
   status: string;
   owner?: { id: number; name: string };
+  corporateStrategicObjective?: string | null;
+  departmentalQualityObjective?: string | null;
+  strategyMethodology?: string | null;
+  measurementMethod?: string | null;
+  frequencyOfReview?: number | null;
+  kpiTargetPrevious?: string | null;
+  statusPreviousYear?: string | null;
+  kpiTargetCurrent?: string | null;
+  q1Status?: string | null;
+  q2Status?: string | null;
+  q3Status?: string | null;
+  q4Status?: string | null;
+  comments?: string | null;
+  records?: string | null;
+  departmentHeadApproval?: string | null;
+  departmentHeadDate?: string | null;
+  managingDirectorApproval?: string | null;
+  managingDirectorDate?: string | null;
 }
 
 const ObjectivesDashboard: React.FC = () => {
   const [objectives, setObjectives] = useState<QualityObjective[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'matrix' | 'registry'>('matrix');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const navigate = useNavigate();
+
+  // ISO Sheet Modal state
+  const [activeIsoSheet, setActiveIsoSheet] = useState<QualityObjectiveData | null>(null);
+  const [isIsoSheetOpen, setIsIsoSheetOpen] = useState(false);
+
+  // Quick Quarter Update Modal state
+  const [quarterModalObj, setQuarterModalObj] = useState<QualityObjective | null>(null);
+  const [isQuarterModalOpen, setIsQuarterModalOpen] = useState(false);
+  const [selectedQuarterToEdit, setSelectedQuarterToEdit] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4' | 'ALL'>('ALL');
+  const [quarterFormData, setQuarterFormData] = useState({
+    q1Status: '',
+    q2Status: '',
+    q3Status: '',
+    q4Status: '',
+    comments: '',
+    records: '',
+    currentValue: 0,
+    targetValue: 0,
+    unit: '',
+    status: 'Active'
+  });
+  const [isSavingQuarter, setIsSavingQuarter] = useState(false);
 
   useEffect(() => {
     fetchObjectives();
@@ -53,7 +99,8 @@ const ObjectivesDashboard: React.FC = () => {
         body: JSON.stringify({
           title: 'New Quality Objective',
           targetValue: 100,
-          unit: '%'
+          unit: '%',
+          frequencyOfReview: 4
         })
       });
       if (response.ok) {
@@ -87,11 +134,108 @@ const ObjectivesDashboard: React.FC = () => {
     }
   };
 
-  const filteredObjectives = objectives.filter(o => 
-    o.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    o.objectiveNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (o.division && o.division.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const handleOpenIsoSheet = (obj: QualityObjective, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveIsoSheet(obj as QualityObjectiveData);
+    setIsIsoSheetOpen(true);
+  };
+
+  const handleSaveIsoSheet = async (updated: QualityObjectiveData) => {
+    if (!updated.id) return;
+    try {
+      const res = await fetch(`/api/objectives/${updated.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(updated)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setObjectives(prev => prev.map(o => o.id === saved.id ? saved : o));
+        setActiveIsoSheet(saved);
+      }
+    } catch (err) {
+      console.error('Error saving ISO sheet:', err);
+      throw err;
+    }
+  };
+
+  const handleOpenQuarterModal = (obj: QualityObjective, quarter: 'Q1' | 'Q2' | 'Q3' | 'Q4' | 'ALL' = 'ALL', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setQuarterModalObj(obj);
+    setSelectedQuarterToEdit(quarter);
+    setQuarterFormData({
+      q1Status: obj.q1Status || '',
+      q2Status: obj.q2Status || '',
+      q3Status: obj.q3Status || '',
+      q4Status: obj.q4Status || '',
+      comments: obj.comments || '',
+      records: obj.records || '',
+      currentValue: obj.currentValue,
+      targetValue: obj.targetValue,
+      unit: obj.unit || '%',
+      status: obj.status || 'Active'
+    });
+    setIsQuarterModalOpen(true);
+  };
+
+  const handleSaveQuarterModal = async () => {
+    if (!quarterModalObj) return;
+    setIsSavingQuarter(true);
+    try {
+      const res = await fetch(`/api/objectives/${quarterModalObj.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          ...quarterModalObj,
+          q1Status: quarterFormData.q1Status,
+          q2Status: quarterFormData.q2Status,
+          q3Status: quarterFormData.q3Status,
+          q4Status: quarterFormData.q4Status,
+          comments: quarterFormData.comments,
+          records: quarterFormData.records,
+          currentValue: quarterFormData.currentValue,
+          targetValue: quarterFormData.targetValue,
+          unit: quarterFormData.unit,
+          status: quarterFormData.status
+        })
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setObjectives(prev => prev.map(o => o.id === saved.id ? saved : o));
+        setIsQuarterModalOpen(false);
+        setQuarterModalObj(null);
+      } else {
+        alert('Failed to save quarterly updates');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error saving quarterly updates');
+    } finally {
+      setIsSavingQuarter(false);
+    }
+  };
+
+  // Divisions filter
+  const divisions = ['ALL', ...Array.from(new Set(objectives.map(o => o.division).filter(Boolean) as string[]))];
+
+  const filteredObjectives = objectives.filter(o => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = 
+      o.title.toLowerCase().includes(term) || 
+      o.objectiveNumber.toLowerCase().includes(term) ||
+      (o.division && o.division.toLowerCase().includes(term)) ||
+      (o.corporateStrategicObjective && o.corporateStrategicObjective.toLowerCase().includes(term)) ||
+      (o.departmentalQualityObjective && o.departmentalQualityObjective.toLowerCase().includes(term));
+    
+    const matchesDivision = selectedDivision === 'ALL' || o.division === selectedDivision;
+    return matchesSearch && matchesDivision;
+  });
 
   const calculateProgress = (current: number, target: number) => {
     if (target === 0) return 0;
@@ -249,367 +393,157 @@ const ObjectivesDashboard: React.FC = () => {
         titleContainer.appendChild(subTitle);
         leftHeader.appendChild(titleContainer);
 
-        const middleHeader = document.createElement('div');
-        middleHeader.style.display = 'flex';
-        middleHeader.style.flexDirection = 'column';
-        middleHeader.style.alignItems = 'center';
-        middleHeader.style.justifyContent = 'center';
-        middleHeader.style.flex = '1';
-
-        const barcodeImg = document.createElement('img');
-        barcodeImg.src = barcodeDataUrl;
-        barcodeImg.style.height = '28px';
-        barcodeImg.style.width = 'auto';
-        barcodeImg.style.objectFit = 'contain';
-
-        const barcodeText = document.createElement('div');
-        barcodeText.innerText = 'PROME-IMSR-QOBJ-01';
-        barcodeText.style.fontSize = '10px';
-        barcodeText.style.fontWeight = '700';
-        barcodeText.style.color = '#334155';
-        barcodeText.style.marginTop = '3px';
-        barcodeText.style.letterSpacing = '1px';
-        barcodeText.style.fontFamily = 'monospace, sans-serif';
-
-        middleHeader.appendChild(barcodeImg);
-        middleHeader.appendChild(barcodeText);
-
         const rightHeader = document.createElement('div');
-        rightHeader.style.textAlign = 'right';
-        rightHeader.style.flex = '1';
+        rightHeader.style.display = 'flex';
+        rightHeader.style.flexDirection = 'column';
+        rightHeader.style.alignItems = 'flex-end';
+        rightHeader.style.gap = '4px';
 
-        const regTitle = document.createElement('div');
-        regTitle.innerText = 'QUALITY OBJECTIVES & KPIS REGISTER';
-        regTitle.style.fontSize = '22px';
-        regTitle.style.fontWeight = '800';
-        regTitle.style.color = '#7c3aed';
+        if (barcodeDataUrl) {
+          const barcodeImg = document.createElement('img');
+          barcodeImg.src = barcodeDataUrl;
+          barcodeImg.style.height = '28px';
+          rightHeader.appendChild(barcodeImg);
+        }
 
-        const regMeta = document.createElement('div');
-        regMeta.innerText = 'ISO 9001:2015 Clause 6.2 Compliance';
-        regMeta.style.fontSize = '11px';
-        regMeta.style.fontWeight = '500';
-        regMeta.style.color = '#475569';
-        regMeta.style.marginTop = '4px';
+        const docRef = document.createElement('div');
+        docRef.innerText = 'PROME-IMSR-QOBJ-01 | Rev 03';
+        docRef.style.fontSize = '10px';
+        docRef.style.fontWeight = 'bold';
+        docRef.style.color = '#475569';
+        docRef.style.letterSpacing = '0.5px';
+        rightHeader.appendChild(docRef);
 
-        rightHeader.appendChild(regTitle);
-        rightHeader.appendChild(regMeta);
+        const printDate = document.createElement('div');
+        printDate.innerText = `Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+        printDate.style.fontSize = '10px';
+        printDate.style.color = '#64748b';
+        rightHeader.appendChild(printDate);
 
         header.appendChild(leftHeader);
-        header.appendChild(middleHeader);
         header.appendChild(rightHeader);
         return header;
       };
 
-      const calculateAverageProgress = () => {
-        if (filteredObjectives.length === 0) return 0;
-        const totalProgress = filteredObjectives.reduce((acc, curr) => {
-          return acc + calculateProgress(curr.currentValue, curr.targetValue);
-        }, 0);
-        return Math.round(totalProgress / filteredObjectives.length);
-      };
+      const itemsPerPage = 8;
+      const totalPages = Math.ceil(filteredObjectives.length / itemsPerPage) || 1;
 
-      const createSummaryCards = () => {
-        const cardsContainer = document.createElement('div');
-        cardsContainer.style.display = 'grid';
-        cardsContainer.style.gridTemplateColumns = 'repeat(5, 1fr)';
-        cardsContainer.style.gap = '14px';
-        cardsContainer.style.marginBottom = '16px';
-
-        const cardsData = [
-          { label: 'TOTAL OBJECTIVES', val: filteredObjectives.length, color: '#7c3aed', border: '#ddd6fe', bg: '#f5f3ff' },
-          { label: 'ACTIVE OBJECTIVES', val: filteredObjectives.filter(o => o.status === 'Active').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
-          { label: 'OFF-TRACK OBJECTIVES', val: filteredObjectives.filter(o => o.status === 'Off-Track').length, color: '#dc2626', border: '#f87171', bg: '#fff1f2' },
-          { label: 'ACHIEVED OBJECTIVES', val: filteredObjectives.filter(o => o.status === 'Achieved').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
-          { label: 'AVERAGE PROGRESS', val: `${calculateAverageProgress()}%`, color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
-        ];
-
-        cardsData.forEach(c => {
-          const card = document.createElement('div');
-          card.style.backgroundColor = c.bg;
-          card.style.border = `1px solid ${c.border}`;
-          card.style.borderRadius = '6px';
-          card.style.padding = '10px 14px';
-          card.style.boxSizing = 'border-box';
-          card.style.display = 'flex';
-          card.style.flexDirection = 'column';
-          card.style.justifyContent = 'center';
-
-          const labelDiv = document.createElement('div');
-          labelDiv.innerText = c.label;
-          labelDiv.style.fontSize = '8.5px';
-          labelDiv.style.fontWeight = '700';
-          labelDiv.style.color = '#475569';
-          labelDiv.style.letterSpacing = '0.5px';
-
-          const valDiv = document.createElement('div');
-          valDiv.innerText = String(c.val);
-          valDiv.style.fontSize = '22px';
-          valDiv.style.fontWeight = '800';
-          valDiv.style.color = c.color;
-          valDiv.style.marginTop = '4px';
-
-          card.appendChild(labelDiv);
-          card.appendChild(valDiv);
-          cardsContainer.appendChild(card);
-        });
-
-        return cardsContainer;
-      };
-
-      const headersList = [
-        { text: 'NUMBER', w: '9%' },
-        { text: 'OBJECTIVE TITLE &<br/>DIVISION', w: '23%' },
-        { text: 'DESCRIPTION', w: '26%' },
-        { text: 'OWNER', w: '11%' },
-        { text: 'TARGET &<br/>CURRENT VALUE', w: '11%', center: true },
-        { text: 'PROGRESS', w: '8.5%', center: true },
-        { text: 'TARGET<br/>DATE', w: '6%' },
-        { text: 'STATUS', w: '5.5%', center: true }
-      ];
-
-      const createTableHead = () => {
-        const thead = document.createElement('thead');
-        thead.style.backgroundColor = '#f1f5f9';
-        thead.style.border = '1px solid #cbd5e1';
-
-        const trHead = document.createElement('tr');
-        headersList.forEach(h => {
-          const th = document.createElement('th');
-          th.innerHTML = h.text;
-          th.style.width = h.w;
-          th.style.padding = '8px 6px';
-          th.style.fontWeight = '700';
-          th.style.color = '#1e293b';
-          th.style.fontSize = '8.5px';
-          th.style.lineHeight = '1.25';
-          th.style.verticalAlign = 'bottom';
-          th.style.border = '1px solid #cbd5e1';
-          if (h.center) {
-            th.style.textAlign = 'center';
-          } else {
-            th.style.textAlign = 'left';
-          }
-          trHead.appendChild(th);
-        });
-        thead.appendChild(trHead);
-        return thead;
-      };
-
-      const createObjectiveRow = (obj: QualityObjective) => {
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #cbd5e1';
-
-        const progressPct = calculateProgress(obj.currentValue, obj.targetValue);
-
-        const cells = [
-          { text: obj.objectiveNumber || '-', bold: true, color: '#0f172a' },
-          { text: obj.title || '-', division: obj.division },
-          { text: obj.description || '-', fullText: true },
-          { text: obj.owner?.name || 'Unassigned' },
-          { text: `Target: ${obj.targetValue} ${obj.unit || ''}\nCurrent: ${obj.currentValue} ${obj.unit || ''}`, center: true, dualText: true },
-          { text: `${Math.round(progressPct)}%`, progressBadge: true, pct: progressPct, current: obj.currentValue, target: obj.targetValue, unit: obj.unit },
-          { text: obj.targetDate ? new Date(obj.targetDate).toLocaleDateString() : '-' },
-          { text: obj.status || '-', badge: true, isStatus: true }
-        ];
-
-        cells.forEach((cell) => {
-          const td = document.createElement('td');
-          td.style.padding = '6px 6px';
-          td.style.border = '1px solid #cbd5e1';
-          td.style.verticalAlign = 'top';
-          td.style.fontSize = '9px';
-
-          if (cell.bold) {
-            td.style.fontWeight = '600';
-          }
-          if (cell.color) {
-            td.style.color = cell.color;
-          }
-          if (cell.center) {
-            td.style.textAlign = 'center';
-          }
-
-          if (cell.badge) {
-            const span = document.createElement('span');
-            span.innerText = cell.text;
-            span.style.padding = '3px 6px';
-            span.style.borderRadius = '4px';
-            span.style.fontSize = '8px';
-            span.style.fontWeight = 'bold';
-
-            if (cell.isStatus) {
-              span.style.backgroundColor = 
-                cell.text === 'Achieved' ? '#dcfce3' : 
-                cell.text === 'Off-Track' ? '#fee2e2' : 
-                cell.text === 'Draft' ? '#f3f4f6' : '#e0f2fe';
-              span.style.color = 
-                cell.text === 'Achieved' ? '#166534' : 
-                cell.text === 'Off-Track' ? '#991b1b' : 
-                cell.text === 'Draft' ? '#374151' : '#0369a1';
-            }
-            td.appendChild(span);
-          } else if (cell.progressBadge) {
-            const containerDiv = document.createElement('div');
-            containerDiv.style.display = 'flex';
-            containerDiv.style.flexDirection = 'column';
-            containerDiv.style.alignItems = 'center';
-            containerDiv.style.gap = '4px';
-
-            const span = document.createElement('span');
-            span.innerText = cell.text;
-            span.style.fontWeight = 'bold';
-            span.style.fontSize = '9px';
-            span.style.color = cell.pct >= 100 ? '#15803d' : '#6d28d9';
-
-            const barContainer = document.createElement('div');
-            barContainer.style.width = '80%';
-            barContainer.style.height = '6px';
-            barContainer.style.backgroundColor = '#e2e8f0';
-            barContainer.style.borderRadius = '3px';
-            barContainer.style.overflow = 'hidden';
-
-            const barFill = document.createElement('div');
-            barFill.style.width = `${Math.min(cell.pct, 100)}%`;
-            barFill.style.height = '100%';
-            barFill.style.backgroundColor = cell.pct >= 100 ? '#22c55e' : '#8b5cf6';
-
-            barContainer.appendChild(barFill);
-            containerDiv.appendChild(span);
-            containerDiv.appendChild(barContainer);
-            td.appendChild(containerDiv);
-          } else if (cell.division !== undefined) {
-            const titleNode = document.createElement('div');
-            titleNode.innerText = cell.text;
-            titleNode.style.fontWeight = '600';
-            titleNode.style.color = '#1e293b';
-            
-            const divNode = document.createElement('div');
-            divNode.innerText = cell.division || 'Company-Wide';
-            divNode.style.fontSize = '8px';
-            divNode.style.color = '#64748b';
-            divNode.style.marginTop = '2px';
-            td.appendChild(titleNode);
-            td.appendChild(divNode);
-          } else if (cell.dualText) {
-            const textDiv = document.createElement('div');
-            textDiv.innerText = cell.text;
-            textDiv.style.whiteSpace = 'pre-line';
-            textDiv.style.lineHeight = '1.35';
-            textDiv.style.fontWeight = '500';
-            textDiv.style.color = '#334155';
-            td.appendChild(textDiv);
-          } else if (cell.fullText) {
-            const textDiv = document.createElement('div');
-            textDiv.innerText = cell.text;
-            textDiv.style.whiteSpace = 'pre-wrap';
-            textDiv.style.wordBreak = 'break-word';
-            textDiv.style.lineHeight = '1.35';
-            textDiv.style.color = '#334155';
-            td.appendChild(textDiv);
-          } else {
-            td.innerText = cell.text;
-          }
-
-          tr.appendChild(td);
-        });
-
-        return tr;
-      };
-
-      let currentPage: HTMLDivElement | null = null;
-      let currentTable: HTMLTableElement | null = null;
-      let currentTbody: HTMLTableSectionElement | null = null;
-
-      const startNewPage = () => {
-        const isFirstPage = pagesToRender.length === 0;
-
+      for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
         const page = document.createElement('div');
         page.style.width = '1587px';
-        page.style.minHeight = '1123px';
-        page.style.backgroundColor = '#ffffff';
+        page.style.height = '1122px';
         page.style.padding = '40px';
+        page.style.backgroundColor = '#ffffff';
         page.style.boxSizing = 'border-box';
-        page.style.display = 'flex';
-        page.style.flexDirection = 'column';
+        page.style.position = 'relative';
         page.style.fontFamily = 'Inter, sans-serif';
 
         page.appendChild(createPageHeader());
 
-        if (isFirstPage) {
-          page.appendChild(createSummaryCards());
-        }
+        const subTitleBar = document.createElement('div');
+        subTitleBar.style.backgroundColor = '#f8fafc';
+        subTitleBar.style.padding = '10px 16px';
+        subTitleBar.style.borderRadius = '6px';
+        subTitleBar.style.marginBottom = '16px';
+        subTitleBar.style.display = 'flex';
+        subTitleBar.style.justifyContent = 'space-between';
+        subTitleBar.style.alignItems = 'center';
 
-        const tableContainer = document.createElement('div');
-        tableContainer.style.flex = '1';
+        const titleText = document.createElement('div');
+        titleText.innerText = 'CORPORATE & DIVISIONAL QUALITY OBJECTIVES REGISTER (ISO 9001:2015)';
+        titleText.style.fontWeight = 'bold';
+        titleText.style.fontSize = '14px';
+        titleText.style.color = '#1e293b';
+
+        const pageCountText = document.createElement('div');
+        pageCountText.innerText = `Page ${pageIdx + 1} of ${totalPages}`;
+        pageCountText.style.fontSize = '12px';
+        pageCountText.style.color = '#64748b';
+
+        subTitleBar.appendChild(titleText);
+        subTitleBar.appendChild(pageCountText);
+        page.appendChild(subTitleBar);
 
         const table = document.createElement('table');
         table.style.width = '100%';
         table.style.borderCollapse = 'collapse';
-        table.style.fontSize = '10px';
+        table.style.fontSize = '11px';
 
-        table.appendChild(createTableHead());
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+          <tr style="background-color: #7c3aed; color: #ffffff;">
+            <th style="padding: 10px; text-align: left; border: 1px solid #6d28d9; width: 140px;">Objective No.</th>
+            <th style="padding: 10px; text-align: left; border: 1px solid #6d28d9; width: 260px;">Strategic / Quality Objective</th>
+            <th style="padding: 10px; text-align: left; border: 1px solid #6d28d9; width: 160px;">Division</th>
+            <th style="padding: 10px; text-align: left; border: 1px solid #6d28d9; width: 180px;">Measurement Method</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 70px;">2025 Target</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 70px;">End 2025</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 70px;">2026 Target</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 60px;">Q1</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 60px;">Q2</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 60px;">Q3</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 60px;">Q4</th>
+            <th style="padding: 10px; text-align: center; border: 1px solid #6d28d9; width: 80px;">Status</th>
+          </tr>
+        `;
+        table.appendChild(thead);
 
         const tbody = document.createElement('tbody');
+        const pageItems = filteredObjectives.slice(pageIdx * itemsPerPage, (pageIdx + 1) * itemsPerPage);
+
+        pageItems.forEach((obj, idx) => {
+          const tr = document.createElement('tr');
+          tr.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+
+          tr.innerHTML = `
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #1e293b;">${obj.objectiveNumber}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">
+              <div style="font-weight: 600; color: #0f172a;">${obj.title}</div>
+              <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${obj.corporateStrategicObjective || obj.description || '-'}</div>
+            </td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; color: #475569;">${obj.division || 'Company-Wide'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; color: #475569;">${obj.measurementMethod || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center;">${obj.kpiTargetPrevious || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center;">${obj.statusPreviousYear || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold;">${obj.kpiTargetCurrent || (obj.targetValue + ' ' + obj.unit)}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; color: ${obj.q1Status && obj.q1Status !== '0' && obj.q1Status !== '0%' ? '#166534' : '#64748b'};">${obj.q1Status || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; color: ${obj.q2Status && obj.q2Status !== '0' && obj.q2Status !== '0%' ? '#166534' : '#64748b'};">${obj.q2Status || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; color: ${obj.q3Status && obj.q3Status !== '0' && obj.q3Status !== '0%' ? '#166534' : '#64748b'};">${obj.q3Status || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; color: ${obj.q4Status && obj.q4Status !== '0' && obj.q4Status !== '0%' ? '#166534' : '#64748b'};">${obj.q4Status || '-'}</td>
+            <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center;">
+              <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background-color: ${obj.status === 'Achieved' ? '#dcfce7' : obj.status === 'Off-Track' ? '#fee2e2' : '#e0f2fe'}; color: ${obj.status === 'Achieved' ? '#166534' : obj.status === 'Off-Track' ? '#991b1b' : '#0369a1'};">
+                ${obj.status}
+              </span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
         table.appendChild(tbody);
-        tableContainer.appendChild(table);
-        page.appendChild(tableContainer);
+        page.appendChild(table);
 
-        container.appendChild(page);
-        pagesToRender.push(page);
-
-        currentPage = page;
-        currentTable = table;
-        currentTbody = tbody;
-      };
-
-      startNewPage();
-
-      filteredObjectives.forEach((obj) => {
-        const row = createObjectiveRow(obj);
-        currentTbody!.appendChild(row);
-
-        const maxTableHeight = (pagesToRender.length === 1) ? 800 : 870;
-
-        if (currentTable!.offsetHeight > maxTableHeight && currentTbody!.rows.length > 1) {
-          currentTbody!.removeChild(row);
-          currentPage!.style.height = '1123px';
-
-          startNewPage();
-          currentTbody!.appendChild(row);
-        }
-      });
-
-      if (currentPage) {
-        (currentPage as HTMLDivElement).style.height = '1123px';
-      }
-
-      // Append footers with page numbers
-      pagesToRender.forEach((page, index) => {
         const footer = document.createElement('div');
+        footer.style.position = 'absolute';
+        footer.style.bottom = '30px';
+        footer.style.left = '40px';
+        footer.style.right = '40px';
         footer.style.display = 'flex';
         footer.style.justifyContent = 'space-between';
-        footer.style.alignItems = 'center';
-        footer.style.borderTop = '1px solid #cbd5e1';
-        footer.style.paddingTop = '10px';
-        footer.style.marginTop = '12px';
+        footer.style.borderTop = '1px solid #e2e8f0';
+        footer.style.paddingTop = '12px';
         footer.style.fontSize = '10px';
         footer.style.color = '#64748b';
 
-        const leftFooter = document.createElement('div');
-        leftFooter.innerText = `Report Date: ${new Date().toLocaleDateString()} | Confidential`;
-
-        const centerFooter = document.createElement('div');
-        centerFooter.innerText = 'PROME Consultants Ltd. - ISO Certified Quality Management System';
-
-        const rightFooter = document.createElement('div');
-        rightFooter.innerText = `Page ${index + 1} of ${pagesToRender.length}`;
-
-        footer.appendChild(leftFooter);
-        footer.appendChild(centerFooter);
-        footer.appendChild(rightFooter);
-
+        footer.innerHTML = `
+          <div>Form No: PROME-IMSR-QOBJ-01 | Issue Date: 08/04/2026 | Version: 3.0</div>
+          <div>PROME Consultants Ltd. - ISO Certified Quality Management System (Clause 6.2)</div>
+          <div>Page ${pageIdx + 1} of ${totalPages}</div>
+        `;
         page.appendChild(footer);
-      });
+
+        container.appendChild(page);
+        pagesToRender.push(page);
+      }
 
       const pdf = new jsPDF({
         orientation: 'landscape',
@@ -618,16 +552,8 @@ const ObjectivesDashboard: React.FC = () => {
       });
 
       for (let i = 0; i < pagesToRender.length; i++) {
-        if (i > 0) {
-          pdf.addPage('a3', 'landscape');
-        }
-
-        const canvas = await html2canvas(pagesToRender[i], {
-          scale: 2,
-          useCORS: true,
-          logging: false
-        });
-
+        if (i > 0) pdf.addPage('a3', 'landscape');
+        const canvas = await html2canvas(pagesToRender[i], { scale: 2, useCORS: true, logging: false });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         pdf.addImage(imgData, 'JPEG', 0, 0, 420, 297, undefined, 'FAST');
       }
@@ -642,26 +568,84 @@ const ObjectivesDashboard: React.FC = () => {
   };
 
   return (
-    <div className="layout-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <div className="layout-container" style={{ maxWidth: '1440px', margin: '0 auto', padding: '1.5rem' }}>
+      {/* Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            Quality Objectives & KPIs
-          </h1>
-          <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>Monitor performance and strategic goals across the organization (ISO 9001 Clause 6.2)</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              Quality Objectives & Quarterly Reviews
+            </h1>
+            <span style={{ 
+              fontSize: '0.75rem', 
+              fontWeight: '700', 
+              backgroundColor: '#fee2e2', 
+              color: '#991b1b', 
+              padding: '4px 8px', 
+              borderRadius: '4px',
+              border: '1px solid #fecaca'
+            }}>
+              ISO 9001:2015 Clause 6.2 (Ver 3.0)
+            </span>
+          </div>
+          <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>
+            Monitor corporate and divisional quality targets, update quarterly progress, and print official ISO review sheets.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* View Mode Toggle */}
+          <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
+            <button
+              onClick={() => setViewMode('matrix')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: viewMode === 'matrix' ? '#ffffff' : 'transparent',
+                color: viewMode === 'matrix' ? '#7c3aed' : '#64748b',
+                boxShadow: viewMode === 'matrix' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              <LayoutGrid size={16} /> Quarterly Scorecard
+            </button>
+            <button
+              onClick={() => setViewMode('registry')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: viewMode === 'registry' ? '#ffffff' : 'transparent',
+                color: viewMode === 'registry' ? '#7c3aed' : '#64748b',
+                boxShadow: viewMode === 'registry' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              <List size={16} /> Registry Table
+            </button>
+          </div>
+
           <button 
             className="btn btn-outline no-print"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             onClick={handleExportPDF}
             disabled={isExporting}
           >
-            <Printer size={18} /> {isExporting ? 'Exporting...' : 'Export PDF'}
+            <Printer size={18} /> {isExporting ? 'Exporting...' : 'Export Register PDF'}
           </button>
           <button 
             className="btn btn-primary no-print"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#8b5cf6' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#7c3aed', color: 'white' }}
             onClick={handleCreateObjective}
           >
             <Plus size={18} /> New Objective
@@ -669,61 +653,410 @@ const ObjectivesDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <Target size={16} color="#8b5cf6" /> Total Objectives
+      {/* Summary Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: '4px solid #7c3aed' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', fontWeight: '600' }}>
+            <Target size={16} color="#7c3aed" /> Total Objectives
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginTop: '0.25rem' }}>
             {objectives.length}
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Across all departments</div>
         </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <Activity size={16} color="#0ea5e9" /> Active
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: '4px solid #0ea5e9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', fontWeight: '600' }}>
+            <Activity size={16} color="#0ea5e9" /> In Progress / Active
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginTop: '0.25rem' }}>
             {objectives.filter(o => o.status === 'Active').length}
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Review frequency: Quarterly</div>
         </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <TrendingUp size={16} color="#ef4444" /> Off-Track
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: '4px solid #22c55e' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', fontWeight: '600' }}>
+            <CheckCircle2 size={16} color="#22c55e" /> Target Achieved
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginTop: '0.25rem' }}>
+            {objectives.filter(o => o.status === 'Achieved').length}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>100% KPI completion</div>
+        </div>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: '4px solid #ef4444' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', fontWeight: '600' }}>
+            <TrendingUp size={16} color="#ef4444" /> Off-Track / Action Needed
+          </div>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginTop: '0.25rem' }}>
             {objectives.filter(o => o.status === 'Off-Track').length}
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Requires remedial action</div>
         </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <CheckCircle2 size={16} color="#22c55e" /> Achieved
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div style={{ backgroundColor: 'white', borderRadius: '8px 8px 0 0', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '1rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '450px' }}>
+            <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+            <input
+              type="text"
+              placeholder="Search strategic objectives, departmental goals, codes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input"
+              style={{ paddingLeft: '2.5rem', width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.55rem 0.75rem 0.55rem 2.5rem', fontSize: '0.875rem' }}
+            />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
-            {objectives.filter(o => o.status === 'Achieved').length}
+
+          {/* Division Filter Pills */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Division:</span>
+            {divisions.map(div => {
+              const isSelected = selectedDivision === div;
+              let label = div === 'ALL' ? 'All Divisions' : div;
+              if (div.includes('PMBDD')) label = 'PMBDD';
+              if (div.includes('BE&ED')) label = 'BE&ED';
+              if (div.includes('FINANCE')) label = 'F&A';
+              
+              return (
+                <button
+                  key={div}
+                  onClick={() => setSelectedDivision(div)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: isSelected ? '700' : '500',
+                    border: '1px solid',
+                    borderColor: isSelected ? '#7c3aed' : '#e2e8f0',
+                    backgroundColor: isSelected ? '#f5f3ff' : '#ffffff',
+                    color: isSelected ? '#7c3aed' : '#475569',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-            <input
-              type="text"
-              placeholder="Search objectives..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: '2.5rem', width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.5rem 0.5rem 0.5rem 2.5rem' }}
-            />
-          </div>
-        </div>
-        
+      <div style={{ backgroundColor: 'white', borderRadius: '0 0 8px 8px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {isLoading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#6b7280' }}>Loading objectives...</div>
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#6b7280' }}>Loading quality objectives...</div>
+        ) : viewMode === 'matrix' ? (
+          /* ========================================================================= */
+          /* QUARTERLY SCORECARD / ISO 9001:2015 MATRIX VIEW                          */
+          /* ========================================================================= */
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1100px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#b91c1c', color: '#ffffff', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <th style={{ padding: '12px 14px', border: '1px solid #991b1b', width: '220px' }}>Strategic & Departmental Objective</th>
+                  <th style={{ padding: '12px 14px', border: '1px solid #991b1b', width: '200px' }}>Strategy / Methodology</th>
+                  <th style={{ padding: '12px 14px', border: '1px solid #991b1b', width: '130px' }}>Measurement Method</th>
+                  <th style={{ padding: '12px 10px', border: '1px solid #991b1b', width: '60px', textAlign: 'center' }}>Freq</th>
+                  <th style={{ padding: '12px 10px', border: '1px solid #991b1b', width: '65px', textAlign: 'center' }}>Target 2025</th>
+                  <th style={{ padding: '12px 10px', border: '1px solid #991b1b', width: '65px', textAlign: 'center' }}>End 2025</th>
+                  <th style={{ padding: '12px 10px', border: '1px solid #991b1b', width: '65px', textAlign: 'center' }}>Target 2026</th>
+                  <th style={{ padding: '12px 8px', border: '1px solid #991b1b', width: '70px', textAlign: 'center', backgroundColor: '#991b1b' }}>Q1</th>
+                  <th style={{ padding: '12px 8px', border: '1px solid #991b1b', width: '70px', textAlign: 'center', backgroundColor: '#991b1b' }}>Q2</th>
+                  <th style={{ padding: '12px 8px', border: '1px solid #991b1b', width: '70px', textAlign: 'center', backgroundColor: '#991b1b' }}>Q3</th>
+                  <th style={{ padding: '12px 8px', border: '1px solid #991b1b', width: '70px', textAlign: 'center', backgroundColor: '#991b1b' }}>Q4</th>
+                  <th style={{ padding: '12px 14px', border: '1px solid #991b1b', width: '160px' }}>Comments / Records</th>
+                  <th style={{ padding: '12px 14px', border: '1px solid #991b1b', width: '140px', textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody style={{ fontSize: '0.8125rem' }}>
+                {filteredObjectives.map((obj, idx) => {
+                  return (
+                    <tr 
+                      key={obj.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e5e7eb', 
+                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fcfcfd'
+                      }}
+                    >
+                      {/* Strategic & Departmental Objective */}
+                      <td style={{ padding: '12px 14px', verticalAlign: 'top', borderRight: '1px solid #e5e7eb' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px' }}>
+                          <span style={{ 
+                            fontSize: '0.7rem', 
+                            fontWeight: '700', 
+                            color: '#b91c1c', 
+                            backgroundColor: '#fee2e2', 
+                            padding: '2px 6px', 
+                            borderRadius: '3px' 
+                          }}>
+                            {obj.objectiveNumber}
+                          </span>
+                        </div>
+                        <div style={{ fontWeight: '700', color: '#1e293b', lineHeight: '1.3' }}>
+                          {obj.corporateStrategicObjective || obj.title}
+                        </div>
+                        {obj.departmentalQualityObjective && (
+                          <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '6px', fontStyle: 'italic', lineHeight: '1.3' }}>
+                            {obj.departmentalQualityObjective}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '6px' }}>
+                          {obj.division || 'Company-Wide'}
+                        </div>
+                      </td>
+
+                      {/* Strategy / Methodology */}
+                      <td style={{ padding: '12px 14px', verticalAlign: 'top', color: '#334155', borderRight: '1px solid #e5e7eb', whiteSpace: 'pre-line', lineHeight: '1.4' }}>
+                        {obj.strategyMethodology || obj.description || '-'}
+                      </td>
+
+                      {/* Measurement Method */}
+                      <td style={{ padding: '12px 14px', verticalAlign: 'top', color: '#475569', borderRight: '1px solid #e5e7eb' }}>
+                        <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                          {obj.measurementMethod || '-'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                          Unit: {obj.unit}
+                        </div>
+                      </td>
+
+                      {/* Review Frequency */}
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', textAlign: 'center', color: '#475569', borderRight: '1px solid #e5e7eb', fontWeight: '600' }}>
+                        {obj.frequencyOfReview || 4}
+                      </td>
+
+                      {/* 2025 Target */}
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', textAlign: 'center', color: '#475569', borderRight: '1px solid #e5e7eb' }}>
+                        {obj.kpiTargetPrevious || '-'}
+                      </td>
+
+                      {/* End 2025 */}
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', textAlign: 'center', color: '#475569', borderRight: '1px solid #e5e7eb' }}>
+                        {obj.statusPreviousYear || '-'}
+                      </td>
+
+                      {/* 2026 Target */}
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', textAlign: 'center', fontWeight: '700', color: '#0f172a', borderRight: '1px solid #e5e7eb' }}>
+                        {obj.kpiTargetCurrent || (obj.targetValue ? `${obj.targetValue} ${obj.unit}` : '-')}
+                      </td>
+
+                      {/* Q1 Status */}
+                      <td 
+                        onClick={() => handleOpenQuarterModal(obj, 'Q1')}
+                        style={{ 
+                          padding: '12px 8px', 
+                          verticalAlign: 'top', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          backgroundColor: obj.q1Status && obj.q1Status !== '0' && obj.q1Status !== '0%' ? '#f0fdf4' : '#fafafa'
+                        }}
+                        title="Click to update Q1 status"
+                      >
+                        <div style={{ 
+                          fontWeight: '700', 
+                          fontSize: '0.85rem',
+                          color: obj.q1Status && obj.q1Status !== '0' && obj.q1Status !== '0%' ? '#15803d' : '#64748b' 
+                        }}>
+                          {obj.q1Status || '0'}
+                        </div>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Edit</span>
+                      </td>
+
+                      {/* Q2 Status */}
+                      <td 
+                        onClick={() => handleOpenQuarterModal(obj, 'Q2')}
+                        style={{ 
+                          padding: '12px 8px', 
+                          verticalAlign: 'top', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          backgroundColor: obj.q2Status && obj.q2Status !== '0' && obj.q2Status !== '0%' ? '#f0fdf4' : '#fafafa'
+                        }}
+                        title="Click to update Q2 status"
+                      >
+                        <div style={{ 
+                          fontWeight: '700', 
+                          fontSize: '0.85rem',
+                          color: obj.q2Status && obj.q2Status !== '0' && obj.q2Status !== '0%' ? '#15803d' : '#64748b' 
+                        }}>
+                          {obj.q2Status || '0'}
+                        </div>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Edit</span>
+                      </td>
+
+                      {/* Q3 Status */}
+                      <td 
+                        onClick={() => handleOpenQuarterModal(obj, 'Q3')}
+                        style={{ 
+                          padding: '12px 8px', 
+                          verticalAlign: 'top', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          backgroundColor: obj.q3Status && obj.q3Status !== '0' && obj.q3Status !== '0%' ? '#f0fdf4' : '#fafafa'
+                        }}
+                        title="Click to update Q3 status"
+                      >
+                        <div style={{ 
+                          fontWeight: '700', 
+                          fontSize: '0.85rem',
+                          color: obj.q3Status && obj.q3Status !== '0' && obj.q3Status !== '0%' ? '#15803d' : '#64748b' 
+                        }}>
+                          {obj.q3Status || '0'}
+                        </div>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Edit</span>
+                      </td>
+
+                      {/* Q4 Status */}
+                      <td 
+                        onClick={() => handleOpenQuarterModal(obj, 'Q4')}
+                        style={{ 
+                          padding: '12px 8px', 
+                          verticalAlign: 'top', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          backgroundColor: obj.q4Status && obj.q4Status !== '0' && obj.q4Status !== '0%' ? '#f0fdf4' : '#fafafa'
+                        }}
+                        title="Click to update Q4 status"
+                      >
+                        <div style={{ 
+                          fontWeight: '700', 
+                          fontSize: '0.85rem',
+                          color: obj.q4Status && obj.q4Status !== '0' && obj.q4Status !== '0%' ? '#15803d' : '#64748b' 
+                        }}>
+                          {obj.q4Status || '0'}
+                        </div>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Edit</span>
+                      </td>
+
+                      {/* Comments / Records */}
+                      <td style={{ padding: '12px 14px', verticalAlign: 'top', borderRight: '1px solid #e5e7eb', fontSize: '0.75rem' }}>
+                        {obj.comments && (
+                          <div style={{ color: '#334155', marginBottom: '4px' }}>
+                            <strong style={{ color: '#0f172a' }}>Comment:</strong> {obj.comments}
+                          </div>
+                        )}
+                        {obj.records && (
+                          <div style={{ color: '#64748b' }}>
+                            <strong style={{ color: '#475569' }}>Records:</strong> {obj.records}
+                          </div>
+                        )}
+                        {!obj.comments && !obj.records && (
+                          <span style={{ color: '#94a3b8' }}>No comments logged yet.</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '12px 14px', verticalAlign: 'top', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center' }}>
+                          {/* ISO Sheet Modal Button */}
+                          <button
+                            onClick={(e) => handleOpenIsoSheet(obj, e)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              width: '100%',
+                              padding: '5px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              backgroundColor: '#fee2e2',
+                              color: '#991b1b',
+                              border: '1px solid #fecaca',
+                              cursor: 'pointer'
+                            }}
+                            title="View / Print ISO 9001:2015 Official Sheet (Version 3.0)"
+                          >
+                            <FileText size={13} /> ISO Sheet (V3.0)
+                          </button>
+
+                          {/* Quick Quarter Update Button */}
+                          <button
+                            onClick={(e) => handleOpenQuarterModal(obj, 'ALL', e)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              width: '100%',
+                              padding: '5px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              backgroundColor: '#f5f3ff',
+                              color: '#7c3aed',
+                              border: '1px solid #ddd6fe',
+                              cursor: 'pointer'
+                            }}
+                            title="Update Quarterly Progress & Comments"
+                          >
+                            <Calendar size={13} /> Update Quarter
+                          </button>
+
+                          <div style={{ display: 'flex', gap: '4px', width: '100%' }}>
+                            <button
+                              onClick={() => navigate(`/objectives/${obj.id}`)}
+                              style={{
+                                flex: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '4px',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                color: '#475569',
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#ffffff',
+                                cursor: 'pointer'
+                              }}
+                              title="Full Objective Details"
+                            >
+                              Details
+                            </button>
+                            <button
+                              onClick={(e) => handleDelete(obj.id, e)}
+                              style={{
+                                padding: '4px 6px',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                color: '#ef4444',
+                                border: '1px solid #fecaca',
+                                backgroundColor: '#ffffff',
+                                cursor: 'pointer'
+                              }}
+                              title="Delete Objective"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredObjectives.length === 0 && (
+                  <tr>
+                    <td colSpan={13} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                      No quality objectives found matching your criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         ) : (
+          /* ========================================================================= */
+          /* STANDARD REGISTRY TABLE VIEW                                             */
+          /* ========================================================================= */
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ backgroundColor: '#f9fafb' }}>
@@ -731,7 +1064,7 @@ const ObjectivesDashboard: React.FC = () => {
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Number</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Objective</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Progress</th>
-                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Owner</th>
+                  <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Quarterly (Q1 - Q4)</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Target Date</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
                   <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
@@ -767,12 +1100,17 @@ const ObjectivesDashboard: React.FC = () => {
                             }}></div>
                           </div>
                           <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151', minWidth: '40px' }}>
-                            {obj.currentValue} / {obj.targetValue}
+                            {obj.currentValue} / {obj.targetValue} {obj.unit}
                           </span>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem 1.5rem', color: '#6b7280' }}>
-                        {obj.owner?.name || 'Unassigned'}
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: obj.q1Status && obj.q1Status !== '0' && obj.q1Status !== '0%' ? '#dcfce7' : '#f1f5f9', color: obj.q1Status && obj.q1Status !== '0' && obj.q1Status !== '0%' ? '#166534' : '#64748b', fontWeight: '700' }}>Q1: {obj.q1Status || '0'}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: obj.q2Status && obj.q2Status !== '0' && obj.q2Status !== '0%' ? '#dcfce7' : '#f1f5f9', color: obj.q2Status && obj.q2Status !== '0' && obj.q2Status !== '0%' ? '#166534' : '#64748b', fontWeight: '700' }}>Q2: {obj.q2Status || '0'}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: obj.q3Status && obj.q3Status !== '0' && obj.q3Status !== '0%' ? '#dcfce7' : '#f1f5f9', color: obj.q3Status && obj.q3Status !== '0' && obj.q3Status !== '0%' ? '#166534' : '#64748b', fontWeight: '700' }}>Q3: {obj.q3Status || '0'}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: obj.q4Status && obj.q4Status !== '0' && obj.q4Status !== '0%' ? '#dcfce7' : '#f1f5f9', color: obj.q4Status && obj.q4Status !== '0' && obj.q4Status !== '0%' ? '#166534' : '#64748b', fontWeight: '700' }}>Q4: {obj.q4Status || '0'}</span>
+                        </div>
                       </td>
                       <td style={{ padding: '1rem 1.5rem', color: '#6b7280' }}>
                         {obj.targetDate ? new Date(obj.targetDate).toLocaleDateString() : '-'}
@@ -796,13 +1134,23 @@ const ObjectivesDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                        <button 
-                          onClick={(e) => handleDelete(obj.id, e)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}
-                          title="Delete Objective"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            onClick={(e) => handleOpenIsoSheet(obj, e)}
+                            className="btn btn-outline"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#991b1b', borderColor: '#fecaca' }}
+                            title="Print / View ISO Sheet"
+                          >
+                            <FileText size={14} /> Sheet
+                          </button>
+                          <button 
+                            onClick={(e) => handleDelete(obj.id, e)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}
+                            title="Delete Objective"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -820,6 +1168,292 @@ const ObjectivesDashboard: React.FC = () => {
         )}
       </div>
 
+      {/* ========================================================================= */}
+      {/* QUICK QUARTER UPDATE MODAL                                                */}
+      {/* ========================================================================= */}
+      {isQuarterModalOpen && quarterModalObj && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            maxWidth: '650px',
+            width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              backgroundColor: '#b91c1c',
+              color: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.9 }}>
+                  ISO 9001:2015 Quarterly Review Update
+                </div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginTop: '2px' }}>
+                  {quarterModalObj.objectiveNumber} - Quarterly Review
+                </div>
+              </div>
+              <button
+                onClick={() => setIsQuarterModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', maxHeight: '75vh', overflowY: 'auto' }}>
+              <div style={{ marginBottom: '1.25rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.9rem' }}>{quarterModalObj.title}</div>
+                {quarterModalObj.corporateStrategicObjective && (
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                    {quarterModalObj.corporateStrategicObjective}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '8px', fontSize: '0.75rem', color: '#475569' }}>
+                  <span><strong>Method:</strong> {quarterModalObj.measurementMethod || '-'}</span>
+                  <span><strong>2026 Target:</strong> {quarterModalObj.kpiTargetCurrent || `${quarterModalObj.targetValue} ${quarterModalObj.unit}`}</span>
+                </div>
+              </div>
+
+              {/* Quarter Selector Tabs */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                  Select Quarter to Update:
+                </label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {(['ALL', 'Q1', 'Q2', 'Q3', 'Q4'] as const).map(q => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setSelectedQuarterToEdit(q)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        border: '1px solid',
+                        borderColor: selectedQuarterToEdit === q ? '#b91c1c' : '#cbd5e1',
+                        backgroundColor: selectedQuarterToEdit === q ? '#fee2e2' : '#ffffff',
+                        color: selectedQuarterToEdit === q ? '#991b1b' : '#475569',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {q === 'ALL' ? 'All Quarters' : `${q} Review`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4 Quarterly Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((q, idx) => {
+                  const key = `q${idx + 1}Status` as 'q1Status' | 'q2Status' | 'q3Status' | 'q4Status';
+                  const isHighlighted = selectedQuarterToEdit === 'ALL' || selectedQuarterToEdit === q;
+
+                  return (
+                    <div 
+                      key={q}
+                      style={{
+                        border: '1px solid',
+                        borderColor: isHighlighted ? '#b91c1c' : '#e2e8f0',
+                        borderRadius: '6px',
+                        padding: '0.75rem',
+                        backgroundColor: isHighlighted ? '#fff' : '#f8fafc',
+                        opacity: isHighlighted ? 1 : 0.6
+                      }}
+                    >
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#b91c1c', marginBottom: '4px' }}>
+                        {q} Status
+                      </label>
+                      <input
+                        type="text"
+                        value={quarterFormData[key]}
+                        onChange={(e) => setQuarterFormData({ ...quarterFormData, [key]: e.target.value })}
+                        placeholder="e.g. 100%, 4, 1"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          textAlign: 'center'
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Current Progress & Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    Current Total Value ({quarterFormData.unit || quarterModalObj.unit})
+                  </label>
+                  <input
+                    type="number"
+                    value={quarterFormData.currentValue}
+                    onChange={(e) => setQuarterFormData({ ...quarterFormData, currentValue: parseFloat(e.target.value) || 0 })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    Objective Status
+                  </label>
+                  <select
+                    value={quarterFormData.status}
+                    onChange={(e) => setQuarterFormData({ ...quarterFormData, status: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Achieved">Achieved</option>
+                    <option value="Off-Track">Off-Track</option>
+                    <option value="Draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Comments */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                  Quarterly Comments & Remarks
+                </label>
+                <textarea
+                  rows={3}
+                  value={quarterFormData.comments}
+                  onChange={(e) => setQuarterFormData({ ...quarterFormData, comments: e.target.value })}
+                  placeholder="e.g. All projects have MIS access. Document control and change management procedures are followed."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              {/* Records */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                  Evidence / Verification Records
+                </label>
+                <input
+                  type="text"
+                  value={quarterFormData.records}
+                  onChange={(e) => setQuarterFormData({ ...quarterFormData, records: e.target.value })}
+                  placeholder="e.g. MIS Access Log, Project Technical Audit Reports, Training Reports"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              backgroundColor: '#f8fafc',
+              padding: '1rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              borderTop: '1px solid #e2e8f0'
+            }}>
+              <button
+                type="button"
+                onClick={() => setIsQuarterModalOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveQuarterModal}
+                disabled={isSavingQuarter}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 20px',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  border: 'none',
+                  backgroundColor: '#b91c1c',
+                  color: '#ffffff',
+                  cursor: isSavingQuarter ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <Check size={16} /> {isSavingQuarter ? 'Saving...' : 'Save Quarterly Update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ISO SHEET MODAL (VERSION 3.0 REPLICA WITH PDF EXPORT & FULL EDITING)      */}
+      {/* ========================================================================= */}
+      {isIsoSheetOpen && activeIsoSheet && (
+        <QualityObjectiveIsoSheet
+          objective={activeIsoSheet}
+          isOpen={isIsoSheetOpen}
+          onClose={() => {
+            setIsIsoSheetOpen(false);
+            setActiveIsoSheet(null);
+          }}
+          onSave={handleSaveIsoSheet}
+          editable={true}
+        />
+      )}
+
+      {/* Exporting Loading Overlay */}
       {isExporting && (
         <div style={{
           position: 'fixed',
@@ -842,7 +1476,7 @@ const ObjectivesDashboard: React.FC = () => {
             backgroundColor: '#1e293b',
             padding: '2rem 3rem',
             borderRadius: '12px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -871,4 +1505,3 @@ const ObjectivesDashboard: React.FC = () => {
 };
 
 export default ObjectivesDashboard;
-

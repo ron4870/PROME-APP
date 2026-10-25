@@ -518,6 +518,27 @@ model QualityObjective {
   targetDate DateTime?
   status     String    @default("Active") // "Draft", "Active", "Achieved", "Off-Track", "Cancelled"
 
+  // ISO Quality Objectives Sheet Fields (Version 3.0)
+  corporateStrategicObjective String? @db.Text
+  departmentalQualityObjective String? @db.Text
+  strategyMethodology         String? @db.Text
+  measurementMethod           String? @db.Text
+  frequencyOfReview           Int?    @default(4)
+  kpiTargetPrevious           String? // e.g. KPI Target 2025
+  statusPreviousYear          String? // e.g. Status at End 2025
+  kpiTargetCurrent            String? // e.g. KPI Target 2026
+  q1Status                    String? // Q1 status
+  q2Status                    String? // Q2 status
+  q3Status                    String? // Q3 status
+  q4Status                    String? // Q4 status
+  comments                    String? @db.Text
+  records                     String? @db.Text
+  departmentHeadApproval      String?
+  departmentHeadDate          String?
+  managingDirectorApproval    String?
+  managingDirectorDate        String?
+  quarterlyData               Json?
+
   measurements KpiMeasurement[]
 
   createdAt DateTime @default(now())
