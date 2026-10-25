@@ -362,7 +362,7 @@ const ObjectivesDashboard: React.FC = () => {
         header.style.alignItems = 'center';
         header.style.borderBottom = '3px solid #8b5cf6';
         header.style.paddingBottom = '14px';
-        header.style.marginBottom = '16px';
+        header.style.marginBottom = '14px';
 
         const leftHeader = document.createElement('div');
         leftHeader.style.display = 'flex';
@@ -393,46 +393,126 @@ const ObjectivesDashboard: React.FC = () => {
         titleContainer.appendChild(subTitle);
         leftHeader.appendChild(titleContainer);
 
-        const rightHeader = document.createElement('div');
-        rightHeader.style.display = 'flex';
-        rightHeader.style.flexDirection = 'column';
-        rightHeader.style.alignItems = 'flex-end';
-        rightHeader.style.gap = '4px';
+        const middleHeader = document.createElement('div');
+        middleHeader.style.display = 'flex';
+        middleHeader.style.flexDirection = 'column';
+        middleHeader.style.alignItems = 'center';
+        middleHeader.style.justifyContent = 'center';
+        middleHeader.style.flex = '1';
 
         if (barcodeDataUrl) {
           const barcodeImg = document.createElement('img');
           barcodeImg.src = barcodeDataUrl;
           barcodeImg.style.height = '28px';
-          rightHeader.appendChild(barcodeImg);
+          barcodeImg.style.width = 'auto';
+          barcodeImg.style.objectFit = 'contain';
+          middleHeader.appendChild(barcodeImg);
         }
 
-        const docRef = document.createElement('div');
-        docRef.innerText = 'PROME-IMSR-QOBJ-01 | Rev 03';
-        docRef.style.fontSize = '10px';
-        docRef.style.fontWeight = 'bold';
-        docRef.style.color = '#475569';
-        docRef.style.letterSpacing = '0.5px';
-        rightHeader.appendChild(docRef);
+        const barcodeText = document.createElement('div');
+        barcodeText.innerText = 'PROME-IMSR-QOBJ-01';
+        barcodeText.style.fontSize = '10px';
+        barcodeText.style.fontWeight = '700';
+        barcodeText.style.color = '#334155';
+        barcodeText.style.marginTop = '3px';
+        barcodeText.style.letterSpacing = '1px';
+        barcodeText.style.fontFamily = 'monospace, sans-serif';
+        middleHeader.appendChild(barcodeText);
 
-        const printDate = document.createElement('div');
-        printDate.innerText = `Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-        printDate.style.fontSize = '10px';
-        printDate.style.color = '#64748b';
-        rightHeader.appendChild(printDate);
+        const rightHeader = document.createElement('div');
+        rightHeader.style.textAlign = 'right';
+        rightHeader.style.flex = '1';
+
+        const regTitle = document.createElement('div');
+        regTitle.innerText = 'QUALITY OBJECTIVES & KPIS REGISTER';
+        regTitle.style.fontSize = '20px';
+        regTitle.style.fontWeight = '800';
+        regTitle.style.color = '#7c3aed';
+
+        const regMeta = document.createElement('div');
+        regMeta.innerText = `ISO 9001:2015 Clause 6.2 Compliance | Rev 03 | ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+        regMeta.style.fontSize = '11px';
+        regMeta.style.fontWeight = '500';
+        regMeta.style.color = '#475569';
+        regMeta.style.marginTop = '4px';
+
+        rightHeader.appendChild(regTitle);
+        rightHeader.appendChild(regMeta);
 
         header.appendChild(leftHeader);
+        header.appendChild(middleHeader);
         header.appendChild(rightHeader);
         return header;
       };
 
-      const itemsPerPage = 8;
-      const totalPages = Math.ceil(filteredObjectives.length / itemsPerPage) || 1;
+      const calculateAverageProgress = () => {
+        if (filteredObjectives.length === 0) return 0;
+        const totalProgress = filteredObjectives.reduce((acc, curr) => {
+          return acc + calculateProgress(curr.currentValue, curr.targetValue);
+        }, 0);
+        return Math.round(totalProgress / filteredObjectives.length);
+      };
+
+      const createSummaryCards = () => {
+        const cardsContainer = document.createElement('div');
+        cardsContainer.style.display = 'grid';
+        cardsContainer.style.gridTemplateColumns = 'repeat(5, 1fr)';
+        cardsContainer.style.gap = '14px';
+        cardsContainer.style.marginBottom = '16px';
+
+        const cardsData = [
+          { label: 'TOTAL OBJECTIVES', val: filteredObjectives.length, color: '#7c3aed', border: '#ddd6fe', bg: '#f5f3ff' },
+          { label: 'ACTIVE OBJECTIVES', val: filteredObjectives.filter(o => o.status === 'Active').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
+          { label: 'ACHIEVED OBJECTIVES', val: filteredObjectives.filter(o => o.status === 'Achieved').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
+          { label: 'OFF-TRACK OBJECTIVES', val: filteredObjectives.filter(o => o.status === 'Off-Track').length, color: '#dc2626', border: '#f87171', bg: '#fff1f2' },
+          { label: 'AVERAGE PROGRESS', val: `${calculateAverageProgress()}%`, color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
+        ];
+
+        cardsData.forEach(c => {
+          const card = document.createElement('div');
+          card.style.backgroundColor = c.bg;
+          card.style.border = `1px solid ${c.border}`;
+          card.style.borderRadius = '6px';
+          card.style.padding = '10px 14px';
+          card.style.boxSizing = 'border-box';
+          card.style.display = 'flex';
+          card.style.flexDirection = 'column';
+          card.style.justifyContent = 'center';
+
+          const labelDiv = document.createElement('div');
+          labelDiv.innerText = c.label;
+          labelDiv.style.fontSize = '8.5px';
+          labelDiv.style.fontWeight = '700';
+          labelDiv.style.color = '#475569';
+          labelDiv.style.letterSpacing = '0.5px';
+
+          const valDiv = document.createElement('div');
+          valDiv.innerText = String(c.val);
+          valDiv.style.fontSize = '22px';
+          valDiv.style.fontWeight = '800';
+          valDiv.style.color = c.color;
+          valDiv.style.marginTop = '4px';
+
+          card.appendChild(labelDiv);
+          card.appendChild(valDiv);
+          cardsContainer.appendChild(card);
+        });
+
+        return cardsContainer;
+      };
+
+      const firstPageItemCount = 6;
+      const otherPagesItemCount = 8;
+      let totalPages = 1;
+      if (filteredObjectives.length > firstPageItemCount) {
+        totalPages = 1 + Math.ceil((filteredObjectives.length - firstPageItemCount) / otherPagesItemCount);
+      }
 
       for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
         const page = document.createElement('div');
         page.style.width = '1587px';
         page.style.height = '1122px';
-        page.style.padding = '40px';
+        page.style.padding = '36px 40px';
         page.style.backgroundColor = '#ffffff';
         page.style.boxSizing = 'border-box';
         page.style.position = 'relative';
@@ -440,11 +520,16 @@ const ObjectivesDashboard: React.FC = () => {
 
         page.appendChild(createPageHeader());
 
+        // SHOW STATISTICAL SUMMARY CARDS AT THE TOP OF THE FIRST PAGE
+        if (pageIdx === 0) {
+          page.appendChild(createSummaryCards());
+        }
+
         const subTitleBar = document.createElement('div');
         subTitleBar.style.backgroundColor = '#f8fafc';
-        subTitleBar.style.padding = '10px 16px';
+        subTitleBar.style.padding = '8px 16px';
         subTitleBar.style.borderRadius = '6px';
-        subTitleBar.style.marginBottom = '16px';
+        subTitleBar.style.marginBottom = '14px';
         subTitleBar.style.display = 'flex';
         subTitleBar.style.justifyContent = 'space-between';
         subTitleBar.style.alignItems = 'center';
@@ -452,7 +537,7 @@ const ObjectivesDashboard: React.FC = () => {
         const titleText = document.createElement('div');
         titleText.innerText = 'CORPORATE & DIVISIONAL QUALITY OBJECTIVES REGISTER (ISO 9001:2015)';
         titleText.style.fontWeight = 'bold';
-        titleText.style.fontSize = '14px';
+        titleText.style.fontSize = '13px';
         titleText.style.color = '#1e293b';
 
         const pageCountText = document.createElement('div');
@@ -489,7 +574,13 @@ const ObjectivesDashboard: React.FC = () => {
         table.appendChild(thead);
 
         const tbody = document.createElement('tbody');
-        const pageItems = filteredObjectives.slice(pageIdx * itemsPerPage, (pageIdx + 1) * itemsPerPage);
+        let pageItems: QualityObjective[];
+        if (pageIdx === 0) {
+          pageItems = filteredObjectives.slice(0, firstPageItemCount);
+        } else {
+          const start = firstPageItemCount + (pageIdx - 1) * otherPagesItemCount;
+          pageItems = filteredObjectives.slice(start, start + otherPagesItemCount);
+        }
 
         pageItems.forEach((obj, idx) => {
           const tr = document.createElement('tr');
@@ -690,6 +781,15 @@ const ObjectivesDashboard: React.FC = () => {
             {objectives.filter(o => o.status === 'Off-Track').length}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Requires remedial action</div>
+        </div>
+        <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: '4px solid #d97706' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', fontWeight: '600' }}>
+            <TrendingUp size={16} color="#d97706" /> Average Progress
+          </div>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginTop: '0.25rem' }}>
+            {objectives.length > 0 ? Math.round(objectives.reduce((acc, curr) => acc + calculateProgress(curr.currentValue, curr.targetValue), 0) / objectives.length) : 0}%
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Overall corporate KPI status</div>
         </div>
       </div>
 
