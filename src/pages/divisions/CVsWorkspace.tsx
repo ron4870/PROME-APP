@@ -188,6 +188,26 @@ export default function CVsWorkspace() {
           loadedOverlays = state.overlays || [];
         }
 
+        if ((!fabricState || !fabricState.objects || !Array.isArray(fabricState.objects)) && (state?.markdownContent || state?.text)) {
+          fabricState = {
+            version: "5.3.0",
+            objects: [
+              {
+                type: "textbox",
+                text: state.markdownContent || state.text,
+                fontSize: 13,
+                fontFamily: "Arial",
+                fill: "#1e293b",
+                left: 40,
+                top: 40,
+                width: 720,
+                lineHeight: 1.35,
+                splitByGrapheme: true
+              }
+            ]
+          };
+        }
+
         canvas.loadFromJSON(fabricState).then(() => {
           const objectsToRemove: any[] = [];
           canvas.getObjects().forEach(obj => {

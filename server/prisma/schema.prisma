@@ -1781,6 +1781,24 @@ model CvPage {
   project CvProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
+model CvCatalogueItem {
+  id            Int      @id @default(autoincrement())
+  candidateName String
+  fileName      String
+  category      String
+  fileType      String
+  fileSize      String?
+  date          String?
+  driveFileId   String?
+  driveUrl      String
+  downloadUrl   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([candidateName])
+  @@index([category])
+}
+
 model FaqItem {
   id        Int      @id @default(autoincrement())
   question  String   @unique
