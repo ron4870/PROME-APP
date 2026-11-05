@@ -308,8 +308,11 @@ router.get('/candidates', authenticate, checkCvsPermission, async (req, res) => 
     const candidatesMap = new Map<string, { name: string; count: number; categories: string[]; files: any[] }>();
 
     for (const item of items) {
-      const name = (item.candidateName || '').trim();
-      if (!name || name.length < 2) continue;
+      let name = (item.candidateName || '').trim();
+      if (!name || name.length < 2 || /^\d+$/.test(name)) continue;
+      name = name.replace(/^[\d\s._-]+/, '').trim();
+      if (!name || name.length < 2 || /^\d+$/.test(name)) continue;
+
       if (!candidatesMap.has(name)) {
         candidatesMap.set(name, {
           name,
