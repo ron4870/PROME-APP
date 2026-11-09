@@ -1205,6 +1205,52 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper to ensure Hydrological Studies is included in deliverables whenever Engineering Design is present
+export function ensureHydrologicalDeliverables(deliverables?: string | null): string | null {
+  if (!deliverables) return deliverables || null;
+  if (deliverables.includes('Engineering Design') && !deliverables.includes('Hydrological Studies')) {
+    if (deliverables.includes('• Engineering Design report')) {
+      return deliverables.replace('• Engineering Design report', '• Engineering Design report\n• Hydrological Studies');
+    } else if (deliverables.includes('• Engineering Design')) {
+      return deliverables.replace('• Engineering Design', '• Engineering Design\n• Hydrological Studies');
+    } else {
+      return deliverables.replace('Engineering Design', 'Engineering Design\n• Hydrological Studies');
+    }
+  }
+  return deliverables;
+}
+
+// Sync and permanently ensure all projects with Engineering Design have Hydrological Studies in deliverables
+router.post('/sync-hydrological', authenticateToken, async (req, res) => {
+  try {
+    const allRecords = await prisma.companyExperience.findMany();
+    let updatedCount = 0;
+
+    for (const record of allRecords) {
+      if (record.deliverables && record.deliverables.includes('Engineering Design') && !record.deliverables.includes('Hydrological Studies')) {
+        const updatedDeliverables = ensureHydrologicalDeliverables(record.deliverables);
+        await prisma.companyExperience.update({
+          where: { id: record.id },
+          data: { deliverables: updatedDeliverables }
+        });
+        updatedCount++;
+      }
+    }
+
+    const records = await prisma.companyExperience.findMany({
+      include: {
+        createdBy: { select: { id: true, name: true } }
+      },
+      orderBy: { itemNo: 'asc' }
+    });
+
+    res.json({ message: `Synced hydrological deliverables (${updatedCount} updated)`, records, updatedCount });
+  } catch (error) {
+    console.error('Failed to sync hydrological deliverables:', error);
+    res.status(500).json({ message: 'Failed to sync hydrological deliverables' });
+  }
+});
+
 // Create a new experience record
 router.post('/', authenticateToken, async (req: any, res) => {
   try {
@@ -1227,7 +1273,7 @@ router.post('/', authenticateToken, async (req: any, res) => {
         country: country || 'Uganda',
         contractValue: contractValue || null,
         role: role || 'Sole Consultant',
-        deliverables: deliverables || null,
+        deliverables: ensureHydrologicalDeliverables(deliverables),
         status: status || 'Completed',
         sector: sector || 'Civil & Infrastructure',
         location: location || 'Uganda',
@@ -1282,7 +1328,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         country,
         contractValue,
         role,
-        deliverables,
+        deliverables: ensureHydrologicalDeliverables(deliverables),
         status,
         sector,
         location,

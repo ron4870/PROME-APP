@@ -130,6 +130,58 @@ export const CompanyExperienceDashboard: React.FC = () => {
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
+      // 1. Permanently sync with backend to ensure any project with Engineering Design has Hydrological Studies
+      let currentExperiences = [...experiences];
+      const token = localStorage.getItem('token');
+      try {
+        const syncRes = await fetch('/api/company-experience/sync-hydrological', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        });
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          if (Array.isArray(syncData.records)) {
+            currentExperiences = syncData.records;
+            setExperiences(syncData.records);
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Sync hydrological call error:', syncErr);
+      }
+
+      // Also ensure client-side state is immediately updated permanently
+      currentExperiences = currentExperiences.map(exp => {
+        if (exp.deliverables && exp.deliverables.includes('Engineering Design') && !exp.deliverables.includes('Hydrological Studies')) {
+          let updated = exp.deliverables;
+          if (updated.includes('• Engineering Design report')) {
+            updated = updated.replace('• Engineering Design report', '• Engineering Design report\n• Hydrological Studies');
+          } else if (updated.includes('• Engineering Design')) {
+            updated = updated.replace('• Engineering Design', '• Engineering Design\n• Hydrological Studies');
+          } else {
+            updated = updated.replace('Engineering Design', 'Engineering Design\n• Hydrological Studies');
+          }
+          return { ...exp, deliverables: updated };
+        }
+        return exp;
+      });
+      setExperiences(currentExperiences);
+
+      const searchLower = searchTerm.toLowerCase();
+      const exportList = currentExperiences.filter(exp => {
+        const matchesCategory = selectedCategory === 'All Categories' || exp.category === selectedCategory;
+        const matchesSearch =
+          exp.projectName.toLowerCase().includes(searchLower) ||
+          exp.client.toLowerCase().includes(searchLower) ||
+          (exp.funder && exp.funder.toLowerCase().includes(searchLower)) ||
+          (exp.deliverables && exp.deliverables.toLowerCase().includes(searchLower)) ||
+          exp.country.toLowerCase().includes(searchLower) ||
+          (exp.role && exp.role.toLowerCase().includes(searchLower));
+        return matchesCategory && matchesSearch;
+      });
+
       const pagesToRender: HTMLDivElement[] = [];
 
       const container = document.createElement('div');
@@ -336,10 +388,10 @@ export const CompanyExperienceDashboard: React.FC = () => {
         cardsContainer.style.marginBottom = '16px';
 
         const cardsData = [
-          { label: 'MAJOR INFRASTRUCTURE PROJECTS', val: filteredExperiences.length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
-          { label: 'COMPLETED ASSIGNMENTS', val: filteredExperiences.filter(e => e.status === 'Completed').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
-          { label: 'ONGOING ASSIGNMENTS', val: filteredExperiences.filter(e => e.status === 'Ongoing').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
-          { label: 'COUNTRIES OF OPERATION', val: Array.from(new Set(filteredExperiences.map(e => e.country))).join(', ') || 'Uganda, Ethiopia, Tanzania', color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
+          { label: 'MAJOR INFRASTRUCTURE PROJECTS', val: exportList.length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+          { label: 'COMPLETED ASSIGNMENTS', val: exportList.filter(e => e.status === 'Completed').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
+          { label: 'ONGOING ASSIGNMENTS', val: exportList.filter(e => e.status === 'Ongoing').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
+          { label: 'COUNTRIES OF OPERATION', val: Array.from(new Set(exportList.map(e => e.country))).join(', ') || 'Uganda, Ethiopia, Tanzania', color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
         ];
 
         cardsData.forEach(c => {
@@ -533,7 +585,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
 
       startNewPage();
 
-      filteredExperiences.forEach((exp) => {
+      exportList.forEach((exp) => {
         const row = createExperienceRow(exp);
         currentTbody!.appendChild(row);
 
@@ -646,7 +698,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
         <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-            <Briefcase size={16} color="#cc0000" /> Total Executed Projects
+            <Briefcase size={16} color="#cc0000" /> Major Infrastructure Projects
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
             {experiences.length}

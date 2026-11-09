@@ -331,7 +331,7 @@ export const CompanyExperienceDetails: React.FC = () => {
               value={record.deliverables || ''}
               onChange={(e) => setRecord({ ...record, deliverables: e.target.value })}
               className="form-input"
-              placeholder="• Traffic Surveys&#10;• Topographic and Cadastral Surveys&#10;• Geotechnical Investigations&#10;• Feasibility Study&#10;• Engineering Design&#10;• Environmental and Social Impact Assessment (ESIA)&#10;• Resettlement Action Plan (RAP)&#10;• Road safety audit studies&#10;• Preparation of Bidding documents&#10;• Unit rate analysis and confidential Engineers estimate&#10;• Preparation of Drawings"
+              placeholder="• Traffic Surveys&#10;• Topographic and Cadastral Surveys&#10;• Geotechnical Investigations&#10;• Feasibility Study&#10;• Engineering Design&#10;• Hydrological Studies&#10;• Environmental and Social Impact Assessment (ESIA)&#10;• Resettlement Action Plan (RAP)&#10;• Road safety audit studies&#10;• Preparation of Bidding documents&#10;• Unit rate analysis and confidential Engineers estimate&#10;• Preparation of Drawings"
               style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.625rem', fontFamily: 'monospace, sans-serif', fontSize: '0.875rem', lineHeight: '1.5' }}
             />
           </div>
