@@ -336,7 +336,7 @@ export const CompanyExperienceDashboard: React.FC = () => {
         cardsContainer.style.marginBottom = '16px';
 
         const cardsData = [
-          { label: 'TOTAL INFRASTRUCTURE PROJECTS', val: filteredExperiences.length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
+          { label: 'MAJOR INFRASTRUCTURE PROJECTS', val: filteredExperiences.length, color: '#b91c1c', border: '#fca5a5', bg: '#fef2f2' },
           { label: 'COMPLETED ASSIGNMENTS', val: filteredExperiences.filter(e => e.status === 'Completed').length, color: '#15803d', border: '#86efac', bg: '#f0fdf4' },
           { label: 'ONGOING ASSIGNMENTS', val: filteredExperiences.filter(e => e.status === 'Ongoing').length, color: '#0369a1', border: '#7dd3fc', bg: '#f0f9ff' },
           { label: 'COUNTRIES OF OPERATION', val: Array.from(new Set(filteredExperiences.map(e => e.country))).join(', ') || 'Uganda, Ethiopia, Tanzania', color: '#d97706', border: '#fde68a', bg: '#fffbe6' }
@@ -414,6 +414,24 @@ export const CompanyExperienceDashboard: React.FC = () => {
         return thead;
       };
 
+      const escapeHtml = (str: string): string => {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
+
+      const highlightTerms = (text: string): string => {
+        if (!text) return '';
+        const escaped = escapeHtml(text);
+        return escaped.replace(
+          /(Topographic[a-z]*|Cadastral|Hydrolog[a-z]*)/gi,
+          '<mark style="background-color: #fde047; color: #1e293b; font-weight: 700; padding: 0.5px 2px; border-radius: 2px;">$1</mark>'
+        );
+      };
+
       const createExperienceRow = (exp: CompanyExperience) => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #cbd5e1';
@@ -444,21 +462,21 @@ export const CompanyExperienceDashboard: React.FC = () => {
 
           if (cell.dualText) {
             const textDiv = document.createElement('div');
-            textDiv.innerText = cell.text;
+            textDiv.innerHTML = highlightTerms(cell.text);
             textDiv.style.whiteSpace = 'pre-line';
             textDiv.style.lineHeight = '1.3';
             textDiv.style.color = '#1e293b';
             td.appendChild(textDiv);
           } else if (cell.fullText) {
             const textDiv = document.createElement('div');
-            textDiv.innerText = cell.text;
+            textDiv.innerHTML = highlightTerms(cell.text);
             textDiv.style.whiteSpace = 'pre-wrap';
             textDiv.style.wordBreak = 'break-word';
             textDiv.style.lineHeight = '1.3';
             textDiv.style.color = '#334155';
             td.appendChild(textDiv);
           } else {
-            td.innerText = cell.text;
+            td.innerHTML = highlightTerms(cell.text);
           }
 
           tr.appendChild(td);
