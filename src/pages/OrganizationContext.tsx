@@ -1077,7 +1077,7 @@ const OrganizationContext: React.FC = () => {
                   <div style={{ padding: '1.5rem', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'center' }}>
                     <a href="/uploads/company-documents/PROME_Company_Organisational_Chart.pdf" target="_blank" rel="noreferrer" style={{ width: '100%', maxWidth: '1100px', display: 'block', cursor: 'zoom-in' }}>
                       <img 
-                        src="/documents/PROME_Company_Organisational_Chart.png" 
+                        src="/uploads/company-documents/PROME_Company_Organisational_Chart.png" 
                         alt="PROME Company Organisational Chart" 
                         style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)' }}
                       />
@@ -1152,7 +1152,7 @@ const OrganizationContext: React.FC = () => {
                   <div style={{ padding: '1.5rem', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'center' }}>
                     <a href="/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf" target="_blank" rel="noreferrer" style={{ width: '100%', maxWidth: '1100px', display: 'block', cursor: 'zoom-in' }}>
                       <img 
-                        src="/documents/PROME_IMS_Organisational_Structure.png" 
+                        src="/uploads/company-documents/PROME_IMS_Organisational_Structure.png" 
                         alt="PROME Organizational Structure for IMS Implementation" 
                         style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)' }}
                       />
