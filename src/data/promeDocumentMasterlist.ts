@@ -70,6 +70,38 @@ export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
     portalLabel: 'View OHS Policy PDF'
   },
   {
+    prefix: '0c.',
+    title: 'Company Organisational Chart',
+    documentNumber: 'PROME-DOC-ORG-01',
+    revision: 'Ver-2026',
+    dateOfRevision: 'Jan-26',
+    issueDate: '2026-01-02',
+    department: 'Administration',
+    retentionPeriod: 'Permanent',
+    type: 'Manual',
+    category: 'Quality Manual',
+    categoryOrder: 1,
+    status: 'Approved',
+    portalPath: '/uploads/company-documents/PROME_Company_Organisational_Chart.pdf',
+    portalLabel: 'View Org Chart PDF'
+  },
+  {
+    prefix: '0d.',
+    title: 'Organizational Structure for IMS Implementation (ISO 9001 & ISO 45001)',
+    documentNumber: 'PROME-DOC-IMS-ORG-02',
+    revision: 'Ver-2026',
+    dateOfRevision: 'Jan-26',
+    issueDate: '2026-01-02',
+    department: 'Administration / HSE',
+    retentionPeriod: 'Permanent',
+    type: 'Procedure',
+    category: 'Quality Manual',
+    categoryOrder: 1,
+    status: 'Approved',
+    portalPath: '/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf',
+    portalLabel: 'View IMS Structure PDF'
+  },
+  {
     prefix: '1.',
     title: 'Quality Manual',
     documentNumber: 'PROME-QSR-AD-13',

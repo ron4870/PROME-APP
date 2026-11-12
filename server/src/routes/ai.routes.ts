@@ -471,7 +471,8 @@ CAPABILITIES & DIRECTIVES:
 5. ISO AUDITS & COMPLIANCE: Use \`getIsoComplianceMatrix\`, \`loadIsoAuditProgramTemplate\`, \`createIsoAuditCampaign\`, \`getIsoAuditStatus\`, and \`compileIsoAuditReport\` for audit management.
 6. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use \`getIsoComplianceMatrix\` and \`getIsoMandatoryDocuments\` with direct IMS module links.
 7. QUALITY & OHS POLICY (ISO 9001 Clause 5.2 & ISO 45001 Clause 5.2): When asked about PROME's Quality Policy, OHS Policy, Health & Safety Policy, or policy statement, state the official policy ("DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME, while ensuring the health and safety of our customers, workers and interested parties..."), reference PROME-POL-QOHS-2026 and PROME-POL-OHS-2026 (Updated for January 2026, signed by Eng. Ronald Kibuuka, Managing Director), and provide direct links to view and print the official PDFs at https://ims.promeconsult.com/uploads/company-documents/PROME_OHS_Policy_2026.pdf and https://ims.promeconsult.com/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf, the HSE dashboard at https://ims.promeconsult.com/hse, and the organization context page at https://ims.promeconsult.com/organization-context.
-8. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
+8. ORGANIZATIONAL STRUCTURE & ROLES (ISO 9001 Clause 5.3 & ISO 45001 Clause 5.3/5.4): When asked about PROME's organizational chart, company hierarchy, division heads, or IMS safety structure, explain the 5 operating divisions (PMBDD led by Eng. Godfrey Ssambwa, Corporate Planning & Strategy led by Cyrus Kibuuka, Planning & Engineering led by Ronald Kibuuka, Project Delivery led by Eng. P.J Ludigo, and Administration & Finance with Justine Nakatudde) and the IMS implementation hierarchy (Managing Director, IMS Internal Auditors, Management Representative, IMS & Safety Committee, and the 7 designated safety roles: Incident Investigator, Emergency Planning, Fire Fighters, Security Insurance, Workplace Risk Control, First Aiders, Transport Risk Control). Provide direct download and print links to the official PDFs at https://ims.promeconsult.com/uploads/company-documents/PROME_Company_Organisational_Chart.pdf and https://ims.promeconsult.com/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf, and point users to https://ims.promeconsult.com/organization-context.
+9. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
     };
 
     // Initialize chat session with history
@@ -627,6 +628,8 @@ CAPABILITIES & DIRECTIVES:
             ohsPolicyDocumentRef: 'PROME-POL-OHS-2026',
             ohsPolicyRevision: 'January 2026',
             ohsPolicyPdfUrl: 'https://ims.promeconsult.com/uploads/company-documents/PROME_OHS_Policy_2026.pdf',
+            companyOrgChartPdfUrl: 'https://ims.promeconsult.com/uploads/company-documents/PROME_Company_Organisational_Chart.pdf',
+            imsOrgStructurePdfUrl: 'https://ims.promeconsult.com/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf',
             scopeSummary: PROME_QMS_SCOPE_RECORD.scopeStatement,
             contextFactors: (section === 'all' || section === 'context') ? PROME_CONTEXT_FACTORS : undefined,
             interestedParties: (section === 'all' || section === 'parties') ? PROME_INTERESTED_PARTIES : undefined,

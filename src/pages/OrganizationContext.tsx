@@ -14,7 +14,8 @@ import {
   Database,
   Search,
   Printer,
-  ExternalLink
+  ExternalLink,
+  Network
 } from 'lucide-react';
 
 interface OrgIssue {
@@ -113,7 +114,7 @@ interface OfficialDocumentsResponse {
   continualImprovement: ContinualImprovementRecord;
 }
 
-type TabType = 'context' | 'parties' | 'scope' | 'communication' | 'continual';
+type TabType = 'context' | 'parties' | 'scope' | 'structure' | 'communication' | 'continual';
 
 const OrganizationContext: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('context');
@@ -131,6 +132,7 @@ const OrganizationContext: React.FC = () => {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [contextFilter, setContextFilter] = useState<'ALL' | 'Internal' | 'External'>('ALL');
+  const [structureSubTab, setStructureSubTab] = useState<'both' | 'company' | 'ims'>('both');
   const [partyFilter, setPartyFilter] = useState<'ALL' | 'External' | 'Internal' | 'P1'>('ALL');
   const [commsFilter, setCommsFilter] = useState<'ALL' | 'Internal' | 'External'>('ALL');
   const [viewMode, setViewMode] = useState<'official' | 'custom'>('official');
@@ -462,6 +464,25 @@ const OrganizationContext: React.FC = () => {
           }}
         >
           <FileText size={17} /> Clause 4.3: QMS Scope & Processes
+        </button>
+
+        <button 
+          onClick={() => { setActiveTab('structure'); setSearchQuery(''); }}
+          style={{ 
+            padding: '0.75rem 1.25rem', 
+            background: 'none', 
+            border: 'none', 
+            borderBottom: activeTab === 'structure' ? '3px solid #cc0000' : '3px solid transparent',
+            color: activeTab === 'structure' ? '#cc0000' : '#64748b',
+            fontWeight: activeTab === 'structure' ? 700 : 500,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Network size={17} /> Clause 5.3: Org Structure (2 Charts)
         </button>
 
         <button 
@@ -983,6 +1004,192 @@ const OrganizationContext: React.FC = () => {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB 3B: CLAUSE 5.3 ORGANIZATIONAL STRUCTURE              */}
+          {/* ======================================================== */}
+          {activeTab === 'structure' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {/* Controls & Filter Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button 
+                    onClick={() => setStructureSubTab('both')}
+                    style={{ padding: '0.45rem 1rem', borderRadius: '20px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600, backgroundColor: structureSubTab === 'both' ? '#0f172a' : '#fff', color: structureSubTab === 'both' ? '#fff' : '#475569', cursor: 'pointer' }}
+                  >
+                    View Both Structures
+                  </button>
+                  <button 
+                    onClick={() => setStructureSubTab('company')}
+                    style={{ padding: '0.45rem 1rem', borderRadius: '20px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600, backgroundColor: structureSubTab === 'company' ? '#991b1b' : '#fff', color: structureSubTab === 'company' ? '#fff' : '#475569', cursor: 'pointer' }}
+                  >
+                    1. Company Organisational Chart
+                  </button>
+                  <button 
+                    onClick={() => setStructureSubTab('ims')}
+                    style={{ padding: '0.45rem 1rem', borderRadius: '20px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600, backgroundColor: structureSubTab === 'ims' ? '#0f766e' : '#fff', color: structureSubTab === 'ims' ? '#fff' : '#475569', cursor: 'pointer' }}
+                  >
+                    2. IMS Implementation Structure (ISO 9001/45001)
+                  </button>
+                </div>
+
+                <div style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                  ISO 9001:2015 & ISO 45001:2018 Clause 5.3 (Roles, Responsibilities & Authorities)
+                </div>
+              </div>
+
+              {/* CHART 1: COMPANY ORGANISATIONAL CHART */}
+              {(structureSubTab === 'both' || structureSubTab === 'company') && (
+                <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
+                  {/* Card Header */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', background: '#f8fafc' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', backgroundColor: '#991b1b', color: '#fff', padding: '2px 8px', borderRadius: '4px' }}>
+                          PROME-DOC-ORG-01
+                        </span>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Version: Ver-2026 • Status: Approved</span>
+                      </div>
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                        PROME Consultants Limited — Company Organisational Chart
+                      </h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                        Master governance reporting hierarchy from Board of Directors to Operating Divisions, Specialized Units, and Project Delivery Teams.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <a 
+                        href="/uploads/company-documents/PROME_Company_Organisational_Chart.pdf" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="btn btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', fontSize: '0.825rem', fontWeight: 700, color: '#991b1b', backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none' }}
+                      >
+                        <Printer size={15} /> View & Print PDF <ExternalLink size={13} />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Chart Image Display */}
+                  <div style={{ padding: '1.5rem', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'center' }}>
+                    <a href="/uploads/company-documents/PROME_Company_Organisational_Chart.pdf" target="_blank" rel="noreferrer" style={{ width: '100%', maxWidth: '1100px', display: 'block', cursor: 'zoom-in' }}>
+                      <img 
+                        src="/documents/PROME_Company_Organisational_Chart.png" 
+                        alt="PROME Company Organisational Chart" 
+                        style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)' }}
+                      />
+                    </a>
+                  </div>
+
+                  {/* Division Breakdown Footer */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', fontSize: '0.825rem' }}>
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>PMBDD Division</strong>
+                      <div style={{ color: '#475569', marginTop: '2px' }}>Head: <strong>Eng. Godfrey Ssambwa</strong></div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>MIS, Records, QA, Standards & Bids</div>
+                    </div>
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>Corporate Planning & Strategy</strong>
+                      <div style={{ color: '#475569', marginTop: '2px' }}>Head: <strong>Cyrus Kibuuka</strong></div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Digital Solutions, Risk & Delivery</div>
+                    </div>
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>Planning & Engineering (PED)</strong>
+                      <div style={{ color: '#475569', marginTop: '2px' }}>Head: <strong>Ronald Kibuuka</strong></div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Structures, Highways & Water</div>
+                    </div>
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>Project Delivery (PDMD)</strong>
+                      <div style={{ color: '#475569', marginTop: '2px' }}>Head: <strong>Eng. P.J Ludigo</strong></div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>PPP, EPC, D&B, Construction Mgmt</div>
+                    </div>
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>Admin & Finance Division</strong>
+                      <div style={{ color: '#475569', marginTop: '2px' }}>Finance: <strong>Justine Nakatudde</strong></div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>HR, Central Admin, Finance & Audit</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CHART 2: ORGANIZATIONAL STRUCTURE FOR IMS IMPLEMENTATION */}
+              {(structureSubTab === 'both' || structureSubTab === 'ims') && (
+                <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
+                  {/* Card Header */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', background: '#f8fafc' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', backgroundColor: '#0f766e', color: '#fff', padding: '2px 8px', borderRadius: '4px' }}>
+                          PROME-DOC-IMS-ORG-02
+                        </span>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>ISO 9001:2015 & ISO 45001:2018 • Approved</span>
+                      </div>
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                        Organizational Structure for IMS Implementation
+                      </h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                        Operational IMS governance structure: Internal Auditors, Management Representative, IMS & Safety Committee, and 7 Designated Safety Control Roles.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <a 
+                        href="/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="btn btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', fontSize: '0.825rem', fontWeight: 700, color: '#0f766e', backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none' }}
+                      >
+                        <Printer size={15} /> View & Print PDF <ExternalLink size={13} />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Chart Image Display */}
+                  <div style={{ padding: '1.5rem', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'center' }}>
+                    <a href="/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf" target="_blank" rel="noreferrer" style={{ width: '100%', maxWidth: '1100px', display: 'block', cursor: 'zoom-in' }}>
+                      <img 
+                        src="/documents/PROME_IMS_Organisational_Structure.png" 
+                        alt="PROME Organizational Structure for IMS Implementation" 
+                        style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)' }}
+                      />
+                    </a>
+                  </div>
+
+                  {/* IMS Roles Breakdown Footer */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', backgroundColor: '#f0fdfa' }}>
+                    <div style={{ fontWeight: 700, color: '#0f766e', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                      7 Operational Safety & Emergency Responsibilities (IMS Committee):
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', fontSize: '0.8rem' }}>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        1. Incident Investigator
+                      </div>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        2. Emergency Planning
+                      </div>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        3. Fire Fighters
+                      </div>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        4. Security Insurance
+                      </div>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        5. Workplace Risk Control
+                      </div>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        6. First Aiders
+                      </div>
+                      <div style={{ backgroundColor: '#fff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccfbf1', textAlign: 'center', fontWeight: 600, color: '#134e4a' }}>
+                        7. Transport Risk Control
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

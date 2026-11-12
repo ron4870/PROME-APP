@@ -225,6 +225,29 @@ export const HseDashboard: React.FC = () => {
             View & Print OHS Policy (2026)
             <ExternalLink size={14} color="#64748b" />
           </a>
+          <a
+            href="/uploads/company-documents/PROME_IMS_Organisational_Structure.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-secondary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: '#fff',
+              border: '1px solid #cbd5e1',
+              color: '#0f766e',
+              fontWeight: 700,
+              padding: '0.55rem 1rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
+          >
+            <Printer size={16} color="#0f766e" />
+            IMS Safety Structure (ISO 45001)
+            <ExternalLink size={14} color="#64748b" />
+          </a>
           {activeTab === 'incidents' ? (
             <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
               <Plus size={18} style={{ marginRight: '8px' }} />
