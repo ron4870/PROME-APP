@@ -22,9 +22,9 @@ export const PROME_MASTERLIST_HEADER = {
   dateOfIssue: 'FEBRUARY 2025',
   dateOfRevision: 'JANUARY 2026',
   versionNo: 'Version No. 7',
-  writtenBy: 'Ronald Kibuuka',
+  writtenBy: 'Phillipa Arinaitwe',
   reviewedBy: 'Patrick Lidigo',
-  approvedBy: 'Eng. H.R Kibuuka'
+  approvedBy: 'Ronald Kibuuka'
 };
 
 export const PROME_MASTERLIST_CATEGORIES: { name: MasterDocumentItem['category']; order: number; label: string }[] = [
