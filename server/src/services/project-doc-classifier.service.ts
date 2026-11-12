@@ -501,7 +501,7 @@ Return a STRICT JSON object in this exact schema (no markdown, no extra text):
     "title": "Clean document title",
     "type": "Contractual Document" | "Report" | "Design Document" | "Meeting Minutes" | "QA/QC Plan" | "Method Statement" | "Quality Control Form" | "Project Drawing" | "Media" | "RFI",
     "revision": "e.g. 0, 1.0, Rev A",
-    "status": "Draft" | "Issued for Review" | "Approved",
+    "status": "Draft" | "Issued for Review" | "Issued for Construction" | "Approved",
     "issueDate": "YYYY-MM-DD",
 
     // For daily_reports:

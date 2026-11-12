@@ -1390,7 +1390,7 @@ export const ProjectWorkspace: React.FC = () => {
                   onChange={(e) => setDocFilter(e.target.value)} 
                   style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '380px' }} 
                 />
-                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Document', endpoint: `/api/projects/${id}/documents`, fields: [{name: 'documentNumber', label: 'Document Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
+                <button className="btn btn-primary" onClick={() => setModalConfig({ title: 'Upload Document', endpoint: `/api/projects/${id}/documents`, fields: [{name: 'documentNumber', label: 'Document Number', type: 'text'}, {name: 'title', label: 'Title', type: 'text'}, {name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI']}, {name: 'revision', label: 'Revision', type: 'text'}, {name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Issued for Construction', 'Approved']}, {name: 'issueDate', label: 'Issue Date', type: 'date'}, {name: 'file', label: 'Attach File', type: 'file', required: true}] })}><Plus size={16} style={{ marginRight: '8px' }}/> Upload</button>
               </div>
             </div>
             {(() => {
@@ -1447,7 +1447,7 @@ export const ProjectWorkspace: React.FC = () => {
                             <td style={{ padding: '1rem', fontWeight: 500 }}>{doc.title}</td>
                             <td style={{ padding: '1rem', textAlign: 'center' }}>{doc.revision}</td>
                             <td style={{ padding: '1rem' }}>
-                              <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: doc.status === 'Approved' ? '#dcfce7' : '#fef3c7', color: doc.status === 'Approved' ? '#166534' : '#b45309' }}>{doc.status}</span>
+                              <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.875rem', backgroundColor: doc.status === 'Approved' ? '#dcfce7' : doc.status === 'Issued for Construction' ? '#dbeafe' : '#fef3c7', color: doc.status === 'Approved' ? '#166534' : doc.status === 'Issued for Construction' ? '#1e40af' : '#b45309' }}>{doc.status}</span>
                             </td>
                             <td style={{ padding: '1rem', color: '#64748b' }}>{doc.issueDate ? new Date(doc.issueDate).toLocaleDateString() : ''}</td>
                             <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -1532,7 +1532,7 @@ export const ProjectWorkspace: React.FC = () => {
                                       { name: 'title', label: 'Title', type: 'text', required: true, defaultValue: doc.title || '' },
                                       { name: 'type', label: 'Type', type: 'select', options: ['Contractual Document', 'Report', 'Design Document', 'Meeting Minutes', 'QA/QC Plan', 'Method Statement', 'Quality Control Form', 'Project Drawing', 'Media', 'RFI'], defaultValue: doc.type || 'Report' },
                                       { name: 'revision', label: 'Revision', type: 'text', defaultValue: doc.revision || '1.0' },
-                                      { name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Approved'], defaultValue: doc.status || 'Draft' },
+                                      { name: 'status', label: 'Status', type: 'select', options: ['Draft', 'Issued for Review', 'Issued for Construction', 'Approved'], defaultValue: doc.status || 'Draft' },
                                       { name: 'issueDate', label: 'Issue Date', type: 'date', defaultValue: doc.issueDate ? new Date(doc.issueDate).toISOString().split('T')[0] : '' }
                                     ]
                                   })}
