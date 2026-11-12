@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, Plus, FileText, CheckCircle2, Clock, X, 
-  Printer, Download, ExternalLink, ShieldCheck, ChevronRight, Info, Filter 
+  Printer, Download, ExternalLink, ShieldCheck, ChevronRight, Info, Filter,
+  AlertTriangle, Eye, ArrowUpRight, Layers, FileCheck
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +13,9 @@ import {
   PROME_MASTERLIST_CATEGORIES, 
   type MasterDocumentItem 
 } from '../data/promeDocumentMasterlist';
+import { 
+  PROME_AUDIT_DOCUMENTS_LIST 
+} from '../data/promeAuditDocuments';
 import { 
   printDocumentMasterlistPDF, 
   downloadDocumentMasterlistPDF 
@@ -52,6 +56,11 @@ const DocumentDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  
+  // Audit Documents Modal state
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditSearchTerm, setAuditSearchTerm] = useState('');
+  const [auditPartFilter, setAuditPartFilter] = useState<'ALL' | '1' | '2' | '3' | 'ACTION_REQUIRED'>('ALL');
   
   // Modal state
   const [newDoc, setNewDoc] = useState({ 
@@ -223,6 +232,27 @@ const DocumentDashboard: React.FC = () => {
     return map;
   }, [filteredDocs]);
 
+  // Filtered audit documents
+  const filteredAuditDocs = useMemo(() => {
+    const q = auditSearchTerm.toLowerCase().trim();
+    return PROME_AUDIT_DOCUMENTS_LIST.filter((doc) => {
+      if (auditPartFilter === 'ACTION_REQUIRED') {
+        if (doc.status !== 'ACTION_REQUIRED') return false;
+      } else if (auditPartFilter !== 'ALL') {
+        if (doc.partNumber.toString() !== auditPartFilter) return false;
+      }
+
+      if (!q) return true;
+      return (
+        doc.title.toLowerCase().includes(q) ||
+        doc.documentNumber.toLowerCase().includes(q) ||
+        doc.isoClause.toLowerCase().includes(q) ||
+        doc.description.toLowerCase().includes(q) ||
+        doc.division.toLowerCase().includes(q)
+      );
+    });
+  }, [auditSearchTerm, auditPartFilter]);
+
   // Handler for Print PDF
   const handlePrintPdf = () => {
     setIsGeneratingPdf(true);
@@ -276,8 +306,43 @@ const DocumentDashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Action Buttons: Print PDF, Download, Register */}
+        {/* Action Buttons: Audit Documents, Print PDF, Download, Register */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setIsAuditModalOpen(true)}
+            title="Open ISO 9001 & ISO 45001 External Audit Documents Checklist and PDFs"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              backgroundColor: '#991b1b',
+              color: 'white',
+              padding: '0.55rem 1.15rem',
+              borderRadius: '6px',
+              border: 'none',
+              fontWeight: '700',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(153, 27, 27, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#991b1b'}
+          >
+            <ShieldCheck size={18} />
+            <span>Audit Documents</span>
+            <span style={{
+              backgroundColor: 'rgba(255,255,255,0.22)',
+              color: '#ffffff',
+              fontSize: '0.72rem',
+              padding: '0.12rem 0.5rem',
+              borderRadius: '9999px',
+              fontWeight: '800'
+            }}>
+              41 Docs
+            </span>
+          </button>
+
           <button
             onClick={handlePrintPdf}
             disabled={isGeneratingPdf}
@@ -870,15 +935,15 @@ const DocumentDashboard: React.FC = () => {
                   value={newDoc.division}
                   onChange={e => setNewDoc({...newDoc, division: e.target.value})}
                   list="new-division-list"
-                  placeholder="e.g. Administration, BE&ED, Accounts/ Finance"
+                  placeholder="e.g. HR&AD, PED, PMBDD, Finance, HSE"
                   style={{ width: '100%', padding: '0.55rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
                 />
                 <datalist id="new-division-list">
-                  <option value="Administration" />
-                  <option value="BE&ED" />
-                  <option value="Business Development" />
-                  <option value="Accounts and Purchasing" />
-                  <option value="Accounts/ Finance" />
+                  <option value="HR&AD" />
+                  <option value="PED" />
+                  <option value="PMBDD" />
+                  <option value="Finance" />
+                  <option value="HSE" />
                   <option value="ALL" />
                 </datalist>
               </div>
@@ -925,6 +990,558 @@ const DocumentDashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ISO External Audit Documents Dossier Modal */}
+      {isAuditModalOpen && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            backgroundColor: 'rgba(15, 23, 42, 0.7)', 
+            backdropFilter: 'blur(4px)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 100, 
+            padding: '1rem' 
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAuditModalOpen(false);
+          }}
+        >
+          <div 
+            style={{ 
+              backgroundColor: '#ffffff', 
+              borderRadius: '12px', 
+              width: '100%', 
+              maxWidth: '1240px', 
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.28)',
+              overflow: 'hidden',
+              border: '1px solid #cbd5e1'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              backgroundColor: '#0f172a',
+              color: 'white',
+              padding: '1.25rem 1.75rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              borderBottom: '1px solid #1e293b'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                  <ShieldCheck size={26} style={{ color: '#38bdf8' }} />
+                  <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: 0, letterSpacing: '-0.015em' }}>
+                    ISO 9001 & ISO 45001 External Audit Documents Dossier
+                  </h2>
+                  <span style={{
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    fontSize: '0.72rem',
+                    fontWeight: '700',
+                    padding: '0.2rem 0.65rem',
+                    borderRadius: '9999px',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase'
+                  }}>
+                    External Audit Checklist
+                  </span>
+                </div>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0, maxWidth: '920px', lineHeight: 1.45 }}>
+                  Official checklist of 41 mandatory documents & records required for PROME Consultants Limited ISO 9001:2015 & ISO 45001:2018 External Surveillance Audit. View, print, download PDFs, or open live system modules.
+                </p>
+              </div>
+
+              <button 
+                onClick={() => setIsAuditModalOpen(false)}
+                title="Close"
+                style={{
+                  background: '#1e293b',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#94a3b8',
+                  padding: '0.5rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.backgroundColor = '#334155'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.backgroundColor = '#1e293b'; }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Quick Metrics & Summary Bar */}
+            <div style={{
+              backgroundColor: '#f8fafc',
+              borderBottom: '1px solid #e2e8f0',
+              padding: '0.85rem 1.75rem',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '1rem'
+            }}>
+              <div style={{ backgroundColor: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ backgroundColor: '#e0f2fe', color: '#0369a1', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  <Layers size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>Total Audit Items</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>{PROME_AUDIT_DOCUMENTS_LIST.length}</div>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ backgroundColor: '#dcfce7', color: '#15803d', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>Ready / In App</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#166534' }}>
+                    {PROME_AUDIT_DOCUMENTS_LIST.filter(d => d.status === 'READY' || d.status === 'GENERATABLE').length} / 41
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ backgroundColor: '#f1f5f9', color: '#0284c7', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>Direct PDF Links</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0284c7' }}>
+                    {PROME_AUDIT_DOCUMENTS_LIST.filter(d => d.pdfUrl).length} Ready
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setAuditPartFilter(auditPartFilter === 'ACTION_REQUIRED' ? 'ALL' : 'ACTION_REQUIRED')}
+                style={{ 
+                  backgroundColor: auditPartFilter === 'ACTION_REQUIRED' ? '#fef3c7' : 'white', 
+                  padding: '0.75rem 1rem', 
+                  borderRadius: '8px', 
+                  border: '1.5px solid #f59e0b', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ backgroundColor: '#fef3c7', color: '#b45309', width: '38px', height: '38px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '700' }}>Action Required</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#b45309' }}>2 Items Highlighted</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Explanatory Banner for Highlighted Items */}
+            <div style={{
+              backgroundColor: '#fffbeb',
+              borderBottom: '1px solid #fef3c7',
+              padding: '0.75rem 1.75rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem'
+            }}>
+              <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ fontSize: '0.825rem', color: '#92400e', lineHeight: 1.45 }}>
+                <strong>External Audit Preparation Notice:</strong> 39 out of 41 items are fully maintained and generatable within the PROME IMS platform. 
+                <strong> 2 items (Part 3 Items 13 & 14) are highlighted below</strong> because they require project-specific third-party certificates: 
+                <em> (1) Reports of load testing of equipment on site supervision projects (cranes, lifting hoists, batching plants)</em>, and 
+                <em> (2) Annual employee occupational health medical fitness certificates from registered occupational medical clinics</em>.
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div style={{
+              padding: '0.9rem 1.75rem',
+              backgroundColor: 'white',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'ALL', label: 'All Documents (41)' },
+                  { key: '1', label: 'Part 01: IMS Integrated (18)' },
+                  { key: '2', label: 'Part 2: QMS Focus (8)' },
+                  { key: '3', label: 'Part 3: OH&S Focus (15)' },
+                  { key: 'ACTION_REQUIRED', label: '⚠️ Action Required (2)' }
+                ].map((tab) => {
+                  const isActive = auditPartFilter === tab.key;
+                  const isAction = tab.key === 'ACTION_REQUIRED';
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setAuditPartFilter(tab.key as any)}
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        borderRadius: '6px',
+                        border: isAction 
+                          ? (isActive ? '2px solid #b45309' : '1px solid #f59e0b') 
+                          : (isActive ? '1px solid #0f172a' : '1px solid #e2e8f0'),
+                        backgroundColor: isActive 
+                          ? (isAction ? '#fef3c7' : '#0f172a') 
+                          : (isAction ? '#fffbeb' : '#f8fafc'),
+                        color: isActive 
+                          ? (isAction ? '#92400e' : 'white') 
+                          : (isAction ? '#b45309' : '#475569'),
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search */}
+              <div style={{ position: 'relative', width: '280px' }}>
+                <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Filter by title, clause, code..."
+                  value={auditSearchTerm}
+                  onChange={(e) => setAuditSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.45rem 0.75rem 0.45rem 2rem',
+                    fontSize: '0.825rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    outline: 'none'
+                  }}
+                />
+                {auditSearchTerm && (
+                  <button
+                    onClick={() => setAuditSearchTerm('')}
+                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Document Scrollable List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.75rem', backgroundColor: '#f8fafc' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                {filteredAuditDocs.map((item) => {
+                  const isActionReq = item.status === 'ACTION_REQUIRED';
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        backgroundColor: isActionReq ? '#fffdf7' : 'white',
+                        border: isActionReq ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        padding: '1.1rem 1.25rem',
+                        boxShadow: isActionReq ? '0 4px 12px rgba(245, 158, 11, 0.12)' : '0 1px 3px rgba(0,0,0,0.03)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                          <span style={{
+                            backgroundColor: isActionReq ? '#fef3c7' : '#e0f2fe',
+                            color: isActionReq ? '#b45309' : '#0369a1',
+                            fontWeight: '800',
+                            fontSize: '0.72rem',
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '4px',
+                            letterSpacing: '0.04em'
+                          }}>
+                            {item.part.split(':')[0]} • Item {item.itemNumber}
+                          </span>
+                          
+                          <span style={{
+                            backgroundColor: '#f1f5f9',
+                            color: '#475569',
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            padding: '0.18rem 0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            {item.documentNumber}
+                          </span>
+
+                          <span style={{
+                            backgroundColor: '#f8fafc',
+                            color: '#64748b',
+                            fontSize: '0.72rem',
+                            fontWeight: '600',
+                            padding: '0.18rem 0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            Div: {item.division}
+                          </span>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          {isActionReq ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              backgroundColor: '#fef3c7',
+                              color: '#b45309',
+                              fontSize: '0.75rem',
+                              fontWeight: '800',
+                              padding: '0.25rem 0.7rem',
+                              borderRadius: '9999px',
+                              border: '1px solid #f59e0b'
+                            }}>
+                              <AlertTriangle size={13} />
+                              Action Required • External Info
+                            </span>
+                          ) : item.pdfUrl ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              backgroundColor: '#dcfce7',
+                              color: '#15803d',
+                              fontSize: '0.75rem',
+                              fontWeight: '700',
+                              padding: '0.25rem 0.7rem',
+                              borderRadius: '9999px',
+                              border: '1px solid #86efac'
+                            }}>
+                              <CheckCircle2 size={13} />
+                              Available • View PDF
+                            </span>
+                          ) : (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              backgroundColor: '#f0fdf4',
+                              color: '#166534',
+                              fontSize: '0.75rem',
+                              fontWeight: '700',
+                              padding: '0.25rem 0.7rem',
+                              borderRadius: '9999px',
+                              border: '1px solid #bbf7d0'
+                            }}>
+                              <FileCheck size={13} />
+                              App Generated • Active Module
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Title & Description */}
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: '800', color: isActionReq ? '#92400e' : '#0f172a', margin: '0 0 0.35rem 0' }}>
+                        {item.title}
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 0.5rem 0', lineHeight: 1.45 }}>
+                        {item.description}
+                      </p>
+
+                      {/* ISO Clause Tag */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: isActionReq || item.pdfUrl || item.portalPath ? '0.75rem' : '0' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>Standard Clause:</span>
+                        <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: '700', backgroundColor: '#f0f9ff', padding: '0.1rem 0.45rem', borderRadius: '4px', border: '1px solid #bae6fd' }}>
+                          {item.isoClause}
+                        </span>
+                      </div>
+
+                      {/* If Action Required: Highlighting Alert box with details */}
+                      {isActionReq && (
+                        <div style={{
+                          backgroundColor: '#fffbeb',
+                          border: '1px solid #fde68a',
+                          borderRadius: '6px',
+                          padding: '0.75rem 0.95rem',
+                          marginBottom: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.65rem'
+                        }}>
+                          <Info size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: '1px' }} />
+                          <div style={{ fontSize: '0.825rem', color: '#92400e', lineHeight: 1.45 }}>
+                            <strong style={{ display: 'block', marginBottom: '0.2rem' }}>Information Required to Satisfy Audit:</strong>
+                            <div>{item.requiredInfo}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons Row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
+                        {/* Direct PDF Link */}
+                        {item.pdfUrl && (
+                          <a
+                            href={item.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              backgroundColor: '#0284c7',
+                              color: 'white',
+                              padding: '0.42rem 0.8rem',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: '700',
+                              textDecoration: 'none',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                            }}
+                          >
+                            <Eye size={14} />
+                            {item.pdfLabel || 'View / Print PDF'}
+                          </a>
+                        )}
+
+                        {/* Secondary PDF Link */}
+                        {item.secondaryPdfUrl && (
+                          <a
+                            href={item.secondaryPdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              backgroundColor: '#0369a1',
+                              color: 'white',
+                              padding: '0.42rem 0.8rem',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: '700',
+                              textDecoration: 'none',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                            }}
+                          >
+                            <Download size={14} />
+                            {item.secondaryPdfLabel || 'Secondary PDF'}
+                          </a>
+                        )}
+
+                        {/* Direct Download button if PDF exists */}
+                        {item.pdfUrl && (
+                          <a
+                            href={item.pdfUrl}
+                            download
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              backgroundColor: '#f1f5f9',
+                              color: '#334155',
+                              padding: '0.42rem 0.7rem',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textDecoration: 'none',
+                              border: '1px solid #cbd5e1'
+                            }}
+                          >
+                            <Download size={13} />
+                            Download
+                          </a>
+                        )}
+
+                        {/* Open Portal Page Link */}
+                        {item.portalPath && (
+                          <button
+                            onClick={() => {
+                              setIsAuditModalOpen(false);
+                              navigate(item.portalPath!);
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              backgroundColor: isActionReq ? '#f59e0b' : '#0f766e',
+                              color: 'white',
+                              padding: '0.42rem 0.8rem',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: '700',
+                              border: 'none',
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                            }}
+                          >
+                            <ArrowUpRight size={14} />
+                            {item.portalLabel ? `Open ${item.portalLabel}` : 'Open in IMS Portal'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredAuditDocs.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <Info size={32} style={{ color: '#94a3b8', margin: '0 auto 0.75rem auto' }} />
+                    <h4 style={{ fontSize: '1rem', fontWeight: '700', color: '#1e293b', margin: 0 }}>No audit documents match your filter</h4>
+                    <p style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.35rem' }}>Try clearing the search query or changing the filter tab.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '0.9rem 1.75rem',
+              backgroundColor: '#ffffff',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Showing <strong>{filteredAuditDocs.length}</strong> of <strong>{PROME_AUDIT_DOCUMENTS_LIST.length}</strong> external audit documents
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => setIsAuditModalOpen(false)}
+                  style={{
+                    padding: '0.5rem 1.25rem',
+                    backgroundColor: '#0f172a',
+                    color: 'white',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontWeight: '700',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close Dossier
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

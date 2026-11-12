@@ -456,7 +456,7 @@ export const PROME_QMS_SCOPE_RECORD = {
   policyRevisionDate: 'January 2026',
   policyPdfUrl: '/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf',
   permissibleExclusions: 'The company claims NO exclusions from the ISO 9001:2015 standard (Clause 3.7).',
-  riskRegisterRef: 'PROME-QSR-BE&ED-04',
+  riskRegisterRef: 'PROME-QSR-PED-04',
   scopeStatement: 'Provision of Project Management and Engineering Consultancy Services and Solutions in the Built Environment: Planning, Feasibility Studies, Topographical & Geological Surveys, Detailed Engineering Designs, Environmental & Social Studies, and Construction Supervision.',
   subsidiarySpecialist: 'Teclab Limited (Independently operated stand-alone Geotechnical Engineering affiliate).',
   processes: [

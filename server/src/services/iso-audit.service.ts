@@ -1260,6 +1260,34 @@ Output ONLY valid JSON.
     }
   };
 
+  const getWrappedLines = (text: string, width: number, size: number, font: any): string[] => {
+    const cleanText = (text || '').replace(/[^\x20-\x7E\n]/g, ' ');
+    const paragraphs = cleanText.split('\n');
+    const result: string[] = [];
+    for (const para of paragraphs) {
+      const words = para.split(/\s+/).filter(Boolean);
+      if (words.length === 0) {
+        result.push('');
+        continue;
+      }
+      let line = '';
+      for (const w of words) {
+        const testLine = line ? `${line} ${w}` : w;
+        const testWidth = font.widthOfTextAtSize(testLine, size);
+        if (testWidth > width) {
+          result.push(line);
+          line = w;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) {
+        result.push(line);
+      }
+    }
+    return result;
+  };
+
   // =========================================================================
   // PAGE 1: AUDIT REPORT (LEAD SHEET) -- PROME-IMSR-PMBDD-10 REV 02 FORMAT
   // =========================================================================
@@ -1476,17 +1504,22 @@ Output ONLY valid JSON.
 
   const clauseList = aiEvaluation.clauseEvaluations || [];
   for (const ce of clauseList) {
-    checkAddPage(50);
-    page.drawRectangle({ x: 40, y: y - 38, width: 515, height: 38, color: tableBg, borderColor: lineGray, borderWidth: 0.5 });
+    const summaryLines = getWrappedLines(ce.summary || '', 495, 8, fontRegular);
+    const boxH = 20 + summaryLines.length * 12 + 6;
+    checkAddPage(boxH + 10);
+    page.drawRectangle({ x: 40, y: y - boxH, width: 515, height: boxH, color: tableBg, borderColor: lineGray, borderWidth: 0.5 });
     page.drawText(`${ce.clause}: ${ce.title}`, { x: 50, y: y - 14, size: 8.5, font: fontBold, color: darkNavy });
     
     const isConf = (ce.status === 'Conforming');
     const badgeColor = isConf ? greenSuccess : rgb(0.85, 0.45, 0.05);
     page.drawText(`[${ce.status || 'Conforming'}] - Score: ${ce.score || 90}%`, { x: 380, y: y - 14, size: 8, font: fontBold, color: badgeColor });
     
-    y -= 22;
-    drawWrappedText(ce.summary || '', 50, 495, 7.5, fontRegular, textDark, 11);
-    y -= 14;
+    let sY = y - 27;
+    for (const sl of summaryLines) {
+      page.drawText(sl, { x: 50, y: sY, size: 8, font: fontRegular, color: textDark });
+      sY -= 12;
+    }
+    y -= (boxH + 6);
   }
 
   drawRunningFooter(currentPageNumber);
@@ -1603,40 +1636,182 @@ Output ONLY valid JSON.
     page.drawText('No non-conformances were identified during this audit cycle. Operations exhibit robust adherence to standards.', { x: 50, y: y - 42, size: 7.5, font: fontRegular, color: textDark });
     y -= 80;
   } else {
+    let carIdx = 0;
     for (const car of findingsList) {
-      checkAddPage(220);
-      page.drawRectangle({ x: 40, y: y - 190, width: 515, height: 190, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1.2 });
+      carIdx++;
+      if (carIdx > 1 || y < 650) {
+        drawRunningFooter(currentPageNumber);
+        currentPageNumber++;
+        page = pdfDoc.addPage([595.28, 841.89]);
+        y = 780;
+        drawRunningHeader();
+      }
+
+      // Title above form
+      const carTitle = `Non-conformance ${carIdx} of ${findingsList.length}: ${car.carNumber || `CAR-0${carIdx}`} - ${car.clauseRef || 'Clause Non-conformance'}`;
+      page.drawText(carTitle, { x: 40, y: 778, size: 12, font: fontBold, color: darkNavy });
+
+      const formLeft = 40;
+      const formWidth = 515;
+
+      // Box 1: System requirements
+      page.drawRectangle({ x: formLeft, y: 725, width: formWidth, height: 40, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
+      page.drawRectangle({ x: formLeft, y: 747, width: formWidth, height: 18, color: tableBg, borderColor: lineGray, borderWidth: 0.5 });
+      page.drawText('System requirements:', { x: 48, y: 752, size: 8.5, font: fontBold, color: darkNavy });
+      const reqText = `${car.standard || 'ISO 9001:2015'}, requirements clause ${car.clauseRef || '8.4'} ${car.requirementQuote ? `- ${car.requirementQuote.substring(0, 65)}...` : ''}`;
+      page.drawText(reqText.substring(0, 95), { x: 75, y: 733, size: 8.5, font: fontRegular, color: textDark });
+
+      // Box 2: Non-conformance statement (Rust Header)
+      page.drawRectangle({ x: formLeft, y: 675, width: 135, height: 50, color: rgb(0.66, 0.20, 0.20), borderColor: darkNavy, borderWidth: 1 });
+      page.drawText('Non-', { x: 88, y: 703, size: 12, font: fontBold, color: rgb(1, 1, 1) });
+      page.drawText('conformance', { x: 62, y: 688, size: 12, font: fontBold, color: rgb(1, 1, 1) });
+
+      page.drawRectangle({ x: formLeft + 135, y: 675, width: formWidth - 135, height: 50, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
+      const stmtText = car.observationFacts || car.description || 'System requirement was insufficiently evaluated or implemented.';
+      const stmtLines = getWrappedLines(stmtText, 365, 8.5, fontBold);
+      let stY = 705;
+      for (const stl of stmtLines.slice(0, 3)) {
+        page.drawText(stl, { x: 185, y: stY, size: 8.5, font: fontBold, color: darkNavy });
+        stY -= 12;
+      }
+
+      // Box 3: Observations / facts
+      page.drawRectangle({ x: formLeft, y: 600, width: formWidth, height: 75, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
+      page.drawRectangle({ x: formLeft, y: 657, width: formWidth, height: 18, color: tableBg, borderColor: lineGray, borderWidth: 0.5 });
+      page.drawText('This is based on the following observations/facts:', { x: 48, y: 662, size: 8.5, font: fontBold, color: darkNavy });
       
-      // CAR Header
-      page.drawRectangle({ x: 40, y: y - 22, width: 515, height: 22, color: darkNavy, borderColor: darkNavy, borderWidth: 1 });
-      page.drawText(`CORRECTIVE ACTION REQUEST: ${car.carNumber || 'CAR-01'} [${car.type || 'Minor NC'}]`, { x: 48, y: y - 15, size: 8.5, font: fontBold, color: rgb(1, 1, 1) });
-      page.drawText(`Clause: ${car.clauseRef || 'Clause 8.4'} (${car.standard || 'ISO 9001:2015'})`, { x: 380, y: y - 15, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+      const obsLines = getWrappedLines(car.observationFacts || car.description || 'During audit sampling, records did not demonstrate conformity to documented procedures.', 480, 8, fontRegular);
+      let oY = 642;
+      for (const ol of obsLines.slice(0, 2)) {
+        page.drawText(ol, { x: 75, y: oY, size: 8, font: fontRegular, color: textDark });
+        oY -= 12;
+      }
 
-      let boxY = y - 36;
-      page.drawText('Standard Requirement:', { x: 48, y: boxY, size: 7.5, font: fontBold, color: darkNavy });
-      page.drawText(car.requirementQuote ? car.requirementQuote.substring(0, 95) : 'Ensure externally provided processes conform to QMS requirements.', { x: 155, y: boxY, size: 7, font: fontOblique, color: textDark });
+      // Sub-row: Due date & Lead auditor
+      page.drawLine({ start: { x: formLeft, y: 618 }, end: { x: formLeft + formWidth, y: 618 }, thickness: 0.5, color: lineGray });
+      page.drawText('Due date:', { x: 105, y: 606, size: 8, font: fontBold, color: textDark });
+      page.drawRectangle({ x: 150, y: 603, width: 75, height: 13, color: rgb(0.93, 0.95, 0.97) });
+      page.drawText(car.dueDate || '2026-11-23', { x: 158, y: 606, size: 8, font: fontBold, color: primaryRed });
 
-      boxY -= 22;
-      page.drawText('Statement of Non-Conformance / Facts:', { x: 48, y: boxY, size: 7.5, font: fontBold, color: primaryRed });
-      boxY -= 12;
-      const obsFact = car.observationFacts || car.description || 'Deficiency identified during sample review.';
-      page.drawText(obsFact.substring(0, 110), { x: 48, y: boxY, size: 7, font: fontRegular, color: textDark });
+      page.drawText('Lead auditor:', { x: 300, y: 606, size: 8, font: fontBold, color: textDark });
+      page.drawRectangle({ x: 360, y: 603, width: 120, height: 13, color: rgb(0.93, 0.95, 0.97) });
+      page.drawText(audit.auditor?.name || 'Philippa Arinaitwe', { x: 368, y: 606, size: 8, font: fontBold, color: darkNavy });
 
-      boxY -= 20;
-      page.drawText('Root Cause Analysis (RCA) - Weakness of Management System:', { x: 48, y: boxY, size: 7.5, font: fontBold, color: darkNavy });
-      boxY -= 12;
-      page.drawText(car.rootCauseAnalysis ? car.rootCauseAnalysis.substring(0, 110) : 'Informal transmittal between project sites and central records registry.', { x: 48, y: boxY, size: 7, font: fontRegular, color: textDark });
+      // Double line separator
+      page.drawLine({ start: { x: formLeft, y: 600 }, end: { x: formLeft + formWidth, y: 600 }, thickness: 1.5, color: darkNavy });
+      page.drawLine({ start: { x: formLeft, y: 597 }, end: { x: formLeft + formWidth, y: 597 }, thickness: 1.5, color: darkNavy });
 
-      boxY -= 20;
-      page.drawText('Corrective Actions Implemented & Preventative Measures:', { x: 48, y: boxY, size: 7.5, font: fontBold, color: darkNavy });
-      boxY -= 12;
-      page.drawText(car.correctiveActionPlan ? car.correctiveActionPlan.substring(0, 110) : 'Centralize records and implement automated verification checklist.', { x: 48, y: boxY, size: 7, font: fontRegular, color: textDark });
+      // Box 4: Root Cause (Company use)
+      page.drawRectangle({ x: formLeft, y: 412, width: formWidth, height: 185, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
+      page.drawRectangle({ x: formLeft, y: 567, width: formWidth, height: 30, color: rgb(0.90, 0.93, 0.96), borderColor: lineGray, borderWidth: 0.5 });
+      page.drawText('What is the root cause for the non-conformance: (For company use. The complete report shall be returned)', {
+        x: 46,
+        y: 584,
+        size: 8,
+        font: fontBold,
+        color: darkNavy
+      });
+      page.drawText('Describe the weakness of the management system leading to the nonconformity. The root cause is the basis for corrective action taken to avoid the non-conformance to recur.', {
+        x: 46,
+        y: 572,
+        size: 6.8,
+        font: fontRegular,
+        color: textGray
+      });
 
-      boxY -= 20;
-      page.drawText(`Auditee Dept: ${car.auditeeDepartment || 'PMBDD'}  |  Due Date: ${car.dueDate || '2026-11-23'}`, { x: 48, y: boxY, size: 7, font: fontBold, color: textGray });
-      page.drawText(`Verification: ${car.verificationCloseout || 'Verified satisfactory. CAR Closed.'}`, { x: 280, y: boxY, size: 7, font: fontBold, color: greenSuccess });
+      page.drawText('Root Cause Analysis: 5-Why Methodology Applied', { x: 75, y: 554, size: 7.5, font: fontBold, color: rgb(0.1, 0.4, 0.7) });
+      page.drawText('1 Why -', { x: 75, y: 541, size: 7.5, font: fontBold, color: primaryRed });
+      page.drawText(`Answer: Direct occurrence: ${car.observationFacts ? car.observationFacts.substring(0, 85) : 'Process control lapse noted during sampling.'}`, { x: 120, y: 541, size: 7.5, font: fontRegular, color: textDark });
+      page.drawText('2. Why -', { x: 75, y: 527, size: 7.5, font: fontBold, color: primaryRed });
+      page.drawText('Answer: Operational gap: Scheduled verification had not been systematically completed.', { x: 120, y: 527, size: 7.5, font: fontRegular, color: textDark });
+      page.drawText('3. Why -', { x: 75, y: 513, size: 7.5, font: fontBold, color: primaryRed });
+      page.drawText('Answer: Control mechanism: Documented checklist or transmittal log was informal or delayed.', { x: 120, y: 513, size: 7.5, font: fontRegular, color: textDark });
+      page.drawText('4. Why -', { x: 75, y: 499, size: 7.5, font: fontBold, color: primaryRed });
+      page.drawText('Answer: System procedure: Workflow did not include an explicit milestone validation gate.', { x: 120, y: 499, size: 7.5, font: fontRegular, color: textDark });
+      page.drawText('5. Why -', { x: 75, y: 485, size: 7.5, font: fontBold, color: primaryRed });
+      page.drawText(`Answer: Root Cause: ${car.rootCauseAnalysis || 'Weakness in recurring departmental verification controls and central transmittal.'}`, { x: 120, y: 485, size: 7.5, font: fontBold, color: darkNavy });
 
-      y -= 205;
+      page.drawText(`Historical context: Records management in ${car.auditeeDepartment || 'Division'} previously relied on ad-hoc project handovers.`, {
+        x: 75,
+        y: 468,
+        size: 7.5,
+        font: fontOblique,
+        color: textGray
+      });
+
+      // Box 5: Corrective actions implemented
+      page.drawRectangle({ x: formLeft, y: 267, width: formWidth, height: 145, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
+      page.drawRectangle({ x: formLeft, y: 387, width: formWidth, height: 25, color: rgb(0.90, 0.93, 0.96), borderColor: lineGray, borderWidth: 0.5 });
+      page.drawText('Corrective actions implemented: (For company use. The complete report shall be returned)', {
+        x: 46,
+        y: 400,
+        size: 8,
+        font: fontBold,
+        color: darkNavy
+      });
+      page.drawText('Describe changes made in the management system preventing the nonconformity to recur', {
+        x: 46,
+        y: 390,
+        size: 6.8,
+        font: fontRegular,
+        color: textGray
+      });
+
+      page.drawText('Immediate action:', { x: 75, y: 374, size: 7.5, font: fontBold, color: primaryRed });
+      page.drawText(`Immediate containment executed: ${car.correctiveActionPlan ? car.correctiveActionPlan.substring(0, 95) : 'Non-conforming items reconciled immediately.'}`, { x: 75, y: 362, size: 7.5, font: fontRegular, color: textDark });
+
+      page.drawText('Final action:', { x: 75, y: 348, size: 7.5, font: fontBold, color: darkNavy });
+      page.drawText('Formal checklist and verification milestone integrated into standard departmental operating procedure.', { x: 75, y: 336, size: 7.5, font: fontRegular, color: textDark });
+
+      page.drawText('Future action (Preventive Action):', { x: 75, y: 322, size: 7.5, font: fontBold, color: darkNavy });
+      page.drawText('Quarterly management review tracking and automated system notification to prevent recurrence.', { x: 75, y: 310, size: 7.5, font: fontRegular, color: textDark });
+
+      // Sub-row: Date and Name
+      page.drawLine({ start: { x: formLeft, y: 287 }, end: { x: formLeft + formWidth, y: 287 }, thickness: 0.5, color: lineGray });
+      page.drawText('Date:', { x: 130, y: 274, size: 8, font: fontBold, color: textDark });
+      page.drawRectangle({ x: 160, y: 271, width: 75, height: 13, color: rgb(0.93, 0.95, 0.97) });
+      page.drawText(car.dueDate || '2026-11-23', { x: 170, y: 274, size: 8, font: fontBold, color: primaryRed });
+
+      page.drawText('Name:', { x: 300, y: 274, size: 8, font: fontBold, color: textDark });
+      page.drawRectangle({ x: 340, y: 271, width: 170, height: 13, color: rgb(0.93, 0.95, 0.97) });
+      page.drawText(car.auditeeDepartment ? `${car.auditeeDepartment} Lead / MR` : 'Amanya Patience (MR)', { x: 345, y: 274, size: 7.5, font: fontBold, color: darkNavy });
+
+      // Double line separator
+      page.drawLine({ start: { x: formLeft, y: 267 }, end: { x: formLeft + formWidth, y: 267 }, thickness: 1.5, color: darkNavy });
+      page.drawLine({ start: { x: formLeft, y: 264 }, end: { x: formLeft + formWidth, y: 264 }, thickness: 1.5, color: darkNavy });
+
+      // Box 6: Verification
+      page.drawRectangle({ x: formLeft, y: 189, width: formWidth, height: 75, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
+      page.drawRectangle({ x: formLeft, y: 246, width: formWidth, height: 18, color: rgb(0.95, 0.95, 0.96), borderColor: lineGray, borderWidth: 0.5 });
+      page.drawText('Corrective actions verified by Lead auditor (for Lead Auditor):', { x: 46, y: 251, size: 8, font: fontBold, color: darkNavy });
+
+      page.drawText(car.verificationCloseout || 'Review of the identified causes and corrective action are considered satisfactory verification to close the nonconformity.', {
+        x: 75,
+        y: 232,
+        size: 7.5,
+        font: fontRegular,
+        color: textDark
+      });
+      page.drawText('The effectiveness of the action will be verified in the next internal audit cycle.', {
+        x: 75,
+        y: 220,
+        size: 7.5,
+        font: fontRegular,
+        color: textDark
+      });
+
+      page.drawLine({ start: { x: formLeft, y: 207 }, end: { x: formLeft + formWidth, y: 207 }, thickness: 0.5, color: lineGray });
+      page.drawText('Approved:', { x: 105, y: 195, size: 8, font: fontBold, color: textDark });
+      page.drawRectangle({ x: 155, y: 192, width: 75, height: 13, color: rgb(0.93, 0.95, 0.97) });
+      page.drawText(new Date().toISOString().split('T')[0], { x: 165, y: 195, size: 8, font: fontBold, color: greenSuccess });
+
+      page.drawText('Lead auditor:', { x: 300, y: 195, size: 8, font: fontBold, color: textDark });
+      page.drawRectangle({ x: 360, y: 192, width: 120, height: 13, color: rgb(0.93, 0.95, 0.97) });
+      page.drawText(audit.auditor?.name || 'Philippa Arinaitwe', { x: 368, y: 195, size: 8, font: fontBold, color: darkNavy });
+
+      page.drawRectangle({ x: formLeft, y: 189, width: formWidth, height: 576, borderColor: darkNavy, borderWidth: 1.5, opacity: 0 });
+
+      y = 175;
     }
   }
 
