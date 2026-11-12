@@ -686,7 +686,13 @@ const DocumentDashboard: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                   {item.portalPath ? (
                                     <button
-                                      onClick={() => navigate(item.portalPath!)}
+                                      onClick={() => {
+                                        if (item.portalPath?.endsWith('.pdf') || item.portalPath?.startsWith('/uploads/') || item.portalPath?.startsWith('http')) {
+                                          window.open(item.portalPath, '_blank');
+                                        } else {
+                                          navigate(item.portalPath!);
+                                        }
+                                      }}
                                       title={`Navigate to ${item.portalLabel || 'IMS Module'}`}
                                       style={{
                                         display: 'inline-flex',

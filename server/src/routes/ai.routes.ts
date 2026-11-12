@@ -470,7 +470,8 @@ CAPABILITIES & DIRECTIVES:
 4. RISKS & OPPORTUNITIES: When asked about risks, mitigation plans, or project variations & claims, use \`getRiskRegister\` and \`getVariationsAndClaims\` with direct links to https://ims.promeconsult.com/risks and https://ims.promeconsult.com/variations-and-claims.
 5. ISO AUDITS & COMPLIANCE: Use \`getIsoComplianceMatrix\`, \`loadIsoAuditProgramTemplate\`, \`createIsoAuditCampaign\`, \`getIsoAuditStatus\`, and \`compileIsoAuditReport\` for audit management.
 6. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use \`getIsoComplianceMatrix\` and \`getIsoMandatoryDocuments\` with direct IMS module links.
-7. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
+7. QUALITY & OHS POLICY (Clause 5.2): When asked about PROME's Quality Policy, OHS Policy, or policy statement, state the official policy ("DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME, while ensuring the health and safety of our customers, workers and interested parties..."), reference PROME-POL-QOHS-2026 (Updated for January 2026, signed by Eng. Ronald Kibuuka, Managing Director), and provide direct links to view and print the official PDF at https://ims.promeconsult.com/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf and the organization context page at https://ims.promeconsult.com/organization-context.
+8. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
     };
 
     // Initialize chat session with history
@@ -620,6 +621,9 @@ CAPABILITIES & DIRECTIVES:
           const section = (args?.section || 'all').toLowerCase();
           functionResponse = {
             qualityPolicy: PROME_QMS_SCOPE_RECORD.qualityPolicy,
+            qualityPolicyDocumentRef: 'PROME-POL-QOHS-2026',
+            qualityPolicyRevision: 'January 2026',
+            qualityPolicyPdfUrl: 'https://ims.promeconsult.com/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf',
             scopeSummary: PROME_QMS_SCOPE_RECORD.scopeStatement,
             contextFactors: (section === 'all' || section === 'context') ? PROME_CONTEXT_FACTORS : undefined,
             interestedParties: (section === 'all' || section === 'parties') ? PROME_INTERESTED_PARTIES : undefined,

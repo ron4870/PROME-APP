@@ -12,7 +12,9 @@ import {
   Award, 
   RefreshCw, 
   Database,
-  Search
+  Search,
+  Printer,
+  ExternalLink
 } from 'lucide-react';
 
 interface OrgIssue {
@@ -841,9 +843,32 @@ const OrganizationContext: React.FC = () => {
                       PROME CONSULTANTS LIMITED — QUALITY POLICY STATEMENT
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '20px' }}>
-                    Ref: PROME-QSP-CSVM-18 (Rev 05)
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '20px' }}>
+                      Ref: PROME-QSP-CSVM-18 (Rev 05)
+                    </span>
+                    <a
+                      href="/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: '#ffffff',
+                        color: '#991b1b',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        textDecoration: 'none',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Printer size={13} /> View & Print Official Policy PDF (2026) <ExternalLink size={12} />
+                    </a>
+                  </div>
                 </div>
                 <h2 style={{ fontSize: '1.85rem', fontWeight: 800, margin: '0.5rem 0 1rem 0', letterSpacing: '0.02em', color: '#fff' }}>
                   "{officialData?.scopeRecord.qualityPolicy || 'DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME'}"
