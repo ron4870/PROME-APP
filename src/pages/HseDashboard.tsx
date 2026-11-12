@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Activity, AlertTriangle, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Search, Activity, AlertTriangle, ShieldAlert, CheckCircle, Clock, Printer, ExternalLink } from 'lucide-react';
 
 interface HseIncident {
   id: number;
@@ -201,7 +201,30 @@ export const HseDashboard: React.FC = () => {
           </h1>
           <p style={{ color: '#64748b' }}>Log safety incidents and manage emergency preparedness (ISO 45001 & 14001).</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <a
+            href="/uploads/company-documents/PROME_OHS_Policy_2026.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-secondary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: '#fff',
+              border: '1px solid #cbd5e1',
+              color: '#991b1b',
+              fontWeight: 700,
+              padding: '0.55rem 1rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
+          >
+            <Printer size={16} color="#bb0a0a" />
+            View & Print OHS Policy (2026)
+            <ExternalLink size={14} color="#64748b" />
+          </a>
           {activeTab === 'incidents' ? (
             <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
               <Plus size={18} style={{ marginRight: '8px' }} />
@@ -214,6 +237,57 @@ export const HseDashboard: React.FC = () => {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Official OHS Policy Banner (ISO 45001:2018 Clause 5.2) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        borderRadius: '10px',
+        padding: '1.25rem 1.5rem',
+        marginBottom: '2rem',
+        color: '#fff',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        borderLeft: '5px solid #bb0a0a',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{ maxWidth: '850px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', backgroundColor: '#bb0a0a', color: '#fff', padding: '2px 8px', borderRadius: '4px' }}>
+              ISO 45001:2018 Clause 5.2
+            </span>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Doc Ref: PROME-POL-OHS-2026 (Rev Jan 2026)</span>
+          </div>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.25rem 0', color: '#f8fafc' }}>
+            PROME Occupational Health & Safety (OHS) Policy Statement
+          </h3>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: '#cbd5e1', lineHeight: '1.5' }}>
+            "Committed to pursuing excellence... while ensuring the health and safety of our customers, workers and interested parties through the establishment of OHS objectives, commitment to eliminating hazards and risks, continual improvement, and active worker consultation and participation."
+          </p>
+        </div>
+        <a
+          href="/uploads/company-documents/PROME_OHS_Policy_2026.pdf"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            backgroundColor: '#ffffff',
+            color: '#991b1b',
+            fontWeight: 700,
+            fontSize: '0.825rem',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+          }}
+        >
+          <Printer size={15} /> Open Official OHS Policy PDF <ExternalLink size={14} />
+        </a>
       </div>
 
       {/* Tabs */}

@@ -470,7 +470,7 @@ CAPABILITIES & DIRECTIVES:
 4. RISKS & OPPORTUNITIES: When asked about risks, mitigation plans, or project variations & claims, use \`getRiskRegister\` and \`getVariationsAndClaims\` with direct links to https://ims.promeconsult.com/risks and https://ims.promeconsult.com/variations-and-claims.
 5. ISO AUDITS & COMPLIANCE: Use \`getIsoComplianceMatrix\`, \`loadIsoAuditProgramTemplate\`, \`createIsoAuditCampaign\`, \`getIsoAuditStatus\`, and \`compileIsoAuditReport\` for audit management.
 6. When asked what documents or records are required by ISO standards, where they are stored within the PROME IMS, or which ones are missing or need updating, use \`getIsoComplianceMatrix\` and \`getIsoMandatoryDocuments\` with direct IMS module links.
-7. QUALITY & OHS POLICY (Clause 5.2): When asked about PROME's Quality Policy, OHS Policy, or policy statement, state the official policy ("DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME, while ensuring the health and safety of our customers, workers and interested parties..."), reference PROME-POL-QOHS-2026 (Updated for January 2026, signed by Eng. Ronald Kibuuka, Managing Director), and provide direct links to view and print the official PDF at https://ims.promeconsult.com/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf and the organization context page at https://ims.promeconsult.com/organization-context.
+7. QUALITY & OHS POLICY (ISO 9001 Clause 5.2 & ISO 45001 Clause 5.2): When asked about PROME's Quality Policy, OHS Policy, Health & Safety Policy, or policy statement, state the official policy ("DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME, while ensuring the health and safety of our customers, workers and interested parties..."), reference PROME-POL-QOHS-2026 and PROME-POL-OHS-2026 (Updated for January 2026, signed by Eng. Ronald Kibuuka, Managing Director), and provide direct links to view and print the official PDFs at https://ims.promeconsult.com/uploads/company-documents/PROME_OHS_Policy_2026.pdf and https://ims.promeconsult.com/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf, the HSE dashboard at https://ims.promeconsult.com/hse, and the organization context page at https://ims.promeconsult.com/organization-context.
 8. Always provide clear, professional, lead-auditor quality explanations and include clickable links using the https://ims.promeconsult.com domain.` }]
     };
 
@@ -624,6 +624,9 @@ CAPABILITIES & DIRECTIVES:
             qualityPolicyDocumentRef: 'PROME-POL-QOHS-2026',
             qualityPolicyRevision: 'January 2026',
             qualityPolicyPdfUrl: 'https://ims.promeconsult.com/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf',
+            ohsPolicyDocumentRef: 'PROME-POL-OHS-2026',
+            ohsPolicyRevision: 'January 2026',
+            ohsPolicyPdfUrl: 'https://ims.promeconsult.com/uploads/company-documents/PROME_OHS_Policy_2026.pdf',
             scopeSummary: PROME_QMS_SCOPE_RECORD.scopeStatement,
             contextFactors: (section === 'all' || section === 'context') ? PROME_CONTEXT_FACTORS : undefined,
             interestedParties: (section === 'all' || section === 'parties') ? PROME_INTERESTED_PARTIES : undefined,
@@ -632,6 +635,7 @@ CAPABILITIES & DIRECTIVES:
             continualImprovement: (section === 'all' || section === 'continual_improvement') ? PROME_CONTINUAL_IMPROVEMENT_RECORD : undefined,
             imsNavigation: {
               organizationContext: 'https://ims.promeconsult.com/organization-context',
+              hseDashboard: 'https://ims.promeconsult.com/hse',
               complianceMatrix: 'https://ims.promeconsult.com/iso-compliance-matrix',
               auditsDashboard: 'https://ims.promeconsult.com/audits',
               corporateLibrary: 'https://ims.promeconsult.com/library'

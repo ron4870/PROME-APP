@@ -38,7 +38,7 @@ export const PROME_MASTERLIST_CATEGORIES: { name: MasterDocumentItem['category']
 export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
   // 1. Quality Manual & Corporate Policy
   {
-    prefix: '0.',
+    prefix: '0a.',
     title: 'Quality, Occupational Health And Safety Policy',
     documentNumber: 'PROME-POL-QOHS-2026',
     revision: 'Ver-2026',
@@ -52,6 +52,22 @@ export const PROME_DOCUMENT_MASTERLIST: MasterDocumentItem[] = [
     status: 'Approved',
     portalPath: '/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf',
     portalLabel: 'View Policy PDF'
+  },
+  {
+    prefix: '0b.',
+    title: 'Occupational Health And Safety (OHS) Policy',
+    documentNumber: 'PROME-POL-OHS-2026',
+    revision: 'Ver-2026',
+    dateOfRevision: 'Jan-26',
+    issueDate: '2026-01-02',
+    department: 'Administration / HSE',
+    retentionPeriod: 'Permanent',
+    type: 'Policy',
+    category: 'Quality Manual',
+    categoryOrder: 1,
+    status: 'Approved',
+    portalPath: '/uploads/company-documents/PROME_OHS_Policy_2026.pdf',
+    portalLabel: 'View OHS Policy PDF'
   },
   {
     prefix: '1.',
