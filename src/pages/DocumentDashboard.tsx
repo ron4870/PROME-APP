@@ -46,6 +46,27 @@ const formatDate = (isoString: string | null) => {
   return date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
 };
 
+const normalizeDivision = (dept: string | null | undefined): string => {
+  if (!dept) return 'General';
+  const trimmed = dept.trim();
+  if (/^(be&ed|be & ed|beed|planning & engineering|planning and engineering)$/i.test(trimmed)) {
+    return 'PED';
+  }
+  if (/^(business development|pmbdd|pmbd)$/i.test(trimmed)) {
+    return 'PMBDD';
+  }
+  if (/^(accounts and purchasing|accounts & purchasing|accounts\/ finance|accounts\/finance|accounts \/ finance|finance & accounts|finance)$/i.test(trimmed)) {
+    return 'Finance';
+  }
+  if (/^(administration \/ hse|administration\/hse|admin \/ hse|admin\/hse|hr&ad \/ hse|hr & ad \/ hse)$/i.test(trimmed)) {
+    return 'HR&AD / HSE';
+  }
+  if (/^(administration|admin|hr&ad|hr & ad|human resources|hr)$/i.test(trimmed)) {
+    return 'HR&AD';
+  }
+  return trimmed;
+};
+
 const DocumentDashboard: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -151,12 +172,15 @@ const DocumentDashboard: React.FC = () => {
           id: foundDb.id,
           revision: foundDb.revision || masterItem.revision,
           dateOfRevision: foundDb.issueDate ? formatDate(foundDb.issueDate) : masterItem.dateOfRevision,
-          department: foundDb.division || masterItem.department,
+          department: normalizeDivision(masterItem.department || foundDb.division),
           retentionPeriod: foundDb.retentionPeriod || masterItem.retentionPeriod,
           status: foundDb.status || masterItem.status,
         };
       }
-      return masterItem;
+      return {
+        ...masterItem,
+        department: normalizeDivision(masterItem.department),
+      };
     });
 
     // Append any user-created documents not present in default masterlist
@@ -176,7 +200,7 @@ const DocumentDashboard: React.FC = () => {
         documentNumber: dbDoc.documentNumber,
         revision: dbDoc.revision || '1.0',
         dateOfRevision: dbDoc.issueDate ? formatDate(dbDoc.issueDate) : '-',
-        department: dbDoc.division || 'General',
+        department: normalizeDivision(dbDoc.division),
         retentionPeriod: dbDoc.retentionPeriod || '3 years',
         type: dbDoc.type || 'Document',
         category: (dbDoc.category as any) || 'Quality System Records',
