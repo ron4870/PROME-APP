@@ -38,6 +38,7 @@ interface QualityObjective {
   departmentHeadDate?: string | null;
   managingDirectorApproval?: string | null;
   managingDirectorDate?: string | null;
+  quarterlyData?: any;
 }
 
 const ObjectivesDashboard: React.FC = () => {
@@ -816,8 +817,11 @@ const ObjectivesDashboard: React.FC = () => {
               const isSelected = selectedDivision === div;
               let label = div === 'ALL' ? 'All Divisions' : div;
               if (div.includes('PMBDD')) label = 'PMBDD';
-              if (div.includes('BE&ED')) label = 'BE&ED';
-              if (div.includes('FINANCE')) label = 'F&A';
+              if (div.includes('CPSD') || div.includes('CP&SD') || div.includes('CORPORATE PLANNING')) label = 'CP&SD';
+              if (div.includes('BE&ED') || div.includes('PED')) label = 'PED';
+              if (div.includes('PDMD') || div.includes('PROJECT DELIVERY')) label = 'PDMD';
+              if (div.includes('FINANCE') || div.includes('FD') || div.includes('AFD')) label = 'Finance';
+              if (div.includes('HRAD') || div.includes('ADMINISTRATION')) label = 'HR&AD';
               
               return (
                 <button
@@ -1101,6 +1105,33 @@ const ObjectivesDashboard: React.FC = () => {
                             <Calendar size={13} /> Update Quarter
                           </button>
 
+                          {/* Original Signed PDF Button */}
+                          {obj.quarterlyData && (obj.quarterlyData as any).originalPdfUrl && (
+                            <a
+                              href={(obj.quarterlyData as any).originalPdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                width: '100%',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: '600',
+                                backgroundColor: '#f0fdf4',
+                                color: '#166534',
+                                border: '1px solid #bbf7d0',
+                                textDecoration: 'none'
+                              }}
+                              title="Download / View Signed PDF Record"
+                            >
+                              <Printer size={12} /> Signed PDF
+                            </a>
+                          )}
+
                           <div style={{ display: 'flex', gap: '4px', width: '100%' }}>
                             <button
                               onClick={() => navigate(`/objectives/${obj.id}`)}
@@ -1235,6 +1266,18 @@ const ObjectivesDashboard: React.FC = () => {
                       </td>
                       <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {obj.quarterlyData && (obj.quarterlyData as any).originalPdfUrl && (
+                            <a
+                              href={(obj.quarterlyData as any).originalPdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-outline"
+                              style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              title="Download / View Original Signed PDF"
+                            >
+                              <Printer size={14} /> PDF
+                            </a>
+                          )}
                           <button
                             onClick={(e) => handleOpenIsoSheet(obj, e)}
                             className="btn btn-outline"

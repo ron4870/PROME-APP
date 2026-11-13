@@ -31,6 +31,7 @@ export interface QualityObjectiveData {
   departmentHeadDate?: string | null;
   managingDirectorApproval?: string | null;
   managingDirectorDate?: string | null;
+  quarterlyData?: any;
 }
 
 interface Props {
@@ -179,6 +180,29 @@ export const QualityObjectiveIsoSheet: React.FC<Props> = ({
               >
                 <Save size={15} /> {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
+            )}
+
+            {formData.quarterlyData && (formData.quarterlyData as any).originalPdfUrl && (
+              <a
+                href={(formData.quarterlyData as any).originalPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.45rem 0.85rem',
+                  backgroundColor: '#7c3aed',
+                  color: 'white',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '600',
+                  textDecoration: 'none'
+                }}
+                title="Open authentic signed PDF"
+              >
+                <Printer size={15} /> Signed PDF
+              </a>
             )}
 
             <button
