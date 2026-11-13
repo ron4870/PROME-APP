@@ -16,7 +16,11 @@ import {
   Printer,
   ExternalLink,
   Network,
-  Download
+  Download,
+  Edit2,
+  Trash2,
+  Save,
+  X
 } from 'lucide-react';
 import { generateScopeOfOrganizationPDF } from '../utils/scopeOfOrganizationPdf';
 import { generateContextOfOrganizationPDF } from '../utils/contextOfOrganizationPdf';
@@ -131,9 +135,41 @@ const OrganizationContext: React.FC = () => {
   
   // Official ISO records state
   const [officialData, setOfficialData] = useState<OfficialDocumentsResponse | null>(null);
+  const [contextFactors, setContextFactors] = useState<ContextFactorRecord[]>([]);
+  const [interestedParties, setInterestedParties] = useState<InterestedPartyRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
+
+  // Edit Factor Modal State
+  const [isEditFactorModalOpen, setIsEditFactorModalOpen] = useState(false);
+  const [editingFactor, setEditingFactor] = useState<ContextFactorRecord | null>(null);
+  const [isNewFactor, setIsNewFactor] = useState(false);
+  const [fType, setFType] = useState<'Internal' | 'External'>('Internal');
+  const [fCategory, setFCategory] = useState('');
+  const [fContext, setFContext] = useState('');
+  const [fAspect, setFAspect] = useState('');
+  const [fImpact, setFImpact] = useState('');
+  const [fMitigation, setFMitigation] = useState('');
+  const [fReviewBy, setFReviewBy] = useState('');
+  const [fDate, setFDate] = useState('');
+  const [fResults, setFResults] = useState('');
+
+  // Edit Interested Party Modal State
+  const [isEditPartyModalOpen, setIsEditPartyModalOpen] = useState(false);
+  const [editingParty, setEditingParty] = useState<InterestedPartyRecord | null>(null);
+  const [isNewParty, setIsNewParty] = useState(false);
+  const [pCategory, setPCategory] = useState<'External' | 'Internal'>('External');
+  const [pPartyName, setPPartyName] = useState('');
+  const [pPartyNeeds, setPPartyNeeds] = useState('');
+  const [pIpToCo, setPIpToCo] = useState('Influence');
+  const [pCoToIp, setPCoToIp] = useState('Influence');
+  const [pPriority, setPPriority] = useState<'P1' | 'P2' | 'P3'>('P2');
+  const [pAction, setPAction] = useState('');
+  const [pReviewBy, setPReviewBy] = useState('');
+  const [pDate, setPDate] = useState('');
+  const [pResults, setPResults] = useState('');
+  const [pRecords, setPRecords] = useState('');
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,7 +179,7 @@ const OrganizationContext: React.FC = () => {
   const [commsFilter, setCommsFilter] = useState<'ALL' | 'Internal' | 'External'>('ALL');
   const [viewMode, setViewMode] = useState<'official' | 'custom'>('official');
 
-  // Modal states
+  // Modal states for custom DB items
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
 
@@ -181,7 +217,8 @@ const OrganizationContext: React.FC = () => {
   const handleExportContextPdf = () => {
     setIsExportingContext(true);
     try {
-      const doc = generateContextOfOrganizationPDF();
+      const activeFactors = contextFactors.length > 0 ? contextFactors : (officialData?.contextFactors || []);
+      const doc = generateContextOfOrganizationPDF(activeFactors);
       doc.save('PROME_Context_of_the_Organization_2026.pdf');
     } catch (error) {
       console.error('Failed to export Context PDF:', error);
@@ -194,13 +231,216 @@ const OrganizationContext: React.FC = () => {
   const handleExportPartiesPdf = () => {
     setIsExportingParties(true);
     try {
-      const doc = generateInterestedPartiesPDF();
+      const activeParties = interestedParties.length > 0 ? interestedParties : (officialData?.interestedParties || []);
+      const doc = generateInterestedPartiesPDF(activeParties);
       doc.save('PROME_Interested_Parties_2026.pdf');
     } catch (error) {
       console.error('Failed to export Interested Parties PDF:', error);
       alert('Failed to generate Interested Parties PDF');
     } finally {
       setIsExportingParties(false);
+    }
+  };
+
+  // Factor Management Handlers
+  const handleOpenAddFactor = () => {
+    setIsNewFactor(true);
+    setEditingFactor(null);
+    setFType('Internal');
+    setFCategory('Strategic & Operations');
+    setFContext('');
+    setFAspect('');
+    setFImpact('');
+    setFMitigation('');
+    setFReviewBy('Eng. Ronald Kibuuka (MD)');
+    setFDate('Continuous');
+    setFResults('In progress / Monitored');
+    setIsEditFactorModalOpen(true);
+  };
+
+  const handleOpenEditFactor = (item: ContextFactorRecord) => {
+    setIsNewFactor(false);
+    setEditingFactor(item);
+    setFType(item.type);
+    setFCategory(item.factorCategory);
+    setFContext(item.context);
+    setFAspect(item.aspectFromContext);
+    setFImpact(item.impactToBusiness);
+    setFMitigation(item.mitigationAction);
+    setFReviewBy(item.followUpAndReviewBy);
+    setFDate(item.followUpDate);
+    setFResults(item.followUpResults);
+    setIsEditFactorModalOpen(true);
+  };
+
+  const handleSaveFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const payload = {
+      type: fType,
+      factorCategory: fCategory,
+      context: fContext,
+      aspectFromContext: fAspect,
+      impactToBusiness: fImpact,
+      mitigationAction: fMitigation,
+      followUpAndReviewBy: fReviewBy,
+      followUpDate: fDate,
+      followUpResults: fResults
+    };
+
+    try {
+      if (isNewFactor) {
+        const res = await fetch('/api/context/factors', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const created = await res.json();
+          setContextFactors(prev => [...prev, created]);
+          setIsEditFactorModalOpen(false);
+        } else {
+          alert('Failed to create context factor');
+        }
+      } else if (editingFactor) {
+        const res = await fetch(`/api/context/factors/${editingFactor.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setContextFactors(prev => prev.map(f => f.id === updated.id ? updated : f));
+          setIsEditFactorModalOpen(false);
+        } else {
+          alert('Failed to update context factor');
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to save factor:', err);
+      alert('Error saving context factor: ' + err.message);
+    }
+  };
+
+  const handleDeleteFactor = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this context factor?')) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/context/factors/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setContextFactors(prev => prev.filter(f => f.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete factor:', err);
+      alert('Failed to delete context factor');
+    }
+  };
+
+  // Interested Party Management Handlers
+  const handleOpenAddParty = () => {
+    setIsNewParty(true);
+    setEditingParty(null);
+    setPCategory('External');
+    setPPartyName('');
+    setPPartyNeeds('');
+    setPIpToCo('Influence');
+    setPCoToIp('Influence');
+    setPPriority('P2');
+    setPAction('');
+    setPReviewBy('Eng. Ronald Kibuuka (MD)');
+    setPDate('31/1/2026');
+    setPResults('Fulfilled / Monitored');
+    setPRecords('Contracts / Surveys');
+    setIsEditPartyModalOpen(true);
+  };
+
+  const handleOpenEditParty = (party: InterestedPartyRecord) => {
+    setIsNewParty(false);
+    setEditingParty(party);
+    setPCategory(party.category);
+    setPPartyName(party.name);
+    setPPartyNeeds(party.needsAndExpectations || '');
+    setPIpToCo(party.ipToCompany);
+    setPCoToIp(party.companyToIp);
+    setPPriority(party.prioritization);
+    setPAction(party.actionToManageIp);
+    setPReviewBy(party.followUpAndReviewBy);
+    setPDate(party.followUpDate);
+    setPResults(party.followUpResults);
+    setPRecords(party.records || '');
+    setIsEditPartyModalOpen(true);
+  };
+
+  const handleSaveParty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const payload = {
+      category: pCategory,
+      name: pPartyName,
+      needsAndExpectations: pPartyNeeds,
+      ipToCompany: pIpToCo,
+      companyToIp: pCoToIp,
+      prioritization: pPriority,
+      actionToManageIp: pAction,
+      followUpAndReviewBy: pReviewBy,
+      followUpDate: pDate,
+      followUpResults: pResults,
+      records: pRecords
+    };
+
+    try {
+      if (isNewParty) {
+        const res = await fetch('/api/context/parties-official', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const created = await res.json();
+          setInterestedParties(prev => [...prev, created]);
+          setIsEditPartyModalOpen(false);
+        } else {
+          alert('Failed to add interested party');
+        }
+      } else if (editingParty) {
+        const res = await fetch(`/api/context/parties-official/${editingParty.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setInterestedParties(prev => prev.map(p => p.id === updated.id ? updated : p));
+          setIsEditPartyModalOpen(false);
+        } else {
+          alert('Failed to update interested party');
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to save interested party:', err);
+      alert('Error saving interested party: ' + err.message);
+    }
+  };
+
+  const handleDeleteParty = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this interested party?')) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/context/parties-official/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setInterestedParties(prev => prev.filter(p => p.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete interested party:', err);
+      alert('Failed to delete interested party');
     }
   };
 
@@ -219,6 +459,8 @@ const OrganizationContext: React.FC = () => {
       if (resOfficial.ok) {
         const data = await resOfficial.json();
         setOfficialData(data);
+        setContextFactors(data.contextFactors || []);
+        setInterestedParties(data.interestedParties || []);
       }
 
       // Fetch custom database issues
@@ -332,8 +574,9 @@ const OrganizationContext: React.FC = () => {
     }
   };
 
-  // Filter context factors
-  const filteredFactors = (officialData?.contextFactors || []).filter(item => {
+  // Filter context factors (using live editable state with officialData fallback)
+  const allFactors = contextFactors.length > 0 ? contextFactors : (officialData?.contextFactors || []);
+  const filteredFactors = allFactors.filter(item => {
     if (contextFilter !== 'ALL' && item.type !== contextFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -347,8 +590,9 @@ const OrganizationContext: React.FC = () => {
     return true;
   });
 
-  // Filter interested parties
-  const filteredParties = (officialData?.interestedParties || []).filter(item => {
+  // Filter interested parties (using live editable state with officialData fallback)
+  const allParties = interestedParties.length > 0 ? interestedParties : (officialData?.interestedParties || []);
+  const filteredParties = allParties.filter(item => {
     if (partyFilter === 'P1' && item.prioritization !== 'P1') return false;
     if (partyFilter !== 'ALL' && partyFilter !== 'P1' && item.category !== partyFilter) return false;
     if (searchQuery) {
@@ -721,6 +965,26 @@ const OrganizationContext: React.FC = () => {
                   >
                     <Download size={14} /> {isExportingContext ? 'Generating...' : 'Export Context PDF'}
                   </button>
+
+                  <button
+                    onClick={handleOpenAddFactor}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      fontSize: '0.8rem',
+                      border: '1px solid #16a34a',
+                      borderRadius: '6px',
+                      backgroundColor: '#f0fdf4',
+                      color: '#16a34a',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Add a new Context Factor"
+                  >
+                    <Plus size={14} /> Add Factor
+                  </button>
                 </div>
               </div>
 
@@ -735,6 +999,7 @@ const OrganizationContext: React.FC = () => {
                         <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 600 }}>Impact to Business</th>
                         <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 600 }}>Mitigation Action</th>
                         <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 600, width: '180px' }}>Follow Up & Review</th>
+                        <th style={{ padding: '0.85rem 0.5rem', color: '#475569', fontWeight: 600, width: '85px', textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -762,6 +1027,24 @@ const OrganizationContext: React.FC = () => {
                             <div style={{ fontWeight: 600, color: '#1e293b' }}>{item.followUpAndReviewBy}</div>
                             <div style={{ color: '#64748b' }}>Target: {item.followUpDate}</div>
                             <div style={{ color: '#16a34a', marginTop: '4px', fontSize: '0.75rem' }}>✓ {item.followUpResults}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 0.5rem', verticalAlign: 'top', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                              <button
+                                onClick={() => handleOpenEditFactor(item)}
+                                style={{ border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                                title="Edit Context Factor"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFactor(item.id)}
+                                style={{ border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                                title="Delete Context Factor"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -874,6 +1157,26 @@ const OrganizationContext: React.FC = () => {
                   >
                     <Download size={14} /> {isExportingParties ? 'Generating...' : 'Export Parties PDF'}
                   </button>
+
+                  <button
+                    onClick={handleOpenAddParty}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      fontSize: '0.8rem',
+                      border: '1px solid #16a34a',
+                      borderRadius: '6px',
+                      backgroundColor: '#f0fdf4',
+                      color: '#16a34a',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Add a new Interested Party"
+                  >
+                    <Plus size={14} /> Add Interested Party
+                  </button>
                   <div style={{ position: 'relative' }}>
                     <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                     <input 
@@ -911,6 +1214,7 @@ const OrganizationContext: React.FC = () => {
                         <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 600, width: '120px' }}>Influence</th>
                         <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 600 }}>Action to Manage Interested Party</th>
                         <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 600, width: '190px' }}>Review & Status</th>
+                        <th style={{ padding: '0.85rem 0.5rem', color: '#475569', fontWeight: 600, width: '85px', textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -954,6 +1258,24 @@ const OrganizationContext: React.FC = () => {
                             <div style={{ fontWeight: 600, color: '#1e293b' }}>{party.followUpAndReviewBy}</div>
                             <div style={{ color: '#64748b' }}>Target: {party.followUpDate}</div>
                             <div style={{ color: '#16a34a', marginTop: '4px', fontSize: '0.75rem' }}>✓ {party.followUpResults}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 0.5rem', verticalAlign: 'top', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                              <button
+                                onClick={() => handleOpenEditParty(party)}
+                                style={{ border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                                title="Edit Stakeholder"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteParty(party.id)}
+                                style={{ border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                                title="Delete Stakeholder"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1627,6 +1949,348 @@ const OrganizationContext: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsPartyModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save Party</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for Editing/Adding Context Factor */}
+      {isEditFactorModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditFactorModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '12px', width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 700 }}>
+                  {isNewFactor ? 'Add New Context Factor (Clause 4.1)' : 'Edit Context Factor (Clause 4.1)'}
+                </h2>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  {isNewFactor ? 'Define a new internal or external organizational context issue' : `Editing reference: ${editingFactor?.id || 'Factor'}`}
+                </p>
+              </div>
+              <button onClick={() => setIsEditFactorModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveFactor}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Type</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={fType} 
+                    onChange={e => setFType(e.target.value as 'Internal' | 'External')}
+                  >
+                    <option value="Internal">Internal Factor</option>
+                    <option value="External">External Factor</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Factor Category</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={fCategory} 
+                    onChange={e => setFCategory(e.target.value)} 
+                    placeholder="e.g. Competence & Knowledge, Economic, Legal" 
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Context of Organization (Title / Description)</label>
+                <textarea 
+                  required 
+                  className="form-input" 
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} 
+                  value={fContext} 
+                  onChange={e => setFContext(e.target.value)} 
+                  placeholder="e.g. Strength of Employees (Competence and knowledge)" 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Aspect from Context</label>
+                <textarea 
+                  required 
+                  className="form-input" 
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} 
+                  value={fAspect} 
+                  onChange={e => setFAspect(e.target.value)} 
+                  placeholder="Detail the aspect or operational challenge arising from this context..." 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Impact to Business</label>
+                <textarea 
+                  required 
+                  className="form-input" 
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} 
+                  value={fImpact} 
+                  onChange={e => setFImpact(e.target.value)} 
+                  placeholder="Risk of delays, financial losses, reputational impact..." 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Mitigation Action</label>
+                <textarea 
+                  required 
+                  className="form-input" 
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} 
+                  value={fMitigation} 
+                  onChange={e => setFMitigation(e.target.value)} 
+                  placeholder="Specific controls, policies, appraisals, and procedures implemented..." 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Follow Up & Review By</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                    value={fReviewBy} 
+                    onChange={e => setFReviewBy(e.target.value)} 
+                    placeholder="e.g. Gertrude Nakiyaga / Ronald Kibuuka" 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Follow Up Date</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                    value={fDate} 
+                    onChange={e => setFDate(e.target.value)} 
+                    placeholder="e.g. 31/1/2026 or Continuous" 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Follow Up Results</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                    value={fResults} 
+                    onChange={e => setFResults(e.target.value)} 
+                    placeholder="e.g. Achieved / Monitored" 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsEditFactorModalOpen(false)}
+                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  style={{ padding: '0.5rem 1.25rem', borderRadius: '6px', border: 'none', background: '#991b1b', color: '#ffffff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Save size={15} /> Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for Editing/Adding Official Interested Party */}
+      {isEditPartyModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditPartyModalOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', padding: '1.75rem', borderRadius: '12px', width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 700 }}>
+                  {isNewParty ? 'Add New Interested Party (Clause 4.2)' : 'Edit Interested Party (Clause 4.2)'}
+                </h2>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  {isNewParty ? 'Register an external or internal stakeholder and requirements' : `Editing stakeholder: ${editingParty?.name || 'Party'}`}
+                </p>
+              </div>
+              <button onClick={() => setIsEditPartyModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveParty}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Interested Party / Stakeholder</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={pPartyName} 
+                    onChange={e => setPPartyName(e.target.value)} 
+                    placeholder="e.g. Clients (MOWT, UNRA, KCCA, ERA, MOLHUD)" 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Category</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={pCategory} 
+                    onChange={e => setPCategory(e.target.value as 'External' | 'Internal')}
+                  >
+                    <option value="External">External</option>
+                    <option value="Internal">Internal</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Prioritization</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={pPriority} 
+                    onChange={e => setPPriority(e.target.value as 'P1' | 'P2' | 'P3')}
+                  >
+                    <option value="P1">P1 (Mandatory)</option>
+                    <option value="P2">P2 (High Value)</option>
+                    <option value="P3">P3 (Medium Value)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Needs and Expectations of Interested Party</label>
+                <textarea 
+                  required 
+                  className="form-input" 
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} 
+                  value={pPartyNeeds} 
+                  onChange={e => setPPartyNeeds(e.target.value)} 
+                  placeholder="Services provided in accordance with contract, legal compliance, safe working..." 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>IP to Company Influence</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={pIpToCo} 
+                    onChange={e => setPIpToCo(e.target.value)}
+                  >
+                    <option value="Control">Control</option>
+                    <option value="Influence">Influence</option>
+                    <option value="Control & Influence">Control & Influence</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Company to IP Influence</label>
+                  <select 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                    value={pCoToIp} 
+                    onChange={e => setPCoToIp(e.target.value)}
+                  >
+                    <option value="Control">Control</option>
+                    <option value="Influence">Influence</option>
+                    <option value="Control & Influence">Control & Influence</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Action to Manage Interested Party</label>
+                <textarea 
+                  required 
+                  className="form-input" 
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} 
+                  value={pAction} 
+                  onChange={e => setPAction(e.target.value)} 
+                  placeholder="How does PROME proactively manage this relationship and fulfill expectations?" 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Follow Up & Review By</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                    value={pReviewBy} 
+                    onChange={e => setPReviewBy(e.target.value)} 
+                    placeholder="e.g. Eng. Godfrey Ssambwa / Ronald Kibuuka" 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Follow Up Date</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                    value={pDate} 
+                    onChange={e => setPDate(e.target.value)} 
+                    placeholder="e.g. 31/1/2026 or Continuous" 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Follow Up Results</label>
+                  <input 
+                    required 
+                    type="text" 
+                    className="form-input" 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                    value={pResults} 
+                    onChange={e => setPResults(e.target.value)} 
+                    placeholder="e.g. Compliance achieved" 
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Associated Records / Evidence</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} 
+                  value={pRecords} 
+                  onChange={e => setPRecords(e.target.value)} 
+                  placeholder="e.g. Customer Satisfaction Surveys, Compliance Register, Contracts" 
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsEditPartyModalOpen(false)}
+                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  style={{ padding: '0.5rem 1.25rem', borderRadius: '6px', border: 'none', background: '#059669', color: '#ffffff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Save size={15} /> Save Changes
+                </button>
               </div>
             </form>
           </div>

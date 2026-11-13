@@ -17,7 +17,7 @@ export interface InterestedPartyItemDef {
   linkUrl?: string;
 }
 
-export const generateInterestedPartiesPDF = (): jsPDF => {
+export const generateInterestedPartiesPDF = (customParties?: any[]): jsPDF => {
   const doc: jsPDF = new jsPDFConstructor({
     orientation: 'landscape',
     unit: 'mm',
@@ -405,6 +405,31 @@ export const generateInterestedPartiesPDF = (): jsPDF => {
   // =========================================================================
   // PAGE 1: DEFINITIONS & EXTERNAL INTERESTED PARTIES
   // =========================================================================
+  let activeExternal = externalParties;
+  let activeInternal = internalParties;
+
+  if (customParties && customParties.length > 0) {
+    const mapCustomParty = (p: any): InterestedPartyItemDef => ({
+      party: p.name || p.party || '',
+      needs: p.needsAndExpectations || p.needs || '',
+      ipToCompany: p.ipToCompany || 'Influence',
+      companyToIp: p.companyToIp || 'Influence',
+      prioritization: (p.prioritization === 'P1' || p.prioritization === 'P2' || p.prioritization === 'P3') ? p.prioritization : 'P2',
+      action: p.actionToManageIp || p.action || '',
+      followUpBy: p.followUpAndReviewBy || p.followUpBy || '',
+      followUpDate: p.followUpDate || 'Continuous',
+      followUpResults: p.followUpResults || 'Compliant',
+      records: p.records || 'Compliance Records',
+      linkUrl: 'https://ims.promeconsult.com/organization-context'
+    });
+
+    const parsedExt = customParties.filter(p => p.category === 'External').map(mapCustomParty);
+    const parsedInt = customParties.filter(p => p.category === 'Internal').map(mapCustomParty);
+
+    if (parsedExt.length > 0) activeExternal = parsedExt;
+    if (parsedInt.length > 0) activeInternal = parsedInt;
+  }
+
   let y = drawPageHeader('EXTERNAL INTERESTED PARTIES (ISO 9001:2015 & ISO 45001:2018 CLAUSE 4.2)');
 
   // Introductory Stakeholder Definition & Ranking Banner
@@ -429,8 +454,8 @@ export const generateInterestedPartiesPDF = (): jsPDF => {
   // Table header
   y = drawTableHeader(y);
 
-  // Render 7 External Rows
-  y = renderTableRows(y, externalParties);
+  // Render External Rows
+  y = renderTableRows(y, activeExternal);
 
   drawPageFooter();
 
@@ -445,8 +470,8 @@ export const generateInterestedPartiesPDF = (): jsPDF => {
   // Table header
   y = drawTableHeader(y);
 
-  // Render 2 Internal Rows
-  y = renderTableRows(y, internalParties);
+  // Render Internal Rows
+  y = renderTableRows(y, activeInternal);
 
   // Spacing before Formal Sign-Off Box
   y += 6;

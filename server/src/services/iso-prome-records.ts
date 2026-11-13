@@ -8,6 +8,9 @@
  * - Section 10: Continual Improvement Register
  */
 
+import fs from 'fs';
+import path from 'path';
+
 export interface ContextFactorItem {
   id: string;
   type: 'Internal' | 'External';
@@ -545,3 +548,114 @@ export const PROME_CONTINUAL_IMPROVEMENT_RECORD = {
     }
   ]
 };
+
+// =========================================================================
+// PERSISTENT STORAGE HELPERS FOR DYNAMIC EDITS
+// =========================================================================
+
+const DATA_DIR = path.join(__dirname, '../../uploads/data');
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+const CONTEXT_FACTORS_FILE = path.join(DATA_DIR, 'iso_context_factors.json');
+const INTERESTED_PARTIES_FILE = path.join(DATA_DIR, 'iso_interested_parties.json');
+
+export function getContextFactors(): ContextFactorItem[] {
+  ensureDataDir();
+  if (fs.existsSync(CONTEXT_FACTORS_FILE)) {
+    try {
+      const data = fs.readFileSync(CONTEXT_FACTORS_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.error('Failed to read context factors cache:', e);
+    }
+  }
+  return [...PROME_CONTEXT_FACTORS];
+}
+
+export function saveContextFactors(factors: ContextFactorItem[]): void {
+  ensureDataDir();
+  fs.writeFileSync(CONTEXT_FACTORS_FILE, JSON.stringify(factors, null, 2), 'utf-8');
+}
+
+export function addContextFactor(factor: Omit<ContextFactorItem, 'id'> & { id?: string }): ContextFactorItem {
+  const current = getContextFactors();
+  const id = factor.id || `${factor.type === 'Internal' ? 'INT' : 'EXT'}-${String(current.length + 1).padStart(2, '0')}`;
+  const newItem: ContextFactorItem = { ...factor, id };
+  current.push(newItem);
+  saveContextFactors(current);
+  return newItem;
+}
+
+export function updateContextFactor(id: string, factor: Partial<ContextFactorItem>): ContextFactorItem | null {
+  const current = getContextFactors();
+  const index = current.findIndex(f => f.id === id);
+  if (index === -1) return null;
+  current[index] = { ...current[index], ...factor, id };
+  saveContextFactors(current);
+  return current[index];
+}
+
+export function deleteContextFactor(id: string): boolean {
+  const current = getContextFactors();
+  const filtered = current.filter(f => f.id !== id);
+  if (filtered.length === current.length) return false;
+  saveContextFactors(filtered);
+  return true;
+}
+
+export function getInterestedParties(): InterestedPartyItem[] {
+  ensureDataDir();
+  if (fs.existsSync(INTERESTED_PARTIES_FILE)) {
+    try {
+      const data = fs.readFileSync(INTERESTED_PARTIES_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.error('Failed to read interested parties cache:', e);
+    }
+  }
+  return [...PROME_INTERESTED_PARTIES];
+}
+
+export function saveInterestedParties(parties: InterestedPartyItem[]): void {
+  ensureDataDir();
+  fs.writeFileSync(INTERESTED_PARTIES_FILE, JSON.stringify(parties, null, 2), 'utf-8');
+}
+
+export function addInterestedParty(party: Omit<InterestedPartyItem, 'id'> & { id?: string }): InterestedPartyItem {
+  const current = getInterestedParties();
+  const id = party.id || `${party.category === 'Internal' ? 'INT-IP' : 'EXT-IP'}-${String(current.length + 1).padStart(2, '0')}`;
+  const newItem: InterestedPartyItem = {
+    ...party,
+    id,
+    prioritization: party.prioritization || 'P2',
+    ipToCompany: party.ipToCompany || 'Influence',
+    companyToIp: party.companyToIp || 'Influence'
+  };
+  current.push(newItem);
+  saveInterestedParties(current);
+  return newItem;
+}
+
+export function updateInterestedParty(id: string, party: Partial<InterestedPartyItem>): InterestedPartyItem | null {
+  const current = getInterestedParties();
+  const index = current.findIndex(p => p.id === id);
+  if (index === -1) return null;
+  current[index] = { ...current[index], ...party, id };
+  saveInterestedParties(current);
+  return current[index];
+}
+
+export function deleteInterestedParty(id: string): boolean {
+  const current = getInterestedParties();
+  const filtered = current.filter(p => p.id !== id);
+  if (filtered.length === current.length) return false;
+  saveInterestedParties(filtered);
+  return true;
+}

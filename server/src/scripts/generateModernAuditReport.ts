@@ -5,8 +5,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function generateModernAuditReport() {
-  console.log('[Audit Report] Starting generation of Modern ISO Compliant Audit Report (Revised per Lead Auditor Review)...');
+export async function generateModernAuditReport() {
+  console.log('[Audit Report] Starting generation of Modern ISO Compliant Audit Report No. 04 (21st May 2026)...');
 
   const pdfDoc = await PDFDocument.create();
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -45,7 +45,7 @@ async function generateModernAuditReport() {
       font: fontBold,
       color: primaryRed
     });
-    page.drawText('Doc Ref: PROME-IMSR-PMBDD-11 | Audit No. 04 (PROME-AUD-2026-001)', {
+    page.drawText('Doc Ref: PROME-MSR-PMBDD-11 | Audit No. 04 (PROME-AUD-2026-001)', {
       x: 320,
       y: 815,
       size: 7.5,
@@ -138,7 +138,7 @@ async function generateModernAuditReport() {
   };
 
   // =========================================================================
-  // PAGE 1: OFFICIAL AUDIT REPORT (LEAD SHEET) - PROME-IMSR-PMBDD-11 REV 00
+  // PAGE 1: OFFICIAL AUDIT REPORT (LEAD SHEET) - PROME-MSR-PMBDD-11 REV 00
   // =========================================================================
   const page1 = pdfDoc.addPage([595.28, 841.89]);
   
@@ -183,9 +183,9 @@ async function generateModernAuditReport() {
   // Document Metadata Ribbon
   page1.drawRectangle({ x: 40, y: 738, width: 515, height: 26, color: tableBg, borderColor: lineGray, borderWidth: 1 });
   page1.drawText('Audit Report', { x: 50, y: 747, size: 8, font: fontBold, color: textDark });
-  page1.drawText('PROME-IMSR-PMBDD-11', { x: 135, y: 747, size: 8.5, font: fontBold, color: primaryRed });
+  page1.drawText('PROME-MSR-PMBDD-11', { x: 135, y: 747, size: 8.5, font: fontBold, color: primaryRed });
   page1.drawText('Version 00', { x: 280, y: 747, size: 8, font: fontRegular, color: textDark });
-  page1.drawText('Date: 27th Oct 2026', { x: 380, y: 747, size: 8, font: fontBold, color: textDark });
+  page1.drawText('Date: 21st May 2026', { x: 380, y: 747, size: 8, font: fontBold, color: textDark });
   page1.drawText('PROME-AUD-2026-001', { x: 468, y: 747, size: 7.5, font: fontBold, color: darkNavy });
 
   // Main Lead Sheet Grid Box
@@ -203,7 +203,7 @@ async function generateModernAuditReport() {
   page1.drawText('(LEAD SHEET)', { x: 250, y: 703, size: 11, font: fontBold, color: primaryRed });
 
   page1.drawText('AUDIT REPORT NO. 04', { x: 420, y: 717, size: 9.5, font: fontBold, color: darkNavy });
-  page1.drawText('Cycle: Q4 2026 Internal', { x: 420, y: 704, size: 7.5, font: fontRegular, color: textGray });
+  page1.drawText('Cycle: Internal Audit 2026', { x: 420, y: 704, size: 7.5, font: fontRegular, color: textGray });
 
   // Row 1: Audited Dept & Type
   page1.drawLine({ start: { x: 40, y: 658 }, end: { x: 555, y: 658 }, thickness: 0.5, color: lineGray });
@@ -215,7 +215,7 @@ async function generateModernAuditReport() {
   // Row 2: Date & Standard
   page1.drawLine({ start: { x: 40, y: 626 }, end: { x: 555, y: 626 }, thickness: 0.5, color: lineGray });
   page1.drawText('DATE OF AUDIT -', { x: 48, y: 639, size: 8, font: fontBold, color: darkNavy });
-  page1.drawText('27-10-2026', { x: 135, y: 639, size: 8, font: fontRegular, color: textDark });
+  page1.drawText('21-05-2026', { x: 135, y: 639, size: 8, font: fontRegular, color: textDark });
   page1.drawText('STANDARD -', { x: 240, y: 639, size: 8, font: fontBold, color: darkNavy });
   page1.drawText('ISO 9001:2015 and 45001:2018 (Integrated Management System)', { x: 300, y: 639, size: 7.5, font: fontBold, color: primaryRed });
 
@@ -230,51 +230,51 @@ async function generateModernAuditReport() {
   page1.drawText('LEAD AUDITOR -', { x: 48, y: 555, size: 8, font: fontBold, color: darkNavy });
   page1.drawText('Philippa Arinaitwe', { x: 135, y: 555, size: 8.5, font: fontBold, color: textDark });
   page1.drawText('AUDIT TEAM -', { x: 260, y: 555, size: 8, font: fontBold, color: darkNavy });
-  page1.drawText('Amanya Patience (MR), Mugisha Benjamin, Keitesi Samalie', { x: 335, y: 555, size: 7.5, font: fontRegular, color: textDark });
+  page1.drawText('Amanya Patience, Koshaba Patience, Keitesi Samalie', { x: 335, y: 555, size: 7.5, font: fontRegular, color: textDark });
 
   // Row 5: Persons Audited
   page1.drawLine({ start: { x: 40, y: 480 }, end: { x: 555, y: 480 }, thickness: 0.5, color: lineGray });
   page1.drawText('PERSONS AUDITED -', { x: 48, y: 518, size: 8, font: fontBold, color: darkNavy });
-  page1.drawText('Stephanie A Canowira (Deputy Head CPSD), Gertrude Nakiyaga (Head SAS), Nampewo Elizabeth (Deputy Head PDMD),', { x: 48, y: 504, size: 7.5, font: fontRegular, color: textDark });
-  page1.drawText('Godfrey Ssambwa (Head PMBDD), Ronald Kibuuka (Managing Director), Joseph Kigozi (D. Head PMBDD)', { x: 48, y: 492, size: 7.5, font: fontRegular, color: textDark });
+  page1.drawText('Stephanie A Canowira (CPSD), Gertrude Nakiyaga (SAS), Nampewo Elizabeth (PDMD),', { x: 48, y: 504, size: 7.5, font: fontRegular, color: textDark });
+  page1.drawText('Godfrey Ssambwa (PMBDD), Ronald Kibuuka (Managing Director)', { x: 48, y: 492, size: 7.5, font: fontRegular, color: textDark });
 
   // Row 6: Previous Audit Date & No
   page1.drawLine({ start: { x: 40, y: 448 }, end: { x: 555, y: 448 }, thickness: 0.5, color: lineGray });
   page1.drawText('PREVIOUS AUDIT DATE -', { x: 48, y: 461, size: 8, font: fontBold, color: darkNavy });
-  page1.drawText('21/05/2026', { x: 175, y: 461, size: 8, font: fontRegular, color: textDark });
+  page1.drawText('25/06/2025', { x: 175, y: 461, size: 8, font: fontRegular, color: textDark });
   page1.drawText('PREVIOUS AUDIT REPORT NO -', { x: 300, y: 461, size: 8, font: fontBold, color: darkNavy });
   page1.drawText('3 (PROME-IMSR-PMBDD-10)', { x: 450, y: 461, size: 8, font: fontRegular, color: textDark });
 
-  // Row 7: Lead Auditor Conclusion (Evidence-Based without percentages)
+  // Row 7: Lead Auditor Conclusion (Exact wording from original report)
   page1.drawLine({ start: { x: 40, y: 350 }, end: { x: 555, y: 350 }, thickness: 0.5, color: lineGray });
   page1.drawText('LEAD AUDITOR CONCLUSION:', { x: 48, y: 428, size: 8.5, font: fontBold, color: darkNavy });
-  page1.drawText('The audit was conducted successfully in accordance with ISO 19011:2018 guidelines and PROME established procedures.', {
+  page1.drawText('The audit was conducted successfully, and one non-conformance was identified during the process.', {
     x: 48,
     y: 412,
-    size: 7.5,
+    size: 8,
     font: fontRegular,
     color: textDark
   });
-  page1.drawText('No major non-conformance was identified. One (1) minor non-conformity and two (2) opportunities for improvement were recorded.', {
+  page1.drawText('The Organisation has established and maintained its management system in line with the required standards.', {
     x: 48,
-    y: 399,
-    size: 7.5,
-    font: fontBold,
-    color: primaryRed
-  });
-  page1.drawText('Overall System Conformance: GENERALLY EFFECTIVE & CONFORMING TO ISO 9001:2015 & ISO 45001:2018', {
-    x: 48,
-    y: 376,
+    y: 398,
     size: 8,
     font: fontBold,
     color: greenSuccess
   });
-  page1.drawText('Audit Findings Breakdown: Zero (0) Major NCs | One (1) Minor NC (NC-2026-01) | Two (2) OFIs (OFI-2026-01, OFI-2026-02)', {
+  page1.drawText('Audit Findings Breakdown: Zero (0) Major NCs | One (1) Minor NC (NC-2026-01: Expired OH&S Certificates) | Two (2) OFIs', {
     x: 48,
-    y: 363,
+    y: 372,
     size: 7.5,
     font: fontRegular,
-    color: textGray
+    color: primaryRed
+  });
+  page1.drawText('Overall IMS Status: EFFECTIVE & CONFORMING TO ISO 9001:2015 & ISO 45001:2018', {
+    x: 48,
+    y: 359,
+    size: 7.5,
+    font: fontBold,
+    color: darkNavy
   });
 
   // Row 8: Dual Signatures Block
@@ -294,7 +294,7 @@ async function generateModernAuditReport() {
   page1.drawLine({ start: { x: 50, y: 195 }, end: { x: 280, y: 195 }, thickness: 0.8, color: darkNavy });
   page1.drawText('Philippa Arinaitwe', { x: 50, y: 180, size: 9, font: fontBold, color: darkNavy });
   page1.drawText('Lead Auditor (Environmental & OHS Specialist)', { x: 50, y: 168, size: 7.5, font: fontRegular, color: textGray });
-  page1.drawText('DATE: 27-10-2026', { x: 50, y: 140, size: 8, font: fontBold, color: textDark });
+  page1.drawText('DATE: 21-05-2026', { x: 50, y: 140, size: 8, font: fontBold, color: textDark });
 
   // Right: Management Representative (MR) Signature
   page1.drawText('SIGNATURE:', { x: 310, y: 332, size: 8.5, font: fontBold, color: darkNavy });
@@ -310,10 +310,10 @@ async function generateModernAuditReport() {
   page1.drawLine({ start: { x: 310, y: 195 }, end: { x: 540, y: 195 }, thickness: 0.8, color: darkNavy });
   page1.drawText('Amanya Patience', { x: 310, y: 180, size: 9, font: fontBold, color: darkNavy });
   page1.drawText('Management Representative (MR)', { x: 310, y: 168, size: 7.5, font: fontRegular, color: textGray });
-  page1.drawText('DATE: 27-10-2026', { x: 310, y: 140, size: 8, font: fontBold, color: textDark });
+  page1.drawText('DATE: 21-05-2026', { x: 310, y: 140, size: 8, font: fontBold, color: textDark });
 
   // Footer document reference
-  page1.drawText('PROME-IMSR-PMBDD-11', { x: 440, y: 98, size: 7.5, font: fontBold, color: textGray });
+  page1.drawText('PROME-MSR-PMBDD-11', { x: 440, y: 98, size: 7.5, font: fontBold, color: textGray });
   drawRunningFooter(page1, 1);
 
   // =========================================================================
@@ -328,7 +328,7 @@ async function generateModernAuditReport() {
   page2.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 18;
 
-  const introPara = 'An Integrated Management System (IMS) is a structured framework of processes, procedures, and responsibilities that enables an organization to consistently satisfy customer, statutory, and regulatory requirements while safeguarding the health and safety of its workforce. PROME Consultants Limited, incorporated in 1996 with over 28 years of industry-leading engineering practice, operates an Integrated Management System aligned to ISO 9001:2015 (Quality Management Systems) and ISO 45001:2018 (Occupational Health and Safety Management Systems).\n\nQuality Policy: "DOING THE RIGHT THINGS, IN THE RIGHT WAY, FIRST TIME, through innovation and continual improvement while integrating state-of-the-art technology, motivated human resource, and applicable regulatory requirements."';
+  const introPara = 'Integrated Management System is a set of processes, procedures and responsibilities that helps Organizations to meet Customer and Regulatory Requirements.\n\nThe purpose of this audit was therefore, to ascertain the degree of compliance to the ISO: 9001:2015 and 45001:2018 Systems as well as compliance to the company\'s established procedures.\n\nThis report presents the findings of the Auditors only and is based on a review of Prome Consultants Limited and information presented at the time of the Audit by the responsible staff members.';
   y = drawWrappedText(page2, introPara, 40, y, 515, 8.5, fontRegular, textDark, 12.5);
   y -= 12;
 
@@ -337,10 +337,10 @@ async function generateModernAuditReport() {
   y -= 18;
 
   const metaTable = [
-    { num: '1.', title: 'Date and Place of Audit:', desc: '27th October 2026 -- PROME Consultants Limited Head Office, Plot 7B John Babiiha Avenue, Kampala, Uganda.' },
-    { num: '2.', title: 'Audit Objectives:', desc: 'To verify conformity to ISO 9001:2015 and ISO 45001:2018; to determine system effectiveness in meeting customer and statutory requirements; and to evaluate departmental and corporate continual improvement.' },
-    { num: '3.', title: 'Requirements According to:', desc: 'ISO 9001:2015 Quality Management Systems and ISO 45001:2018 Occupational Health and Safety Management Systems.' },
-    { num: '4.', title: 'Audit Scope & Exclusions:', desc: 'Provision of Project Management and Engineering Consultancy Services in the Built Environment. Zero (0) exclusions claimed (Design and Development under PED is fully audited).' }
+    { num: '1.', title: 'Date and Place of Audit:', desc: '21st May 2026 -- Prome Consultants Limited, Kampala Uganda.' },
+    { num: '2.', title: 'Objective:', desc: '- To check conformity to ISO: 9001:2015 and 45001:2018 Systems.\n- To determine the effectiveness of the systems to customer requirements; And\n- To check the continual departmental and company improvement' },
+    { num: '3.', title: 'Requirements According to:', desc: 'ISO: 9001:2015 and 45001:2018 Systems' },
+    { num: '4.', title: 'Scope:', desc: 'Engineering Consultancy Services.' }
   ];
 
   for (const row of metaTable) {
@@ -362,13 +362,13 @@ async function generateModernAuditReport() {
   page2.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 16;
 
-  const scopeClauses = 'The internal audit encompassed all clauses of ISO 9001:2015 and applicable clauses of ISO 45001:2018, covering: Understanding the Organisation and Its Context (4.1), Understanding the Needs and Expectations of Interested Parties (4.2), Determining the Scope of the Management System (4.3), Leadership and Commitment (5.1), Customer Focus (5.1.2), Quality Policy (5.2), Organisational Roles, Responsibilities and Authorities (5.3), Worker Participation (5.4), Actions to Address Risks and Opportunities (6.1.1), Hazard Identification and Risk Assessment (6.1.2.1), Determination of Legal and Other Requirements (6.1.3), Quality Objectives and Planning (6.2, 6.2.2), Planning of Changes (6.3), Resources (7.1.1-7.1.6), Competence (7.2), Awareness (7.3), Communication (7.4), Documented Information (7.5), Operational Planning and Control (8.1), Emergency Preparedness and Response (8.2), Design and Development (8.3), Control of External Providers (8.4), Service Provision (8.5), Release of Services (8.6), Control of Nonconforming Outputs (8.7), Monitoring and Evaluation (9.1), Evaluation of Compliance (9.1.2), Internal Audit (9.2), Management Review (9.3), Nonconformity and Corrective Action (10.2), and Continual Improvement (10.3).';
+  const scopeClauses = 'The scope of the Audit encompassed: People (7.1.2-7.1.5), Organizational knowledge (7.1.6), Competence (7.2), Awareness (7.3), OHS determination of legal and other requirements (6.1.3), Understanding the organization and its context (4.1), understanding the needs and expectations of interested parties (4.2), determining the scope of management system (4.3), actions to address risks (6.1.1), service design and skills (8.2.2.1 / 8.3), planning to achieve quality objectives (6.2.2.1), customer focus (5.1.2 / 5.4), Analysis and evaluation (9.1.4), and Hazard identification and risk assessment (6.1.2.1).';
   y = drawWrappedText(page2, scopeClauses, 40, y, 515, 8, fontRegular, textDark, 12);
 
   drawRunningFooter(page2, 2);
 
   // =========================================================================
-  // PAGE 3: AUDIT OBSERVATION, DEDICATION & NEMKO FOCUS AREAS CHECKLIST
+  // PAGE 3: AUDIT OBSERVATION, DEDICATION & CONFORMITY CHECKLIST
   // =========================================================================
   currentPageNumber++;
   const page3 = pdfDoc.addPage([595.28, 841.89]);
@@ -379,7 +379,7 @@ async function generateModernAuditReport() {
   page3.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 18;
 
-  const obsGeneral = 'The internal audit was conducted in full accordance with the approved Internal Audit Plan (Appendix 1), covering corporate divisions and operational engineering processes. A commendable level of commitment and dedication was displayed across the organization throughout the exercise. Top Management visibly demonstrated its commitment to the continual improvement of the Integrated Management System. Staff members across all interviewed divisions were open, transparent, and objective about their daily processes and identified areas of potential system enhancement.\n\nThis report records the evidence-based findings, positive observations, one minor nonconformity, and specific opportunities for improvement looking at practical ways in which PROME operations can be strengthened to maintain high operational standards and effectiveness.';
+  const obsGeneral = 'The internal audit was conducted in accordance with the approved Internal Audit Plan, covering the operations which were audited.\n\nThis report records the results of the internal audit findings and recommendations looking at possible ways in which the operations could be improved to overcome identified weaknesses and increase the adequacy, efficiency and effectiveness of the IMS. The audit provided insight on the areas of compliance and areas of improvement.\n\nA lot of commitment and dedication were shown during the audit. Top management displayed its commitment to the continued improvement of the IMS. Workers were very open and honest about their processes and shortcomings within the IMS.';
   y = drawWrappedText(page3, obsGeneral, 40, y, 515, 8.5, fontRegular, textDark, 12.5);
   y -= 14;
 
@@ -396,14 +396,14 @@ async function generateModernAuditReport() {
   y -= 20;
 
   const focusList = [
-    { item: 'Conformity to core requirements in standard', clause: 'Clauses 4-10', status: 'Conforming', remarks: '16 Core QMS processes & OHS procedures active' },
-    { item: 'Monitoring and performance against key objectives', clause: 'Clauses 6.2 & 9.1', status: 'Conforming', remarks: 'Q4 performance reports confirm targets achieved' },
-    { item: 'Legal, statutory & contractual compliance obligations', clause: 'Clauses 4.1 & 6.1.3', status: 'Conforming', remarks: 'Statutory licenses verified; compliance log current' },
-    { item: 'Absence of open non-conformances from authorities', clause: 'Clause 4.2', status: 'Conforming', remarks: 'Zero regulatory sanctions, penalties, or open notices' },
-    { item: 'Operating process control & engineering supervision', clause: 'Clauses 8.1 & 8.5', status: 'Conforming', remarks: 'Quality assurance plans & progress meetings verified' },
-    { item: 'Emergency preparedness arrangements & first aid', clause: 'Clause 8.2', status: 'Minor NC', remarks: 'Refer to NC-2026-01 (replenishment controls)' },
-    { item: 'Internal auditing and management review', clause: 'Clauses 9.2 & 9.3', status: 'Conforming', remarks: 'Audit executed per plan; MRM minutes maintained' },
-    { item: 'Management responsibility and quality policy', clause: 'Clauses 5.1 & 5.2', status: 'Conforming', remarks: 'Policy communicated on web/board; staff awareness verified' }
+    { item: 'Conformity to core requirements in standard', clause: 'Clauses 4-10', status: 'Conforming', remarks: 'Core QMS processes & OHS procedures active' },
+    { item: 'Monitoring and performance against key objectives', clause: 'Clauses 6.2 & 9.1', status: 'Conforming', remarks: 'Q2 performance reports confirm targets achieved' },
+    { item: 'Legal, statutory & OHS certification renewal', clause: 'Clauses 6.1.3 & 9.1.2', status: 'Minor NC', remarks: 'Refer to NC-2026-01 (Statutory certificates)' },
+    { item: 'Control of external providers & suppliers', clause: 'Clause 8.4.1', status: 'Conforming (OFI)', remarks: 'Refer to OFI-2026-01 (Evaluation forms)' },
+    { item: 'Documented information & policy display', clause: 'Clauses 5.2 & 7.5', status: 'Conforming (OFI)', remarks: 'Refer to OFI-2026-02 (Noticeboard policy)' },
+    { item: 'Hazard identification and risk analysis (HIRA)', clause: 'Clause 6.1.2.1', status: 'Conforming', remarks: 'HIRA reviewed, checklists maintained' },
+    { item: 'Operating process control & engineering supervision', clause: 'Clauses 8.1 & 8.5', status: 'Conforming', remarks: 'QA plans & progress meetings verified' },
+    { item: 'Emergency preparedness & workplace safety', clause: 'Clause 8.2', status: 'Conforming', remarks: 'Vehicles in emergency park mode; 1st aid kits accessible' }
   ];
 
   for (const item of focusList) {
@@ -412,24 +412,25 @@ async function generateModernAuditReport() {
     page3.drawText(item.item, { x: 48, y: y - 15, size: 7.5, font: fontRegular, color: textDark });
     page3.drawText(item.clause, { x: 235, y: y - 15, size: 7.5, font: fontRegular, color: textGray });
     
-    const isNC = item.status === 'Minor NC';
-    page3.drawText(item.status === 'Minor NC' ? '[!] Minor NC' : '[X] Conforming', {
+    const isNC = item.status.includes('Minor NC');
+    const isOFI = item.status.includes('OFI');
+    page3.drawText(isNC ? '[!] Minor NC' : isOFI ? '[OFI] Improvement' : '[X] Conforming', {
       x: 320,
       y: y - 15,
       size: 7.5,
       font: fontBold,
-      color: isNC ? amberWarning : greenSuccess
+      color: isNC ? amberWarning : isOFI ? primaryRed : greenSuccess
     });
     page3.drawText(item.remarks, { x: 395, y: y - 15, size: 7.5, font: fontRegular, color: textDark });
     y -= rowH;
   }
   y -= 18;
 
-  // Highlight Box: Lead Auditor Verdict (Evidence-based without percentages)
+  // Highlight Box: Lead Auditor Verdict
   page3.drawRectangle({ x: 40, y: y - 48, width: 515, height: 48, color: rgb(0.95, 0.98, 0.95), borderColor: greenSuccess, borderWidth: 1 });
   page3.drawText('AUDIT VERDICT: GENERALLY EFFECTIVE & CONFORMING', { x: 50, y: y - 16, size: 10, font: fontBold, color: greenSuccess });
-  page3.drawText('Audit evidence obtained through document reviews, site inspections, and interviews revealed general conformity to ISO 9001:2015', { x: 50, y: y - 30, size: 8, font: fontRegular, color: textDark });
-  page3.drawText('and ISO 45001:2018. One (1) minor nonconformity was identified concerning first-aid replenishment, and two (2) OFIs were noted.', { x: 50, y: y - 42, size: 8, font: fontRegular, color: textDark });
+  page3.drawText('The audit was conducted successfully, and one non-conformance was identified during the process.', { x: 50, y: y - 30, size: 8, font: fontRegular, color: textDark });
+  page3.drawText('The Organisation has established and maintained its management system in line with the required standards.', { x: 50, y: y - 42, size: 8, font: fontBold, color: textDark });
 
   drawRunningFooter(page3, 3);
 
@@ -450,43 +451,43 @@ async function generateModernAuditReport() {
       clause: 'Clause 4',
       title: 'Context of the Organization (4.1 - 4.4)',
       status: 'Conforming',
-      summary: 'Organization Context, Interested Parties Register, and Scope records are well formulated and aligned to strategic objectives. 16 core QMS processes established without exclusions.'
+      summary: 'The "Interested parties, Risk Matrix, Context of organisation and scope of organisation" among other documents were well formulated with the information therein being well aligned to PROME\'s strategic objectives/operations and needs.'
     },
     {
       clause: 'Clause 5',
       title: 'Leadership & Worker Participation (5.1 - 5.4)',
-      status: 'Conforming',
-      summary: 'Top Management actively demonstrated commitment to continual improvement. Approved IMS Policy is communicated via the website and noticeboard. Roles, responsibilities, and organogram clearly defined.'
+      status: 'Conforming (OFI-2026-02)',
+      summary: 'Top management displayed its commitment to the continued improvement of the IMS. Workers demonstrated awareness of the IMS policy. Note OFI-2026-02 regarding notice board display of the 2026 policy.'
     },
     {
       clause: 'Clause 6',
-      title: 'Planning, HIRA & Quality Objectives (6.1 - 6.3)',
-      status: 'Conforming',
-      summary: 'HIRA studies, Risk Matrix, and legal register are systematically updated per Clause 6.1.3. Quality and OHS objectives/targets monitored with timely feedback per Clause 6.2.2; Q4 performance reports confirm targets achieved.'
+      title: 'Planning, HIRA & Legal Requirements (6.1 - 6.3)',
+      status: 'Conforming with Minor NC',
+      summary: 'HIRA of activities, products, services and workplace hazards well reviewed and documented. Note Minor NC-2026-01 on expired OH&S statutory certificates under Clause 6.1.3 & 9.1.2. Quality and OHS objectives actively monitored.'
     },
     {
       clause: 'Clause 7',
       title: 'Support, Resources & Competence (7.1 - 7.5)',
       status: 'Conforming',
-      summary: 'Survey calibration certificates valid up until 2028 per Clause 7.1.5. Communication Matrix (PROME-QSR-AFD-20) current and approved. Job descriptions and staffing plans in place. Note OFI-2026-02 on digital document management.'
+      summary: 'Job descriptions, organogram, and staffing plan in place. Training plan developed and implemented. Survey calibration certificates valid until 2028. Communication Matrix well documented, current and approved.'
     },
     {
       clause: 'Clause 8',
-      title: 'Operation, Service Delivery & OHS (8.1 - 8.7)',
-      status: 'Conforming with Minor NC',
-      summary: 'EOIs and RFPs properly managed. Quality assurance plans and progress meetings conducted. Emergency parking strictly enforced. Note Minor NC-2026-01 on first-aid replenishment controls, and OFI-2026-01 on escape map contacts.'
+      title: 'Operation, Service Delivery & External Providers (8.1 - 8.7)',
+      status: 'Conforming (OFI-2026-01)',
+      summary: 'EOIs and RFPs properly managed. QA plans and progress meetings conducted. Fleet vehicles in emergency park mode. Note OFI-2026-01 regarding issuance of supplier evaluation forms under Clause 8.4.1.'
     },
     {
       clause: 'Clause 9',
-      title: 'Performance Evaluation & Compliance (9.1 - 9.3)',
+      title: 'Performance Evaluation & Monitoring (9.1 - 9.3)',
       status: 'Conforming',
-      summary: 'Internal audit successfully executed per approved schedule. Evaluation of legal compliance conducted per Clause 9.1.2. Management review meetings conducted with recorded decisions and action items.'
+      summary: 'Q2 performance reports confirm objectives and targets achieved. Workplace inspections and hazard identification checklists maintained. Internal audit conducted successfully.'
     },
     {
       clause: 'Clause 10',
-      title: 'Continual Improvement (10.1 - 10.3)',
+      title: 'Improvement & Corrective Actions (10.1 - 10.3)',
       status: 'Conforming',
-      summary: 'No major non-conformities identified. Corrective action mechanisms and two targeted opportunities for improvement registered to further strengthen the IMS.'
+      summary: 'One (1) non-conformance identified and two (2) opportunities for improvement recorded to overcome weaknesses and increase efficiency and effectiveness.'
     }
   ];
 
@@ -497,7 +498,8 @@ async function generateModernAuditReport() {
     page4.drawText(`${cb.clause}: ${cb.title}`, { x: 48, y: y - 14, size: 8.5, font: fontBold, color: darkNavy });
     
     const isNC = cb.status.includes('Minor NC');
-    page4.drawText(`[${cb.status}]`, { x: 375, y: y - 14, size: 8, font: fontBold, color: isNC ? amberWarning : greenSuccess });
+    const isOFI = cb.status.includes('OFI');
+    page4.drawText(`[${cb.status}]`, { x: 360, y: y - 14, size: 8, font: fontBold, color: isNC ? amberWarning : isOFI ? primaryRed : greenSuccess });
     let sY = y - 27;
     for (const sl of summaryLines) {
       page4.drawText(sl, { x: 48, y: sY, size: 8, font: fontRegular, color: textDark });
@@ -509,24 +511,23 @@ async function generateModernAuditReport() {
   drawRunningFooter(page4, 4);
 
   // =========================================================================
-  // PAGE 5: DETAILED POSITIVE OBSERVATIONS & STATUTORY COMPLIANCE EVIDENCE
+  // PAGE 5: POSITIVE OBSERVATIONS (VERBATIM FROM ORIGINAL REPORT)
   // =========================================================================
   currentPageNumber++;
   const page5 = pdfDoc.addPage([595.28, 841.89]);
   drawRunningHeader(page5);
   y = 780;
 
-  page5.drawText('7. DETAILED POSITIVE OBSERVATIONS & STATUTORY COMPLIANCE', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
+  page5.drawText('7. POSITIVE OBSERVATIONS IDENTIFIED DURING AUDIT', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
   page5.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 18;
 
   // IMS
-  page5.drawText('A. Integrated Management System (IMS) Strengths:', { x: 40, y, size: 9, font: fontBold, color: primaryRed });
+  page5.drawText('A. Integrated Management System (IMS):', { x: 40, y, size: 9, font: fontBold, color: primaryRed });
   y -= 14;
   const imsObs = [
-    'Quality and OHS objectives and targets were actively monitored, with timely feedback provided by respective division deputies responsible for implementation.',
-    'A review of the Q4 performance reports indicated that the set strategic and departmental objectives and targets were being achieved.',
-    'Head office premises were maintained in clean and orderly condition, and the corporate compound was exceptionally well maintained.'
+    'Quality and OHS objectives and targets were being monitored and timely feedback was being provided by the respective division deputies responsible for implementation.',
+    'Review of the Q2 performance reports indicated that the set objectives and targets were being achieved.'
   ];
   for (const obs of imsObs) {
     page5.drawText('*', { x: 48, y, size: 8, font: fontBold, color: primaryRed });
@@ -536,12 +537,13 @@ async function generateModernAuditReport() {
   y -= 8;
 
   // OHS
-  page5.drawText('B. Occupational Health & Safety (OHS) Operational Strengths:', { x: 40, y, size: 9, font: fontBold, color: primaryRed });
+  page5.drawText('B. Occupational Health & Safety (OHS):', { x: 40, y, size: 9, font: fontBold, color: primaryRed });
   y -= 14;
   const ohsObs = [
-    'The organisation\'s hazard identification and risk analysis (HIRA) of its activities, products, and services under its control and influence, along with associated impacts to people, had been thoroughly reviewed and documented per ISO 45001:2018 Clause 6.1.2.1.',
-    'Workplace inspections and hazard identification checklists were systematically maintained, ensuring early identification and control of workplace risks.',
-    'Fleet safety culture: All company and visitor vehicles were observed parked in emergency / reverse mode at all times.'
+    'The organisation\'s hazard identification and risk analysis of its activities, products and services under its control and influence, and their associated impacts to people had been well reviewed and documented.',
+    'Workplace inspections and hazard identification checklists were being maintained, ensuring systematic identification and control of workplace risks.',
+    'All vehicles were being parked in emergency mode.',
+    '1st Aid boxes and fire extinguishers were conveniently placed in readily accessible areas.'
   ];
   for (const obs of ohsObs) {
     page5.drawText('*', { x: 48, y, size: 8, font: fontBold, color: primaryRed });
@@ -550,20 +552,20 @@ async function generateModernAuditReport() {
   }
   y -= 8;
 
-  // QMS & Statutory Compliance Evidence
-  page5.drawText('C. Quality Management & Statutory Compliance Obligations:', { x: 40, y, size: 9, font: fontBold, color: primaryRed });
+  // QMS
+  page5.drawText('C. Quality Management System (QMS):', { x: 40, y, size: 9, font: fontBold, color: primaryRed });
   y -= 14;
   const qmsObs = [
-    'Statutory Legal Compliance Obligations: Compliance with statutory obligations was verified through actual records and certificates, including: (1) Uganda Revenue Authority (URA) Tax Clearance Certificate (TCC); (2) Ministry of Gender, Labour and Social Development OHS Workplace Registration Certificate (Reg. No. OSH 22-00288); (3) Kampala Capital City Authority (KCCA) Annual Trading License (License No. 20231195983); (4) National Social Security Fund (NSSF) Clearance Certificate; (5) Public Procurement and Disposal of Public Assets (PPDA) Register of Providers; and (6) Regular evaluation of compliance records maintained under ISO 45001:2018 Clause 6.1.3 and Clause 9.1.2.',
-    'Professional Industry Standing (Supporting Evidence): As supporting evidence of professional competence and industry standing, PROME maintained active corporate membership in the Uganda Association of Consulting Engineers (UACE) and individual staff registrations with the Engineers Registration Board (ERB).',
-    'Job descriptions, corporate organogram, and staffing plan were in place, ensuring role clarity and deployment of an adequate workforce to support IMS performance.',
-    'Expressions of interest (EOIs) and requests for proposals (RFPs) were properly managed, supporting transparent and structured project acquisition processes.',
-    'Quality assurance plans and progress review meetings were regularly conducted, facilitating systematic project monitoring and quality control.',
-    'The Interested Parties Register, Risk Matrix, Organization Context, and Scope were well formulated with information closely aligned to PROME\'s strategic objectives and operational needs.',
-    'The Communication Matrix (PROME-QSR-AFD-20) was well documented, current, and approved. Workers demonstrated clear awareness of communication channels.',
-    'Workers interviewed demonstrated awareness and familiarity with the approved IMS policy, which is openly communicated via the website and notice board.',
-    'Supplier Master List was well documented, current, and approved.',
-    'Survey and measuring equipment calibration certificates were verified to be valid up until 2028.'
+    'Job descriptions, organogram and staffing plan were in place, ensuring role clarity and deployment of adequate workers force to support IMS performance.',
+    'Audit reports were available, legal register was updated and organisation-maintained membership in relevant industry bodies demonstrating active legal compliance management.',
+    'Expressions of interest (EOIs) and requests for proposals (RFPs) were properly managed, supporting transparent project acquisition processes.',
+    'Quality assurance plans and progress meetings were being conducted, facilitating systematic project monitoring and control.',
+    'The "Interested parties, Risk Matrix, Context of organisation and scope of organisation" among other documents were well formulated with the information therein being well aligned to PROME\'s strategic objectives/operations and needs.',
+    'The Communication Matrix was well documented, current and approved. Workers were aware of the communication procedures.',
+    'The Training Plan had been developed and was being implemented.',
+    'Workers interviewed demonstrated awareness and familiarity with the approved IMS policy which is communicated through the company website and on the notice board.',
+    'Supplier Master list well documented, current and approved.',
+    'Calibration certificates were valid up until 2028.'
   ];
   for (const obs of qmsObs) {
     page5.drawText('*', { x: 48, y, size: 8, font: fontBold, color: primaryRed });
@@ -658,42 +660,20 @@ async function generateModernAuditReport() {
 
     page6.drawRectangle({ x: 40, y: y - rowH, width: 515, height: rowH, color: rgb(1, 1, 1), borderColor: lineGray, borderWidth: 0.5 });
     
-    // Project & Client
-    let rY = y - 14;
-    for (const rl of refLines) {
-      const isClient = rl.startsWith('Client:');
-      page6.drawText(rl, { x: 46, y: rY, size: 7.5, font: isClient ? fontRegular : fontBold, color: isClient ? textGray : darkNavy });
-      rY -= 10;
-    }
+    let curY = y - 14;
+    for (const l of refLines) { page6.drawText(l, { x: 46, y: curY, size: 7, font: fontBold, color: darkNavy }); curY -= 10; }
     
-    // Process
-    let prY = y - 14;
-    for (const prl of procLines) {
-      page6.drawText(prl, { x: 154, y: prY, size: 7.5, font: fontRegular, color: textDark });
-      prY -= 10;
-    }
+    curY = y - 14;
+    for (const l of procLines) { page6.drawText(l, { x: 154, y: curY, size: 7, font: fontRegular, color: textDark }); curY -= 10; }
     
-    // Docs
-    let dY = y - 14;
-    for (const dl of docLines) {
-      page6.drawText(dl, { x: 248, y: dY, size: 7.5, font: fontRegular, color: textDark });
-      dY -= 10;
-    }
+    curY = y - 14;
+    for (const l of docLines) { page6.drawText(l, { x: 248, y: curY, size: 7, font: fontRegular, color: textDark }); curY -= 10; }
     
-    // Clause
-    let cY = y - 14;
-    for (const cl of clauseLines) {
-      page6.drawText(cl, { x: 392, y: cY, size: 7.5, font: fontBold, color: primaryRed });
-      cY -= 10;
-    }
+    curY = y - 14;
+    for (const l of clauseLines) { page6.drawText(l, { x: 392, y: curY, size: 7, font: fontBold, color: primaryRed }); curY -= 10; }
     
-    // Finding
-    let fY = y - 14;
-    for (const fl of findLines) {
-      const isConf = fl.startsWith('Conforming');
-      page6.drawText(fl, { x: 460, y: fY, size: 7.5, font: isConf ? fontBold : fontRegular, color: isConf ? greenSuccess : textDark });
-      fY -= 10;
-    }
+    curY = y - 14;
+    for (const l of findLines) { page6.drawText(l, { x: 460, y: curY, size: 7, font: fontRegular, color: textDark }); curY -= 10; }
     
     y -= rowH;
   }
@@ -701,17 +681,17 @@ async function generateModernAuditReport() {
   drawRunningFooter(page6, 6);
 
   // =========================================================================
-  // PAGE 7: SECTION 9 - NONCONFORMITY REPORT FORM (ISO 45001:2018 CLAUSE 8.2)
+  // PAGE 7: SECTION 9 - NONCONFORMITY REPORT FORM (ISO 45001:2018 CLAUSE 6.1.3 & 9.1.2)
   // =========================================================================
   currentPageNumber++;
   const page7 = pdfDoc.addPage([595.28, 841.89]);
   drawRunningHeader(page7);
 
   // Top Title above Form Box
-  page7.drawText('Non-conformance 1 of 1: Emergency Preparedness & First-Aid Controls', {
+  page7.drawText('Non-conformance 1 of 1: Timely Renewal of Statutory OH&S Certificates', {
     x: 40,
     y: 778,
-    size: 13,
+    size: 12,
     font: fontBold,
     color: darkNavy
   });
@@ -725,10 +705,10 @@ async function generateModernAuditReport() {
   // Header bar inside Box 1
   page7.drawRectangle({ x: formLeft, y: 747, width: formWidth, height: 18, color: tableBg, borderColor: lineGray, borderWidth: 0.5 });
   page7.drawText('System requirements:', { x: 48, y: 752, size: 8.5, font: fontBold, color: darkNavy });
-  page7.drawText('ISO 45001:2018, requirements clause 8.2 Emergency Preparedness and Response', {
+  page7.drawText('ISO 45001:2018, requirements clause 6.1.3 (Legal and other requirements) and clause 9.1.2 (Evaluation of compliance)', {
     x: 75,
     y: 733,
-    size: 8.5,
+    size: 8,
     font: fontRegular,
     color: textDark
   });
@@ -739,30 +719,36 @@ async function generateModernAuditReport() {
   page7.drawText('Non-', { x: 88, y: 703, size: 12, font: fontBold, color: rgb(1, 1, 1) });
   page7.drawText('conformance', { x: 62, y: 688, size: 12, font: fontBold, color: rgb(1, 1, 1) });
 
-  // Right cell: Statement
+  // Right cell: Statement (Exact wording from original report)
   page7.drawRectangle({ x: formLeft + 135, y: 675, width: formWidth - 135, height: 50, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
-  page7.drawText('Emergency preparedness and first-aid replenishment controls were insufficiently maintained.', {
+  page7.drawText('The OH&S certificates reviewed during the audit had expired, indicating a lapse in the timely', {
     x: 185,
-    y: 696,
-    size: 9,
+    y: 704,
+    size: 8.5,
+    font: fontBold,
+    color: darkNavy
+  });
+  page7.drawText('renewal and maintenance of statutory certification requirements.', {
+    x: 185,
+    y: 690,
+    size: 8.5,
     font: fontBold,
     color: darkNavy
   });
 
   // Box 3: Observations / facts (height 75, from 675 down to 600)
   page7.drawRectangle({ x: formLeft, y: 600, width: formWidth, height: 75, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
-  // Header bar inside Box 3
   page7.drawRectangle({ x: formLeft, y: 657, width: formWidth, height: 18, color: tableBg, borderColor: lineGray, borderWidth: 0.5 });
   page7.drawText('This is based on the following observations/facts:', { x: 48, y: 662, size: 8.5, font: fontBold, color: darkNavy });
   
-  page7.drawText('At the time of audit the primary first-aid box in the head office facility contained expired first-aid consumables.', {
+  page7.drawText('At the time of the audit, statutory occupational health and safety certificates had exceeded their validity period', {
     x: 75,
     y: 642,
     size: 8,
     font: fontRegular,
     color: textDark
   });
-  page7.drawText('Inspection revealed that consumables had not been verified against expiry dates or replenished per procedure.', {
+  page7.drawText('without completed renewal evidence on file, showing a lapse in statutory compliance tracking and renewal lead time.', {
     x: 75,
     y: 630,
     size: 8,
@@ -774,7 +760,7 @@ async function generateModernAuditReport() {
   page7.drawLine({ start: { x: formLeft, y: 618 }, end: { x: formLeft + formWidth, y: 618 }, thickness: 0.5, color: lineGray });
   page7.drawText('Due date:', { x: 105, y: 606, size: 8, font: fontBold, color: textDark });
   page7.drawRectangle({ x: 150, y: 603, width: 75, height: 13, color: rgb(0.93, 0.95, 0.97) });
-  page7.drawText('2026-11-15', { x: 158, y: 606, size: 8, font: fontBold, color: primaryRed });
+  page7.drawText('2026-06-30', { x: 158, y: 606, size: 8, font: fontBold, color: primaryRed });
 
   page7.drawText('Lead auditor:', { x: 300, y: 606, size: 8, font: fontBold, color: textDark });
   page7.drawRectangle({ x: 360, y: 603, width: 120, height: 13, color: rgb(0.93, 0.95, 0.97) });
@@ -786,7 +772,6 @@ async function generateModernAuditReport() {
 
   // Box 4: What is the root cause (height 185, from 597 down to 412)
   page7.drawRectangle({ x: formLeft, y: 412, width: formWidth, height: 185, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
-  // Header bar
   page7.drawRectangle({ x: formLeft, y: 567, width: formWidth, height: 30, color: rgb(0.90, 0.93, 0.96), borderColor: lineGray, borderWidth: 0.5 });
   page7.drawText('What is the root cause for the non-conformance: (For company use. The complete report shall be returned)', {
     x: 46,
@@ -795,7 +780,7 @@ async function generateModernAuditReport() {
     font: fontBold,
     color: darkNavy
   });
-  page7.drawText('Describe the weakness of the management system leading to the nonconformity. The root cause is the basis for corrective action taken to avoid the non-conformance to recur.', {
+  page7.drawText('Describe the weakness of the management system leading to the nonconformity. The root cause is the basis for corrective action taken to avoid recurrence.', {
     x: 46,
     y: 572,
     size: 6.8,
@@ -807,21 +792,21 @@ async function generateModernAuditReport() {
   page7.drawText('Root Cause Analysis: 5-Why Methodology Applied', { x: 75, y: 554, size: 7.5, font: fontBold, color: rgb(0.1, 0.4, 0.7) });
 
   page7.drawText('1 Why -', { x: 75, y: 541, size: 7.5, font: fontBold, color: primaryRed });
-  page7.drawText('Answer: Why did expired supplies remain in the kit? Consumables were not checked or replenished upon expiry.', { x: 120, y: 541, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Answer: Why were expired OH&S certificates on file? Renewal submissions were not initiated prior to expiration.', { x: 120, y: 541, size: 7.5, font: fontRegular, color: textDark });
 
   page7.drawText('2. Why -', { x: 75, y: 527, size: 7.5, font: fontBold, color: primaryRed });
-  page7.drawText('Answer: Why were they not checked? No recurring monthly first-aid inspection schedule was formally assigned.', { x: 120, y: 527, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Answer: Why were renewals not initiated in advance? Certificate expiry dates were not systematically flagged with lead time.', { x: 120, y: 527, size: 7.5, font: fontRegular, color: textDark });
 
   page7.drawText('3. Why -', { x: 75, y: 513, size: 7.5, font: fontBold, color: primaryRed });
-  page7.drawText('Answer: Why was there no schedule? Replenishment was handled informally without a documented checklist.', { x: 120, y: 513, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Answer: Why was there no advance reminder? The statutory register lacked automated expiration notification intervals.', { x: 120, y: 513, size: 7.5, font: fontRegular, color: textDark });
 
   page7.drawText('4. Why -', { x: 75, y: 499, size: 7.5, font: fontBold, color: primaryRed });
-  page7.drawText('Answer: Why was it informal? Emergency preparedness procedure (Clause 8.2) lacked a standard first-aid checklist.', { x: 120, y: 499, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Answer: Why were notification intervals absent? Compliance procedure lacked mandatory lead-time protocol for processing delays.', { x: 120, y: 499, size: 7.5, font: fontRegular, color: textDark });
 
   page7.drawText('5. Why -', { x: 75, y: 485, size: 7.5, font: fontBold, color: primaryRed });
-  page7.drawText('Answer: Management system weakness: The OHSMS lacked a systematic verification control for emergency supplies.', { x: 120, y: 485, size: 7.5, font: fontBold, color: darkNavy });
+  page7.drawText('Answer: System Weakness: The IMS lacked an automated statutory renewal tracking & early-warning alert trigger mechanism.', { x: 120, y: 485, size: 7.5, font: fontBold, color: darkNavy });
 
-  page7.drawText('Historical practice: Previously first-aid supplies were procured as an ad-hoc administrative task rather than scheduled OHS compliance.', {
+  page7.drawText('Historical practice: Tracking relied on ad-hoc manual reviews rather than automated calendar alert notifications.', {
     x: 75,
     y: 468,
     size: 7.5,
@@ -831,7 +816,6 @@ async function generateModernAuditReport() {
 
   // Box 5: Corrective actions implemented (height 145, from 412 down to 267)
   page7.drawRectangle({ x: formLeft, y: 267, width: formWidth, height: 145, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
-  // Header bar
   page7.drawRectangle({ x: formLeft, y: 387, width: formWidth, height: 25, color: rgb(0.90, 0.93, 0.96), borderColor: lineGray, borderWidth: 0.5 });
   page7.drawText('Corrective actions implemented: (For company use. The complete report shall be returned)', {
     x: 46,
@@ -850,19 +834,19 @@ async function generateModernAuditReport() {
 
   // Content inside Box 5:
   page7.drawText('Immediate action:', { x: 75, y: 374, size: 7.5, font: fontBold, color: primaryRed });
-  page7.drawText('Expired first-aid consumables were immediately disposed of and the kit was fully replenished with certified supplies.', { x: 75, y: 362, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Submitted formal application and documentation for expedited renewal of all expired statutory OH&S certificates.', { x: 75, y: 362, size: 7.5, font: fontRegular, color: textDark });
 
-  page7.drawText('Final action:', { x: 75, y: 348, size: 7.5, font: fontBold, color: darkNavy });
-  page7.drawText('Standard First-Aid Inspection & Replenishment Checklist (Form PROME-OHS-FAC-01) instituted and assigned to OHS Officer.', { x: 75, y: 336, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Final action (Systemic):', { x: 75, y: 348, size: 7.5, font: fontBold, color: darkNavy });
+  page7.drawText('Integrated statutory certificates into IMS automated compliance calendar with mandatory 60-day and 30-day renewal alerts.', { x: 75, y: 336, size: 7.5, font: fontRegular, color: textDark });
 
   page7.drawText('Future action (Preventive Action):', { x: 75, y: 322, size: 7.5, font: fontBold, color: darkNavy });
-  page7.drawText('Monthly replenishment verification incorporated into quarterly Management Review Meetings and safety walkthroughs.', { x: 75, y: 310, size: 7.5, font: fontRegular, color: textDark });
+  page7.drawText('Instituted quarterly legal compliance evaluation audits (Clause 9.1.2) to verify current validity of all permits and licenses.', { x: 75, y: 310, size: 7.5, font: fontRegular, color: textDark });
 
   // Sub-row inside Box 5: Date and Name
   page7.drawLine({ start: { x: formLeft, y: 287 }, end: { x: formLeft + formWidth, y: 287 }, thickness: 0.5, color: lineGray });
   page7.drawText('Date:', { x: 130, y: 274, size: 8, font: fontBold, color: textDark });
   page7.drawRectangle({ x: 160, y: 271, width: 75, height: 13, color: rgb(0.93, 0.95, 0.97) });
-  page7.drawText('2026-11-15', { x: 170, y: 274, size: 8, font: fontBold, color: primaryRed });
+  page7.drawText('2026-06-30', { x: 170, y: 274, size: 8, font: fontBold, color: primaryRed });
 
   page7.drawText('Name:', { x: 300, y: 274, size: 8, font: fontBold, color: textDark });
   page7.drawRectangle({ x: 340, y: 271, width: 170, height: 13, color: rgb(0.93, 0.95, 0.97) });
@@ -874,7 +858,6 @@ async function generateModernAuditReport() {
 
   // Box 6: Corrective actions verified by Lead auditor (height 75, from 264 down to 189)
   page7.drawRectangle({ x: formLeft, y: 189, width: formWidth, height: 75, color: rgb(1, 1, 1), borderColor: darkNavy, borderWidth: 1 });
-  // Header bar
   page7.drawRectangle({ x: formLeft, y: 246, width: formWidth, height: 18, color: rgb(0.95, 0.95, 0.96), borderColor: lineGray, borderWidth: 0.5 });
   page7.drawText('Corrective actions verified by Lead auditor (for Lead Auditor):', { x: 46, y: 251, size: 8, font: fontBold, color: darkNavy });
 
@@ -897,7 +880,7 @@ async function generateModernAuditReport() {
   page7.drawLine({ start: { x: formLeft, y: 207 }, end: { x: formLeft + formWidth, y: 207 }, thickness: 0.5, color: lineGray });
   page7.drawText('Approved:', { x: 105, y: 195, size: 8, font: fontBold, color: textDark });
   page7.drawRectangle({ x: 155, y: 192, width: 75, height: 13, color: rgb(0.93, 0.95, 0.97) });
-  page7.drawText('2026-10-27', { x: 165, y: 195, size: 8, font: fontBold, color: greenSuccess });
+  page7.drawText('2026-05-21', { x: 165, y: 195, size: 8, font: fontBold, color: greenSuccess });
 
   page7.drawText('Lead auditor:', { x: 300, y: 195, size: 8, font: fontBold, color: textDark });
   page7.drawRectangle({ x: 360, y: 192, width: 120, height: 13, color: rgb(0.93, 0.95, 0.97) });
@@ -909,18 +892,18 @@ async function generateModernAuditReport() {
   drawRunningFooter(page7, 7);
 
   // =========================================================================
-  // PAGE 8: SECTION 10 - OPPORTUNITIES FOR IMPROVEMENT (OFI) REGISTER
+  // PAGE 8: SECTION 10 - IMS IMPROVEMENTS & OPPORTUNITIES FOR IMPROVEMENT (OFI)
   // =========================================================================
   currentPageNumber++;
   const page8 = pdfDoc.addPage([595.28, 841.89]);
   drawRunningHeader(page8);
   y = 780;
 
-  page8.drawText('10. OPPORTUNITIES FOR IMPROVEMENT (OFI) REGISTER', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
+  page8.drawText('10. IMS IMPROVEMENTS & OPPORTUNITIES FOR IMPROVEMENT (OFI)', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
   page8.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 16;
 
-  page8.drawText('The audit identified two (2) targeted opportunities for improvement to strengthen IMS implementation and operational efficiency:', {
+  page8.drawText('The audit identified two (2) targeted areas for improvement aimed at strengthening compliance and continual improvement:', {
     x: 40,
     y,
     size: 8,
@@ -932,21 +915,21 @@ async function generateModernAuditReport() {
   const ofiItems = [
     {
       num: 'OFI-2026-01',
-      title: 'Emergency Contact Information on Process / Escape Maps',
-      clause: 'ISO 45001:2018 Clause 8.2 (Emergency Preparedness and Response)',
-      dept: 'Administration & OHS / Facilities',
-      target: '30 November 2026',
-      finding: 'Emergency contact telephone numbers were not displayed on the process / escape evacuation route maps posted within the building.',
-      recommendation: 'Including relevant emergency contact numbers (Police, Fire Brigade, Medical Emergency, Facilities Manager) on all escape routes will improve access to essential information and facilitate timely communication during emergency situations, in direct alignment with ISO 45001:2018 Clause 8.2.'
+      title: 'Issuance of Supplier Performance Evaluation Forms',
+      clause: 'ISO 9001:2015 Clause 8.4.1 (Evaluation and Control of External Providers)',
+      dept: 'Procurement / Operational Support & Finance',
+      target: '30 June 2026',
+      finding: 'Supplier evaluation forms had not yet been issued to suppliers at the time of the audit, contrary to the requirements of ISO 9001:2015 Clause 8.4.1 regarding the evaluation and control of external providers.',
+      recommendation: 'Issue supplier performance evaluation questionnaires to all 27 suppliers on the 2026 Approved Supplier Master List (PROME-IMSR-TO-31) and establish an annual supplier evaluation schedule due every November/December to systematically assess supplier reliability, quality, and delivery performance.'
     },
     {
       num: 'OFI-2026-02',
-      title: 'Transition from Printed Documents to Digital Document Management',
-      clause: 'ISO 9001:2015 Clause 7.5 (Documented Information) & Clause 8.1 (Operational Planning)',
-      dept: 'All Divisions / ICT & Quality Assurance',
-      target: '15 December 2026',
-      finding: 'Excessive reliance on printed documents was identified across operating divisions during daily routines.',
-      recommendation: 'An opportunity exists to improve resource efficiency and operational speed by reducing paper consumption and progressively transitioning routine paper workflows to the PROME Intranet / IMS portal, introducing digital approvals, and enforcing electronic document distribution in line with ISO 9001:2015 Clause 7.5 and Clause 8.1.'
+      title: 'Updating Physical Notice Board Display of Quality Policy',
+      clause: 'ISO 9001:2015 Clause 7.5 (Documented Information) & Clause 5.2 (Policy)',
+      dept: 'SAS / Administration & Human Resources',
+      target: '31 May 2026',
+      finding: 'The Quality Policy displayed on the notice board was an outdated 2025 version, indicating inadequate control and updating of documented information in line with the requirements of ISO 9001:2015 Clause 7.5 and ISO 9001:2015 Clause 5.2.',
+      recommendation: 'Immediately remove the outdated 2025 version and display the approved 2026 Integrated Management System Policy signed by the Managing Director Ronald Kibuuka on all corporate notice boards and common areas; incorporate notice board content reviews into monthly 5S/IMS inspection checklists.'
     }
   ];
 
@@ -974,80 +957,79 @@ async function generateModernAuditReport() {
   // Guidance Box at bottom of Page 8
   page8.drawRectangle({ x: 40, y: y - 75, width: 515, height: 75, color: rgb(0.97, 0.98, 1), borderColor: darkNavy, borderWidth: 0.8 });
   page8.drawText('OFI IMPLEMENTATION & CONTINUAL IMPROVEMENT TRACKING:', { x: 48, y: y - 16, size: 8.5, font: fontBold, color: darkNavy });
-  const ofiGuide = 'Opportunities for Improvement describe conditions that are currently conforming but where management system efficiency and operational control can be enhanced to prevent future non-conformance. Action plans and progress against these recommendations shall be reviewed by the Management Representative (MR) during the forthcoming Q1 2027 Management Review Meeting (MRM) to ensure continual system advancement in line with ISO 9001:2015 Clause 10.3.';
+  const ofiGuide = 'Opportunities for Improvement describe conditions that are currently conforming but where management system efficiency and operational control can be enhanced to prevent future non-conformance. Action plans and progress against these recommendations shall be reviewed by the Management Representative (MR) during forthcoming Management Review Meetings (MRM) to ensure continual system advancement in line with ISO 9001:2015 Clause 10.3.';
   drawWrappedText(page8, ofiGuide, 48, y - 30, 495, 7.5, fontRegular, textDark, 11);
 
   drawRunningFooter(page8, 8);
 
   // =========================================================================
-  // PAGE 9: APPENDIX 1 - APPROVED INTERNAL AUDIT PLAN & TIMETABLE
+  // PAGE 9: AUDIT CONCLUSION & APPENDIX 1 - AUDIT PLAN
   // =========================================================================
   currentPageNumber++;
   const page9 = pdfDoc.addPage([595.28, 841.89]);
   drawRunningHeader(page9);
   y = 780;
 
-  page9.drawText('APPENDIX 1 -- INTERNAL AUDIT PLAN & TIMETABLE', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
+  page9.drawText('11. AUDIT CONCLUSION', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
   page9.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 16;
 
-  page9.drawText('Approved schedule for the Internal Audit conducted on 27th October 2026 at PROME Consultants Limited.', {
-    x: 40,
-    y,
-    size: 8,
-    font: fontOblique,
-    color: textGray
-  });
-  y -= 18;
+  const conclusionText = 'The audit identified a few areas for improvement and one non-conformance, aimed at strengthening compliance and continual improvement of the IMS.\n\nThis report therefore, records the results of the internal audit findings and recommendations, looking at possible ways in which the operations could be improved to overcome identified weaknesses so as to increase the efficiency and effectiveness of the System.';
+  y = drawWrappedText(page9, conclusionText, 40, y, 515, 8.5, fontRegular, textDark, 12.5);
+  y -= 16;
+
+  page9.drawText('APPENDIX 1 -- INTERNAL AUDIT PLAN', { x: 40, y, size: 11, font: fontBold, color: darkNavy });
+  page9.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
+  y -= 16;
 
   // Timetable Table Header
   page9.drawRectangle({ x: 40, y: y - 20, width: 515, height: 20, color: darkNavy, borderColor: darkNavy, borderWidth: 1 });
   page9.drawText('Time', { x: 48, y: y - 14, size: 8, font: fontBold, color: rgb(1, 1, 1) });
-  page9.drawText('Subject / ISO Clauses Evaluated', { x: 105, y: y - 14, size: 8, font: fontBold, color: rgb(1, 1, 1) });
-  page9.drawText('Auditees / Participants', { x: 380, y: y - 14, size: 8, font: fontBold, color: rgb(1, 1, 1) });
+  page9.drawText('Subject', { x: 105, y: y - 14, size: 8, font: fontBold, color: rgb(1, 1, 1) });
+  page9.drawText('Participants', { x: 380, y: y - 14, size: 8, font: fontBold, color: rgb(1, 1, 1) });
   y -= 20;
 
   const planRows = [
     {
-      time: '0900 hrs',
-      subject: 'Opening Meeting\n- Audit scope, objectives, methodology, and confirmation of schedule.',
-      participants: 'All PROME Workers\nLead Auditor & Audit Team'
+      time: '0900',
+      subject: 'Opening Meeting',
+      participants: 'All Prome workers'
     },
     {
-      time: '1000 hrs',
-      subject: 'Top Management Session\n- Leadership and commitment (QMS) 5.1.1\n- Customer focus 5.1.2 | Quality policy 5.2.1\n- Planning to achieve quality objectives 6.2.2\n- General improvement 10.1\n- Understanding the organisation and its context 4.1\n- Understanding needs & expectations of interested parties 4.2\n- Actions to address risks and opportunities 6.1.1',
-      participants: 'Eng. Ronald Kibuuka (MD)\nElizabeth Nampewo (PDMD)\nStephanie Canowira (CPSD)'
+      time: '10am',
+      subject: 'Top Management\n- Leadership and commitment (qms) 5.1.1\n- Customer focus 5.1.2\n- Quality policy 5.2.1\n- Planning to achieve quality objectives 6.2.2.1\n- General improvement 10.1\n- Understanding the organisation and its context 4.1\n- Understanding the needs and expectations of interested parties 4.2\n- Actions to address risks and opportunities 6.1.1',
+      participants: 'MD, Elizabeth (PDMD), Stephanie (CPSD)'
     },
     {
-      time: '1100 hrs',
-      subject: 'System Design and Control\n- Determining the scope of the QMS 4.3\n- Resources 7.1.1 - 7.1.6\n- Competence 7.2 | Awareness 7.3\n- Communication 7.4 | Documented Information 7.5',
-      participants: 'Human Resource (HRAD)\nQuality & Regulatory Assurance\nDocument Controller'
+      time: '1100',
+      subject: 'System Design and Control\n- Determining the scope of the QMS 4.3\n- Resources 7.1.1 - 7.1.6\n- Competence 7.2\n- Awareness 7.3\n- Communication 7.4',
+      participants: 'Human Resource, RA'
     },
     {
-      time: '1300 hrs',
-      subject: 'Lunch Break & Auditor Preliminary Caucus',
-      participants: 'All Staff / Audit Team'
+      time: '1300',
+      subject: 'Lunch',
+      participants: 'All participants'
     },
     {
-      time: '1400 hrs',
-      subject: 'Operational Support & Engineering Execution\n- Organisational roles, responsibilities, authorities 5.3\n- People 7.1.2 | Infrastructure 7.1.3 | Environment 7.1.4\n- Organisational knowledge 7.1.6 | Service delivery 8.5',
-      participants: 'Human Resource, RA,\nDivision Process Owners,\nProject Engineers'
+      time: '1400',
+      subject: 'Operational Support\n- Organisational roles, responsibilities, authorities 5.3\n- People 7.1.2\n- Infrastructure 7.1.3\n- Environment 7.1.4\n- Organisational knowledge 7.1.6',
+      participants: 'Human Resource, RA, Process Owners'
     },
     {
-      time: '1600 hrs',
-      subject: 'OHS & Legal Compliance Session\n- Leadership and worker participation 5.4\n- Identification of legal and other requirements 6.1.3\n- Hierarchy of controls 8.1.2 | Evaluation of compliance 9.1.2',
-      participants: 'Philippa Arinaitwe (Lead Auditor)\nSafety Committee Members\nFacilities Officer'
+      time: '1600',
+      subject: 'OHS\n- Leadership and worker participation 5.4\n- Identification of legal and other requirements 6.1.2.3\n- Hierarchy of controls 8.1.2\n- Evaluation of compliance 9.1.4',
+      participants: 'Philippa Arinaitwe'
     },
     {
-      time: '1800 hrs',
-      subject: 'Closing Meeting\n- Presentation of audit summary, positive observations, minor NC, and OFIs.\n- Formal lead auditor conclusion and management sign-off.',
-      participants: 'All PROME Workers\nManaging Director & MR'
+      time: '1800',
+      subject: 'Closing meeting',
+      participants: 'All Prome workers'
     }
   ];
 
   for (const pr of planRows) {
     const isBig = pr.subject.includes('\n');
-    const rowH = pr.time === '1000 hrs' ? 95 : isBig ? 45 : 24;
+    const rowH = pr.time === '10am' ? 100 : isBig ? 55 : 24;
     page9.drawRectangle({ x: 40, y: y - rowH, width: 515, height: rowH, color: rgb(1, 1, 1), borderColor: lineGray, borderWidth: 0.5 });
     page9.drawText(pr.time, { x: 48, y: y - 15, size: 8, font: fontBold, color: primaryRed });
     drawWrappedText(page9, pr.subject, 105, y - 15, 265, 7.5, fontRegular, textDark, 11);
@@ -1065,7 +1047,7 @@ async function generateModernAuditReport() {
   drawRunningHeader(page10);
   y = 780;
 
-  page10.drawText('APPENDIX 2 -- ATTENDANCE RECORD: OPENING MEETING (27 OCT 2026)', { x: 40, y, size: 10.5, font: fontBold, color: darkNavy });
+  page10.drawText('APPENDIX 2 -- ATTENDANCE RECORD: OPENING MEETING (21 MAY 2026)', { x: 40, y, size: 10.5, font: fontBold, color: darkNavy });
   page10.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 14;
 
@@ -1098,11 +1080,11 @@ async function generateModernAuditReport() {
   drawRunningHeader(page11);
   y = 780;
 
-  page11.drawText('APPENDIX 2 -- ATTENDANCE RECORD: CLOSING MEETING (27 OCT 2026)', { x: 40, y, size: 10.5, font: fontBold, color: darkNavy });
+  page11.drawText('APPENDIX 2 -- ATTENDANCE RECORD: CLOSING MEETING (21 MAY 2026)', { x: 40, y, size: 10.5, font: fontBold, color: darkNavy });
   page11.drawLine({ start: { x: 40, y: y - 4 }, end: { x: 555, y: y - 4 }, thickness: 1, color: primaryRed });
   y -= 14;
 
-  page11.drawText('Form Ref: PROME-QSR-ADF-20 (Internal Audit Attendance Form, Version No: 00) -- Scanned Original with MD Sign-off', {
+  page11.drawText('Form Ref: PROME-QSR-ADF-20 (Internal Audit Attendance Form, Version No: 00) -- Scanned Original with Signatures', {
     x: 40,
     y,
     size: 7.5,
@@ -1193,12 +1175,24 @@ async function generateModernAuditReport() {
 
   const pdfFileName = 'PROME-AUD-2026-001_Modern_ISO_Audit_Report.pdf';
   const pdfAltFileName = 'PROME-IMSR-PMBDD-11_Audit_Report_04.pdf';
+  const pdfOfficialFileName = 'PROME-MSR-PMBDD-11_Audit_Report_04.pdf';
   const outPath = path.join(outDir, pdfFileName);
   const outAltPath = path.join(outDir, pdfAltFileName);
+  const outOfficialPath = path.join(outDir, pdfOfficialFileName);
 
   const pdfBytes = await pdfDoc.save();
   fs.writeFileSync(outPath, pdfBytes);
   fs.writeFileSync(outAltPath, pdfBytes);
+  fs.writeFileSync(outOfficialPath, pdfBytes);
+
+  // Also copy to public/uploads/audit-reports/ so static serving works seamlessly
+  const publicOutDir = path.join(__dirname, '../../../public/uploads/audit-reports');
+  if (!fs.existsSync(publicOutDir)) {
+    fs.mkdirSync(publicOutDir, { recursive: true });
+  }
+  fs.writeFileSync(path.join(publicOutDir, pdfFileName), pdfBytes);
+  fs.writeFileSync(path.join(publicOutDir, pdfAltFileName), pdfBytes);
+  fs.writeFileSync(path.join(publicOutDir, pdfOfficialFileName), pdfBytes);
 
   console.log(`[Audit Report] Generated PDF successfully (${pdfBytes.length} bytes, ${totalPages} pages).`);
   console.log(`[Audit Report] Saved to: ${outPath}`);
@@ -1209,8 +1203,11 @@ async function generateModernAuditReport() {
     pdfAltPath: outAltPath,
     reportPdfUrl: `/uploads/audit-reports/${pdfFileName}`,
     reportPdfAltUrl: `/uploads/audit-reports/${pdfAltFileName}`,
+    reportPdfOfficialUrl: `/uploads/audit-reports/${pdfOfficialFileName}`,
     pdfBytesLength: pdfBytes.length
   };
 }
 
-generateModernAuditReport().catch(console.error);
+if (require.main === module) {
+  generateModernAuditReport().catch(console.error);
+}

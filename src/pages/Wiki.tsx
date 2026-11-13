@@ -8,6 +8,9 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Underline } from '@tiptap/extension-underline';
 import { Link } from '@tiptap/extension-link';
+import Highlight from '@tiptap/extension-highlight';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -208,7 +211,17 @@ const Wiki: React.FC = () => {
       StarterKit,
       Underline,
       DocumentSection,
-      Link.configure({ openOnClick: false }),
+      Link.configure({ 
+        openOnClick: true,
+        autolink: true,
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer'
+        }
+      }),
+      Highlight.configure({ multicolor: true }),
+      TextStyle,
+      Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
@@ -221,6 +234,23 @@ const Wiki: React.FC = () => {
       },
     },
   });
+
+  useEffect(() => {
+    if (folders && folders.length > 0) {
+      if (expandedFolders.size === 0) {
+        const allFolderIds = new Set<number>(folders.map((f: any) => f.id));
+        setExpandedFolders(allFolderIds);
+      }
+      if (!activePageId) {
+        // Automatically select the master ISO 9001 page or first available page
+        const isoFolder = folders.find((f: any) => f.name.includes('ISO 9001')) || folders[0];
+        if (isoFolder?.pages?.length > 0) {
+          const masterPage = isoFolder.pages.find((p: any) => p.title.includes('Mapping') || p.title.includes('Requirements')) || isoFolder.pages[0];
+          setActivePageId(masterPage.id);
+        }
+      }
+    }
+  }, [folders, activePageId, expandedFolders.size]);
 
   useEffect(() => {
     if (activePage && editor) {
@@ -464,7 +494,23 @@ const Wiki: React.FC = () => {
               <div style={{ position: 'sticky', top: 0, zIndex: 10, width: '100%', maxWidth: '800px', backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderLeft: '1px solid #e2e8f0' }}>
                 <MenuBar editor={editor} onInsertSection={() => setSectionModalOpen(true)} />
               </div>
-              <div style={{ width: '100%', paddingBottom: '4rem' }}>
+              <div 
+                style={{ width: '100%', paddingBottom: '4rem' }}
+                onClick={(e) => {
+                  const anchor = (e.target as HTMLElement).closest('a');
+                  if (anchor && anchor.href) {
+                    e.preventDefault();
+                    const href = anchor.getAttribute('href');
+                    if (href) {
+                      if (href.startsWith('http')) {
+                        window.open(href, '_blank', 'noopener,noreferrer');
+                      } else {
+                        window.open(href, '_blank');
+                      }
+                    }
+                  }
+                }}
+              >
                 <EditorContent editor={editor} />
               </div>
             </div>

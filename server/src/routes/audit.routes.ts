@@ -563,4 +563,23 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
+// 12. Seed or update Audit Report No. 04 (21st May 2026 - PROME-MSR-PMBDD-11)
+router.post('/sync-report-04', async (req, res) => {
+  try {
+    const { generateModernAuditReport } = await import('../scripts/generateModernAuditReport');
+    const genResult = await generateModernAuditReport();
+    const { updateAuditRecord } = await import('../scripts/updateDatabaseAudit1');
+    const dbResult = await updateAuditRecord();
+    res.json({
+      success: true,
+      message: 'Audit Report No. 04 generated and synchronized successfully',
+      genResult,
+      dbResult
+    });
+  } catch (error: any) {
+    console.error('Error syncing Audit Report 04:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

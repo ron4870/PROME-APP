@@ -773,3 +773,73 @@ a:hover {
   margin: 1.5rem 0;
   background: white;
 }
+
+/* PROME Wiki & ISO Standards Custom Styles */
+.ProseMirror a, .wiki-link {
+  color: #0284c7 !important;
+  text-decoration: underline !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: color 0.15s ease-in-out;
+}
+.ProseMirror a:hover, .wiki-link:hover {
+  color: #0369a1 !important;
+  text-decoration: underline !important;
+}
+
+.wiki-pending-highlight, mark[data-color="#fef08a"], .ProseMirror mark {
+  background-color: #fef08a !important;
+  color: #854d0e !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+  border: 1px solid #facc15 !important;
+  display: inline-block !important;
+  margin: 2px 0 !important;
+}
+
+.wiki-pending-box {
+  background-color: #fef9c3 !important;
+  border: 1px solid #facc15 !important;
+  border-left: 6px solid #eab308 !important;
+  border-radius: 6px !important;
+  padding: 12px 18px !important;
+  margin: 14px 0 !important;
+  color: #713f12 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.wiki-compliant-badge {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+  border: 1px solid #86efac !important;
+  font-size: 0.85em !important;
+  display: inline-block !important;
+  margin: 2px 0 !important;
+}
+
+.wiki-iso-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.88rem;
+}
+.wiki-iso-table th {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+}
+.wiki-iso-table td {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+.wiki-iso-table tr:nth-child(even) {
+  background-color: #f8fafc;
+}

@@ -6,7 +6,17 @@ import {
   PROME_INTERESTED_PARTIES,
   PROME_COMMUNICATION_MATRIX,
   PROME_QMS_SCOPE_RECORD,
-  PROME_CONTINUAL_IMPROVEMENT_RECORD
+  PROME_CONTINUAL_IMPROVEMENT_RECORD,
+  getContextFactors,
+  saveContextFactors,
+  addContextFactor,
+  updateContextFactor,
+  deleteContextFactor,
+  getInterestedParties,
+  saveInterestedParties,
+  addInterestedParty,
+  updateInterestedParty,
+  deleteInterestedParty
 } from '../services/iso-prome-records';
 
 const router = Router();
@@ -17,12 +27,128 @@ const prisma = new PrismaClient();
 // ==========================================
 router.get('/official-documents', authenticateToken, async (req, res) => {
   res.json({
-    contextFactors: PROME_CONTEXT_FACTORS,
-    interestedParties: PROME_INTERESTED_PARTIES,
+    contextFactors: getContextFactors(),
+    interestedParties: getInterestedParties(),
     communicationMatrix: PROME_COMMUNICATION_MATRIX,
     scopeRecord: PROME_QMS_SCOPE_RECORD,
     continualImprovement: PROME_CONTINUAL_IMPROVEMENT_RECORD
   });
+});
+
+// Update an official context factor
+router.put('/factors/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = updateContextFactor(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Context factor not found' });
+    }
+
+    // Also sync to DB issue if present
+    try {
+      const issueNumber = `ORG-ISS-${id}`;
+      const existing = await prisma.organizationIssue.findUnique({ where: { issueNumber } });
+      if (existing) {
+        await prisma.organizationIssue.update({
+          where: { issueNumber },
+          data: {
+            title: updated.context,
+            type: updated.type,
+            factor: updated.factorCategory,
+            description: `${updated.aspectFromContext}\n\nMitigation Action: ${updated.mitigationAction}\nReviewer: ${updated.followUpAndReviewBy} (Target: ${updated.followUpDate})\nResult: ${updated.followUpResults}`
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('DB sync warning for factor:', e);
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating context factor:', error);
+    res.status(500).json({ error: error.message || 'Failed to update context factor' });
+  }
+});
+
+// Add a new context factor
+router.post('/factors', authenticateToken, async (req, res) => {
+  try {
+    const created = addContextFactor(req.body);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error adding context factor:', error);
+    res.status(500).json({ error: error.message || 'Failed to add context factor' });
+  }
+});
+
+// Delete a context factor
+router.delete('/factors/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = deleteContextFactor(id);
+    res.json({ success });
+  } catch (error: any) {
+    console.error('Error deleting context factor:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete context factor' });
+  }
+});
+
+// Update an official interested party
+router.put('/parties-official/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = updateInterestedParty(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Interested party not found' });
+    }
+
+    // Also sync to DB party if present
+    try {
+      const partyNumber = `ORG-PTY-${id}`;
+      const existing = await prisma.interestedParty.findUnique({ where: { partyNumber } });
+      if (existing) {
+        await prisma.interestedParty.update({
+          where: { partyNumber },
+          data: {
+            name: updated.name,
+            type: updated.category,
+            needsAndExpectations: `Control/Influence: ${updated.ipToCompany} (Company to IP: ${updated.companyToIp}) | Priority: ${updated.prioritization}\nAction: ${updated.actionToManageIp}\nReviewer: ${updated.followUpAndReviewBy} (Target: ${updated.followUpDate})\nResult: ${updated.followUpResults}`,
+            complianceObligation: updated.prioritization === 'P1'
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('DB sync warning for party:', e);
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating interested party:', error);
+    res.status(500).json({ error: error.message || 'Failed to update interested party' });
+  }
+});
+
+// Add a new official interested party
+router.post('/parties-official', authenticateToken, async (req, res) => {
+  try {
+    const created = addInterestedParty(req.body);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error adding interested party:', error);
+    res.status(500).json({ error: error.message || 'Failed to add interested party' });
+  }
+});
+
+// Delete an official interested party
+router.delete('/parties-official/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = deleteInterestedParty(id);
+    res.json({ success });
+  } catch (error: any) {
+    console.error('Error deleting interested party:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete interested party' });
+  }
 });
 
 // Seed live database tables with official PROME ISO records
@@ -32,47 +158,43 @@ router.post('/seed-official', authenticateToken, async (req, res) => {
     const ownerId = adminUser ? adminUser.id : null;
 
     let issuesCreated = 0;
-    const existingIssuesCount = await prisma.organizationIssue.count();
-    if (existingIssuesCount < 5) {
-      for (const item of PROME_CONTEXT_FACTORS) {
-        const issueNumber = `ORG-ISS-${item.id}`;
-        const existing = await prisma.organizationIssue.findUnique({ where: { issueNumber } });
-        if (!existing) {
-          await prisma.organizationIssue.create({
-            data: {
-              issueNumber,
-              title: item.context,
-              type: item.type,
-              factor: item.factorCategory,
-              description: `${item.aspectFromContext}\n\nMitigation Action: ${item.mitigationAction}\nReviewer: ${item.followUpAndReviewBy} (Target: ${item.followUpDate})\nResult: ${item.followUpResults}`,
-              impact: item.type === 'Internal' ? 'Risk' : 'Both',
-              ownerId
-            }
-          });
-          issuesCreated++;
-        }
+    const currentFactors = getContextFactors();
+    for (const item of currentFactors) {
+      const issueNumber = `ORG-ISS-${item.id}`;
+      const existing = await prisma.organizationIssue.findUnique({ where: { issueNumber } });
+      if (!existing) {
+        await prisma.organizationIssue.create({
+          data: {
+            issueNumber,
+            title: item.context,
+            type: item.type,
+            factor: item.factorCategory,
+            description: `${item.aspectFromContext}\n\nMitigation Action: ${item.mitigationAction}\nReviewer: ${item.followUpAndReviewBy} (Target: ${item.followUpDate})\nResult: ${item.followUpResults}`,
+            impact: item.type === 'Internal' ? 'Risk' : 'Both',
+            ownerId
+          }
+        });
+        issuesCreated++;
       }
     }
 
     let partiesCreated = 0;
-    const existingPartiesCount = await prisma.interestedParty.count();
-    if (existingPartiesCount < 5) {
-      for (const p of PROME_INTERESTED_PARTIES) {
-        const partyNumber = `ORG-PTY-${p.id}`;
-        const existing = await prisma.interestedParty.findUnique({ where: { partyNumber } });
-        if (!existing) {
-          await prisma.interestedParty.create({
-            data: {
-              partyNumber,
-              name: p.name,
-              type: p.category,
-              needsAndExpectations: `Control/Influence: ${p.ipToCompany} (Company to IP: ${p.companyToIp}) | Priority: ${p.prioritization}\nAction: ${p.actionToManageIp}\nReviewer: ${p.followUpAndReviewBy} (Target: ${p.followUpDate})\nResult: ${p.followUpResults}`,
-              complianceObligation: p.prioritization === 'P1',
-              ownerId
-            }
-          });
-          partiesCreated++;
-        }
+    const currentParties = getInterestedParties();
+    for (const p of currentParties) {
+      const partyNumber = `ORG-PTY-${p.id}`;
+      const existing = await prisma.interestedParty.findUnique({ where: { partyNumber } });
+      if (!existing) {
+        await prisma.interestedParty.create({
+          data: {
+            partyNumber,
+            name: p.name,
+            type: p.category,
+            needsAndExpectations: `Control/Influence: ${p.ipToCompany} (Company to IP: ${p.companyToIp}) | Priority: ${p.prioritization}\nAction: ${p.actionToManageIp}\nReviewer: ${p.followUpAndReviewBy} (Target: ${p.followUpDate})\nResult: ${p.followUpResults}`,
+            complianceObligation: p.prioritization === 'P1',
+            ownerId
+          }
+        });
+        partiesCreated++;
       }
     }
 
@@ -136,6 +258,46 @@ router.post('/issues', authenticateToken, async (req, res) => {
   }
 });
 
+// Update a custom org issue
+router.put('/issues/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, type, factor, description, impact, status, ownerId } = req.body;
+
+    const updated = await prisma.organizationIssue.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(type !== undefined && { type }),
+        ...(factor !== undefined && { factor }),
+        ...(description !== undefined && { description }),
+        ...(impact !== undefined && { impact }),
+        ...(status !== undefined && { status }),
+        ...(ownerId !== undefined && { ownerId: ownerId ? Number(ownerId) : null })
+      }
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating org issue:', error);
+    res.status(500).json({ error: 'Failed to update organization issue' });
+  }
+});
+
+// Delete a custom org issue
+router.delete('/issues/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.organizationIssue.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting org issue:', error);
+    res.status(500).json({ error: 'Failed to delete organization issue' });
+  }
+});
+
 // ==========================================
 // INTERESTED PARTIES (Clause 4.2)
 // ==========================================
@@ -180,6 +342,45 @@ router.post('/parties', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error creating interested party:', error);
     res.status(500).json({ error: 'Failed to create interested party' });
+  }
+});
+
+// Update a custom interested party
+router.put('/parties/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, needsAndExpectations, complianceObligation, status, ownerId } = req.body;
+
+    const updated = await prisma.interestedParty.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(type !== undefined && { type }),
+        ...(needsAndExpectations !== undefined && { needsAndExpectations }),
+        ...(complianceObligation !== undefined && { complianceObligation: complianceObligation === true }),
+        ...(status !== undefined && { status }),
+        ...(ownerId !== undefined && { ownerId: ownerId ? Number(ownerId) : null })
+      }
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating interested party:', error);
+    res.status(500).json({ error: 'Failed to update interested party' });
+  }
+});
+
+// Delete a custom interested party
+router.delete('/parties/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.interestedParty.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting interested party:', error);
+    res.status(500).json({ error: 'Failed to delete interested party' });
   }
 });
 

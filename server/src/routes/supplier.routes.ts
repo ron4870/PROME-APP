@@ -1,16 +1,38 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
+import { seedSuppliersMasterlist } from '../scripts/seedSuppliersMasterlist2026';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Seed 2026 Approved Suppliers Master List (PROME-IMSR-TO-31)
+router.post('/seed-2026', authenticateToken, async (req, res) => {
+  try {
+    await seedSuppliersMasterlist();
+    const count = await prisma.supplier.count();
+    res.json({ success: true, count, message: `Successfully seeded ${count} approved suppliers for 2026 (PROME-IMSR-TO-31).` });
+  } catch (error: any) {
+    console.error('Failed to seed suppliers:', error);
+    res.status(500).json({ error: error.message || 'Failed to seed suppliers' });
+  }
+});
+
 // Get all suppliers
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const suppliers = await prisma.supplier.findMany({
-      orderBy: { nextEvaluationDate: 'asc' }
+    let suppliers = await prisma.supplier.findMany({
+      orderBy: { supplierNumber: 'asc' }
     });
+
+    // Auto-seed if empty
+    if (suppliers.length === 0) {
+      await seedSuppliersMasterlist();
+      suppliers = await prisma.supplier.findMany({
+        orderBy: { supplierNumber: 'asc' }
+      });
+    }
+
     res.json(suppliers);
   } catch (error) {
     console.error('Failed to fetch suppliers:', error);

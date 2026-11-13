@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Search, Calendar, CheckCircle, Clock, Sparkles, Trash2, ShieldCheck } from 'lucide-react';
+import { Plus, Search, Calendar, CheckCircle, Clock, Sparkles, Trash2, ShieldCheck, FileText } from 'lucide-react';
 
 interface Audit {
   id: number;
@@ -57,6 +57,25 @@ const AuditDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'list'|'schedule'>('list');
   const [currentYear] = useState(new Date().getFullYear());
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [syncingReport04, setSyncingReport04] = useState(false);
+
+  const handleSyncReport04 = async () => {
+    setSyncingReport04(true);
+    try {
+      const res = await fetch('/api/audits/sync-report-04', { method: 'POST' });
+      if (res.ok) {
+        alert('Audit Report No. 04 (21st May 2026 - PROME-MSR-PMBDD-11) synchronized successfully!');
+        fetchAudits();
+      } else {
+        const err = await res.json();
+        alert('Failed to sync Audit Report 04: ' + (err.error || 'Server error'));
+      }
+    } catch (e: any) {
+      alert('Error syncing Audit Report 04: ' + e.message);
+    } finally {
+      setSyncingReport04(false);
+    }
+  };
 
   const handleDeleteAudit = async (id: number, auditNumber: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete audit "${auditNumber}"?\n\nThis will remove all associated interview responses, questions, uploaded evidence files, findings, and compiled reports. This action cannot be undone.`)) {
@@ -281,6 +300,27 @@ const AuditDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
             className="btn" 
+            onClick={handleSyncReport04}
+            disabled={syncingReport04}
+            title="Generate and synchronize Audit Report No. 04 (21st May 2026)"
+            style={{ 
+              backgroundColor: '#0f172a', 
+              color: '#ffffff', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              padding: '0.6rem 1.2rem', 
+              borderRadius: '8px', 
+              fontWeight: 600,
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              cursor: syncingReport04 ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <FileText size={18} style={{ color: '#ef4444' }} />
+            {syncingReport04 ? 'Syncing...' : 'Sync Report No. 04'}
+          </button>
+          <button 
+            className="btn" 
             onClick={() => navigate('/iso-compliance-matrix')}
             style={{ 
               backgroundColor: '#1e293b', 
@@ -402,6 +442,7 @@ const AuditDashboard: React.FC = () => {
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditor</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Auditees</th>
                   <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Findings</th>
+                  <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600 }}>Report</th>
                   {isAdmin && (
                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: 600, textAlign: 'right' }}>Actions</th>
                   )}
@@ -410,7 +451,7 @@ const AuditDashboard: React.FC = () => {
               <tbody>
                 {filteredAudits.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>No audits scheduled yet.</td>
+                    <td colSpan={isAdmin ? 10 : 9} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>No audits scheduled yet.</td>
                   </tr>
                 ) : (
                   filteredAudits.map(audit => (
@@ -435,6 +476,34 @@ const AuditDashboard: React.FC = () => {
                       </td>
                       <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontWeight: 600 }}>
                         {audit._count?.findings || 0}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                        {audit.reportPdfUrl ? (
+                          <a
+                            href={audit.reportPdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '5px 10px',
+                              backgroundColor: '#fef2f2',
+                              color: '#cc0000',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              textDecoration: 'none'
+                            }}
+                            title="Download Official Audit Report PDF"
+                          >
+                            <FileText size={14} />
+                            Report PDF
+                          </a>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '12px' }}>--</span>
+                        )}
                       </td>
                       {isAdmin && (
                         <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
