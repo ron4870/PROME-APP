@@ -788,22 +788,22 @@ const ManagementReviewDetails: React.FC = () => {
       const purposeCard = document.createElement('div');
       purposeCard.style.border = '1px solid #cbd5e1';
       purposeCard.style.borderRadius = '8px';
-      purposeCard.style.padding = '20px';
+      purposeCard.style.padding = '14px 18px';
       purposeCard.style.backgroundColor = '#ffffff';
 
       const purposeTitle = document.createElement('h2');
-      purposeTitle.style.fontSize = '16px';
+      purposeTitle.style.fontSize = '14px';
       purposeTitle.style.fontWeight = 'bold';
       purposeTitle.style.color = '#1e293b';
       purposeTitle.style.borderBottom = '1px solid #e2e8f0';
-      purposeTitle.style.paddingBottom = '8px';
-      purposeTitle.style.margin = '0 0 12px 0';
+      purposeTitle.style.paddingBottom = '6px';
+      purposeTitle.style.margin = '0 0 8px 0';
       purposeTitle.innerText = 'Purpose of Management Review Meeting';
 
       const purposeText = document.createElement('div');
-      purposeText.style.fontSize = '13px';
+      purposeText.style.fontSize = '12px';
       purposeText.style.color = '#334155';
-      purposeText.style.lineHeight = '1.5';
+      purposeText.style.lineHeight = '1.45';
       purposeText.innerText = review.purpose || 'To evaluate overall QMS effectiveness...';
 
       purposeCard.appendChild(purposeTitle);
@@ -814,24 +814,28 @@ const ManagementReviewDetails: React.FC = () => {
       const agendaCard = document.createElement('div');
       agendaCard.style.border = '1px solid #cbd5e1';
       agendaCard.style.borderRadius = '8px';
-      agendaCard.style.padding = '20px';
+      agendaCard.style.padding = '14px 18px';
       agendaCard.style.backgroundColor = '#ffffff';
 
       const agendaTitle = document.createElement('h2');
-      agendaTitle.style.fontSize = '16px';
+      agendaTitle.style.fontSize = '14px';
       agendaTitle.style.fontWeight = 'bold';
       agendaTitle.style.color = '#1e293b';
       agendaTitle.style.borderBottom = '1px solid #e2e8f0';
-      agendaTitle.style.paddingBottom = '8px';
-      agendaTitle.style.margin = '0 0 12px 0';
-      agendaTitle.innerText = 'Agenda';
+      agendaTitle.style.paddingBottom = '6px';
+      agendaTitle.style.margin = '0 0 8px 0';
+      agendaTitle.innerText = 'Meeting Agenda (ISO 9001:2015 & ISO 45001:2018 Clause 9.3)';
 
       const agendaList = document.createElement('ol');
       agendaList.style.margin = '0';
-      agendaList.style.paddingLeft = '20px';
-      agendaList.style.fontSize = '13px';
+      agendaList.style.paddingLeft = '18px';
+      agendaList.style.fontSize = '11.5px';
       agendaList.style.color = '#334155';
-      agendaList.style.lineHeight = '1.6';
+      agendaList.style.lineHeight = '1.4';
+      agendaList.style.display = 'grid';
+      agendaList.style.gridTemplateColumns = 'repeat(2, 1fr)';
+      agendaList.style.columnGap = '20px';
+      agendaList.style.rowGap = '3px';
 
       orderedSections.forEach((section) => {
         const item = document.createElement('li');
@@ -844,32 +848,38 @@ const ManagementReviewDetails: React.FC = () => {
       agendaCard.appendChild(agendaList);
       page1Content.appendChild(agendaCard);
 
-      // Attendees
+      // Attendees (Multi-column so all attendees fit cleanly on Page 1)
       const attendeesCard = document.createElement('div');
       attendeesCard.style.border = '1px solid #cbd5e1';
       attendeesCard.style.borderRadius = '8px';
-      attendeesCard.style.padding = '20px';
+      attendeesCard.style.padding = '14px 18px';
       attendeesCard.style.backgroundColor = '#ffffff';
 
       const attendeesTitle = document.createElement('h2');
-      attendeesTitle.style.fontSize = '16px';
+      attendeesTitle.style.fontSize = '14px';
       attendeesTitle.style.fontWeight = 'bold';
       attendeesTitle.style.color = '#1e293b';
       attendeesTitle.style.borderBottom = '1px solid #e2e8f0';
-      attendeesTitle.style.paddingBottom = '8px';
-      attendeesTitle.style.margin = '0 0 12px 0';
-      attendeesTitle.innerText = 'List of Attendees';
+      attendeesTitle.style.paddingBottom = '6px';
+      attendeesTitle.style.margin = '0 0 8px 0';
+      attendeesTitle.innerText = `List of Attendees (${review.attendees.length})`;
 
       const attendeesList = document.createElement('div');
-      attendeesList.style.display = 'flex';
-      attendeesList.style.flexDirection = 'column';
-      attendeesList.style.gap = '6px';
-      attendeesList.style.fontSize = '13px';
+      attendeesList.style.display = 'grid';
+      // Dynamically select 2 or 3 columns based on attendee count so they fit nicely
+      const colCount = review.attendees.length >= 8 ? 3 : 2;
+      attendeesList.style.gridTemplateColumns = `repeat(${colCount}, 1fr)`;
+      attendeesList.style.columnGap = '16px';
+      attendeesList.style.rowGap = '4px';
+      attendeesList.style.fontSize = '11.5px';
       attendeesList.style.color = '#334155';
 
       review.attendees.forEach((attendee, index) => {
         const item = document.createElement('div');
         item.style.fontWeight = '500';
+        item.style.whiteSpace = 'nowrap';
+        item.style.overflow = 'hidden';
+        item.style.textOverflow = 'ellipsis';
         item.innerText = `${index + 1}. ${attendee.name}`;
         attendeesList.appendChild(item);
       });
@@ -1410,7 +1420,17 @@ const ManagementReviewDetails: React.FC = () => {
                       <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
                         Agenda
                       </h2>
-                      <ol style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.9rem', color: '#334155', lineHeight: '1.4' }}>
+                      <ol style={{ 
+                        margin: 0, 
+                        paddingLeft: '1.25rem', 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                        columnGap: '1.5rem', 
+                        rowGap: '0.35rem', 
+                        fontSize: '0.9rem', 
+                        color: '#334155', 
+                        lineHeight: '1.4' 
+                      }}>
                         {orderedSections.map((section) => (
                           <li key={section.key} style={{ fontWeight: '500' }}>
                             {section.label}
@@ -1424,21 +1444,25 @@ const ManagementReviewDetails: React.FC = () => {
                       className="card print-only" 
                       style={{ 
                         backgroundColor: 'white', 
-                        padding: '1.5rem', 
+                        padding: '1.25rem 1.5rem', 
                         borderRadius: '8px', 
                         border: '1px solid #cbd5e1',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '0.75rem'
+                        gap: '0.6rem'
                       }}
                     >
-                      <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', color: '#1e293b', margin: 0 }}>
-                        List of Attendees
+                      <h2 style={{ fontSize: '1.15rem', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.4rem', color: '#1e293b', margin: 0 }}>
+                        List of Attendees ({review.attendees.length})
                       </h2>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: review.attendees.length >= 8 ? 'repeat(auto-fill, minmax(220px, 1fr))' : 'repeat(2, 1fr)', 
+                        gap: '0.4rem 1rem' 
+                      }}>
                         {review.attendees.map((attendee, index) => (
-                          <div key={attendee.id} style={{ fontSize: '0.95rem', color: '#334155', fontWeight: '500' }}>
+                          <div key={attendee.id} style={{ fontSize: '0.92rem', color: '#334155', fontWeight: '500' }}>
                             {index + 1}. {attendee.name}
                           </div>
                         ))}
