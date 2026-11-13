@@ -25,6 +25,7 @@ export interface InterestedPartyItem {
   id: string;
   category: 'External' | 'Internal';
   name: string;
+  needsAndExpectations?: string;
   ipToCompany: string; // "Control", "Influence", "Influence & Control"
   companyToIp: string; // "Control", "Influence", "Control & Influence"
   prioritization: 'P1' | 'P2' | 'P3'; // P1=High, P2=Medium, P3=Low
@@ -32,6 +33,7 @@ export interface InterestedPartyItem {
   followUpAndReviewBy: string;
   followUpDate: string;
   followUpResults: string;
+  records?: string;
 }
 
 export interface CommunicationItem {
@@ -196,130 +198,136 @@ export const PROME_CONTEXT_FACTORS: ContextFactorItem[] = [
   }
 ];
 
-// 2. Clause 4.2 Interested Parties Mapping (PROME-QSP-CSVM-21, Rev 05)
+// 2. Clause 4.2 Interested Parties Mapping (PROME-IMSR-CPSD-25 / PROME-QSP-CSVM-21, Rev 06, Jan 2026)
 export const PROME_INTERESTED_PARTIES: InterestedPartyItem[] = [
   // External Interested Parties
   {
     id: 'EXT-IP-01',
     category: 'External',
-    name: '1. Clients (e.g., UNRA, KCCA, NSSF, NWSC, MoWT)',
+    name: '1. Clients (like MOWT, UNRA, KCCA, ERA, MOLHUD)',
+    needsAndExpectations: 'Services provided in accordance with contract and to the highest professional standards',
     ipToCompany: 'Control',
     companyToIp: 'Influence',
     prioritization: 'P1',
-    actionToManageIp: 'Maintain focus to client requirements; Perform services strictly to Client specifications; Frequently monitor customer satisfaction.',
-    followUpAndReviewBy: 'Cyrus Kibuuka / Eng. Bruno S. Musoke / Eng. P.J. Ludigo',
-    followUpDate: '2023-07-17',
-    followUpResults: 'Quarterly client satisfaction surveys and structured project progress meetings conducted.'
+    actionToManageIp: 'Maintain focus to client’s requirements; Perform services to Client’s specification; Frequently monitor customer satisfaction',
+    followUpAndReviewBy: 'Cyrus Kibuuka / Eng. Godfrey Ssambwa / Eng. P.J. Ludigo',
+    followUpDate: '31/1/2026',
+    followUpResults: 'Customers were generally satisfied as per survey',
+    records: 'Customer Satisfaction Surveys'
   },
   {
     id: 'EXT-IP-02',
     category: 'External',
-    name: '2. Government & Statutory Authorities (e.g., URA, NEMA, MoWT, UNBS)',
+    name: '2. Government Regulators / Enforcers',
+    needsAndExpectations: 'Compliance with legal requirements: KCCA (Occupational permits, waste mgt), MOL (OHAS Mgt), Min. Gender Labour (Certificate of Registration of workplace), URA (Taxation), NSSF (Social Contributions), Min. of Internal Affairs (work permits)',
     ipToCompany: 'Control',
     companyToIp: 'Influence',
     prioritization: 'P1',
-    actionToManageIp: 'Compliance with statutory & regulatory requirements (e.g. Work permits, NEMA environmental certificates, building codes).',
-    followUpAndReviewBy: 'Gertrude Nakiyaga',
-    followUpDate: '2023-07-13',
-    followUpResults: 'Statutory compliance register (PROME-REG-LEG-01) monitored monthly.'
+    actionToManageIp: 'Compliance with Statutory & regulatory requirements e.g. Work permit, registration certificates',
+    followUpAndReviewBy: 'Gertrude Nakiyaga / Philippa Arinaitwe',
+    followUpDate: '31/1/2026',
+    followUpResults: 'Compliance acheived',
+    records: 'Compliance Register'
   },
   {
     id: 'EXT-IP-03',
     category: 'External',
-    name: '3. Suppliers & Vendors',
+    name: '3. Suppliers',
+    needsAndExpectations: 'Business from the company; Compliance with supply contracts',
     ipToCompany: 'Influence',
     companyToIp: 'Control',
     prioritization: 'P2',
-    actionToManageIp: 'Regular supplier evaluations against quality, delivery timeliness, and commercial terms.',
-    followUpAndReviewBy: 'Jackie Logose',
-    followUpDate: '2023-07-23',
-    followUpResults: 'Approved vendor register maintained with annual re-evaluations.'
+    actionToManageIp: 'Regular supplier evaluations; Adhoc engagements with suppliers; Compliance with contracts',
+    followUpAndReviewBy: 'Hope Nahamya',
+    followUpDate: '31/1/2026',
+    followUpResults: 'Suppliers fulfilled requirements',
+    records: 'Supplier Evaluation'
   },
   {
     id: 'EXT-IP-04',
     category: 'External',
-    name: '4. Other Engineering Consultants (Local & International JV Partners)',
-    ipToCompany: 'Influence & Control',
+    name: '4. Business Partners (Other Consultants both local and international) and Contractors',
+    needsAndExpectations: 'Compliance with JV/Sub consultancy contractual obligations; Provision of OHS compliant local office premises and facilities; Continued partnership',
+    ipToCompany: 'Control & Influence',
     companyToIp: 'Control & Influence',
     prioritization: 'P2',
-    actionToManageIp: 'Maintaining strong professional relationships with peer Engineering Consultants; Continuous performance review of subconsultants.',
-    followUpAndReviewBy: 'Eng. Bruno S. Musoke',
-    followUpDate: '2023-07-13',
-    followUpResults: 'JV partnership agreements and subconsultant review protocols executed.'
+    actionToManageIp: 'Professional management of JV/sub-consultancy Contracts; Review of contractual performance of the contractual parties',
+    followUpAndReviewBy: 'Eng. Patrick Ludigo / Jacinta Nakanwagi',
+    followUpDate: 'Continuous',
+    followUpResults: 'Partnerships were successful',
+    records: 'JV and Sub consultancy agreements; Records of review; Payment Records'
   },
   {
     id: 'EXT-IP-05',
     category: 'External',
-    name: '5. Contractors & Construction Firms',
+    name: '5. Community',
+    needsAndExpectations: 'Timely delivery of projects; Minimum disruption to property, travel and business; Minimized pollution to the environment; Access to project-related jobs and business opportunities; Minimized exposure to accidents; Good waste disposal & Cleanliness',
     ipToCompany: 'Influence',
-    companyToIp: 'Control',
+    companyToIp: 'Influence',
     prioritization: 'P2',
-    actionToManageIp: 'Rigorous review of site works, material testing, shop drawings, and supervision logs.',
-    followUpAndReviewBy: 'Eng. P.J. Ludigo / Eng. Bruno S. Musoke',
-    followUpDate: '2023-07-22',
-    followUpResults: 'Four-eye engineering inspections and QA/QC non-conformance tracking enforced.'
+    actionToManageIp: 'Community Engagement; Undertaking surveillance to ensure compliance with contractual provisions related to Health, safety, environmental and security aspects',
+    followUpAndReviewBy: 'Eng. PJ Ludigo / Jacinta Nakanwagi',
+    followUpDate: '31/1/2026',
+    followUpResults: 'Community engaged stakeholder opinions obtained',
+    records: 'Safeguard surveillance records'
   },
   {
     id: 'EXT-IP-06',
     category: 'External',
-    name: '6. Community & Project Affected Persons',
+    name: '6. Professional Bodies and Trade Associations like FIDIC, UIPE, UACE',
+    needsAndExpectations: 'Conformance to the legal and technical requirements; Continuous professional development; Lobbying for business interests',
     ipToCompany: 'Influence',
     companyToIp: 'Influence',
-    prioritization: 'P1',
-    actionToManageIp: 'Corporate Social Responsibility (CSR) policy, public consultations, and environmental safeguard grievance mechanisms.',
+    prioritization: 'P2',
+    actionToManageIp: 'Participation/contribution to institutional activities; Operation in accordance with professional requirements/recommendations',
     followUpAndReviewBy: 'Cyrus Kibuuka',
-    followUpDate: '2023-07-22',
-    followUpResults: 'Community sensitization workshops and RAP safeguard documentation deployed.'
+    followUpDate: '31/1/2026',
+    followUpResults: 'Suitably subscribed and engaged with professional bodies',
+    records: 'Membership certificates; Engagement Records'
   },
   {
     id: 'EXT-IP-07',
     category: 'External',
-    name: '7. Professional Bodies (FIDIC, UIPE, UACE, ERB)',
-    ipToCompany: 'Control',
-    companyToIp: 'Influence',
-    prioritization: 'P1',
-    actionToManageIp: 'Active participation in institutional activities, engineering ethics compliance, and continuous professional development (CPD).',
-    followUpAndReviewBy: 'Cyrus Kibuuka',
-    followUpDate: '2023-07-14',
-    followUpResults: 'UACE Class-A corporate membership and engineer practicing certificates kept valid.'
+    name: '7. Company Visitors including Customers',
+    needsAndExpectations: 'Safety while within our premises',
+    ipToCompany: 'Influence',
+    companyToIp: 'Control',
+    prioritization: 'P2',
+    actionToManageIp: 'Make PPEs and SOPs available to visitors when required; Brief Visitors on safety protocols on arrival',
+    followUpAndReviewBy: 'Gertrude Nakiyaga',
+    followUpDate: '31/1/2026',
+    followUpResults: 'Safety ensured',
+    records: 'Visitor’s Register; Information boards; Visitor’s Safety Policy'
   },
 
   // Internal Interested Parties
   {
     id: 'INT-IP-01',
     category: 'Internal',
-    name: '1. Management & Shareholders / Owners',
+    name: '1. Top Management',
+    needsAndExpectations: 'Business Profitability; Business Continuity; Brand enhancement',
     ipToCompany: 'Control',
     companyToIp: 'Influence',
     prioritization: 'P1',
-    actionToManageIp: 'Regular review of corporate policies, quality objectives, operational procedures, resource allocation, and profitability.',
-    followUpAndReviewBy: 'Eng. Bruno S. Musoke',
-    followUpDate: '2023-07-13',
-    followUpResults: 'Quarterly board reviews and Management Review meetings conducted.'
+    actionToManageIp: 'Operational performance to meet set quality and OHS targets.',
+    followUpAndReviewBy: 'Eng. Godfrey Ssambwa',
+    followUpDate: 'Continuous',
+    followUpResults: 'Expectations for the year were generally acheived',
+    records: 'Company Performance review reports.'
   },
   {
     id: 'INT-IP-02',
     category: 'Internal',
-    name: '2. Employees & Project Engineers',
+    name: '2. Workers',
+    needsAndExpectations: 'Appropriate remuneration; Recognition of efforts; Participation in decisions concerning them; OHS compliant working environment; Availability of PPE; Prevention & control of Covid-19; Career Development',
     ipToCompany: 'Influence',
     companyToIp: 'Control',
-    prioritization: 'P2',
-    actionToManageIp: 'Continual employee performance appraisals, technical training, competitive remuneration, and a safe, conducive working environment.',
+    prioritization: 'P1',
+    actionToManageIp: 'Effective Leadership; Staff welfare, health surveillance & safety training',
     followUpAndReviewBy: 'Gertrude Nakiyaga',
-    followUpDate: '2023-07-12',
-    followUpResults: 'Annual staff appraisals and engineering training matrices executed.'
-  },
-  {
-    id: 'INT-IP-03',
-    category: 'Internal',
-    name: '3. Work Environment & Infrastructure',
-    ipToCompany: 'Influence',
-    companyToIp: 'Control',
-    prioritization: 'P2',
-    actionToManageIp: 'Carry out regular workplace health, safety, and environmental inspections and ergonomic assessments.',
-    followUpAndReviewBy: 'Philippa Arinaitwe / Gertrude Nakiyaga',
-    followUpDate: '2023-07-11',
-    followUpResults: 'Workplace safety inspections, fire drill simulations, and hygiene audits active.'
+    followUpDate: 'Continuous',
+    followUpResults: 'Workers needs and feedback obtained and considered',
+    records: 'Workers Opinion Survey; Executive Orders; Memos; PPE Distribution records; Training Records; Payroll; Accident/Incident Register; MRMs'
   }
 ];
 

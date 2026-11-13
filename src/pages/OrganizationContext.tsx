@@ -15,8 +15,12 @@ import {
   Search,
   Printer,
   ExternalLink,
-  Network
+  Network,
+  Download
 } from 'lucide-react';
+import { generateScopeOfOrganizationPDF } from '../utils/scopeOfOrganizationPdf';
+import { generateContextOfOrganizationPDF } from '../utils/contextOfOrganizationPdf';
+import { generateInterestedPartiesPDF } from '../utils/interestedPartiesPdf';
 
 interface OrgIssue {
   id: number;
@@ -58,13 +62,15 @@ interface InterestedPartyRecord {
   id: string;
   category: 'External' | 'Internal';
   name: string;
-  ipToCompany: 'High' | 'Medium' | 'Low';
-  companyToIp: 'High' | 'Medium' | 'Low';
+  needsAndExpectations?: string;
+  ipToCompany: 'High' | 'Medium' | 'Low' | string;
+  companyToIp: 'High' | 'Medium' | 'Low' | string;
   prioritization: 'P1' | 'P2' | 'P3';
   actionToManageIp: string;
   followUpAndReviewBy: string;
   followUpDate: string;
   followUpResults: string;
+  records?: string;
 }
 
 interface CommunicationItem {
@@ -153,6 +159,50 @@ const OrganizationContext: React.FC = () => {
   const [pType, setPType] = useState('External');
   const [pNeeds, setPNeeds] = useState('');
   const [pCompliance, setPCompliance] = useState(false);
+
+  // PDF Export States & Handlers
+  const [isExportingScope, setIsExportingScope] = useState(false);
+  const [isExportingContext, setIsExportingContext] = useState(false);
+  const [isExportingParties, setIsExportingParties] = useState(false);
+
+  const handleExportScopePdf = () => {
+    setIsExportingScope(true);
+    try {
+      const doc = generateScopeOfOrganizationPDF();
+      doc.save('PROME_Scope_of_the_Organization_2026.pdf');
+    } catch (error) {
+      console.error('Failed to export Scope PDF:', error);
+      alert('Failed to generate Scope of the Organization PDF');
+    } finally {
+      setIsExportingScope(false);
+    }
+  };
+
+  const handleExportContextPdf = () => {
+    setIsExportingContext(true);
+    try {
+      const doc = generateContextOfOrganizationPDF();
+      doc.save('PROME_Context_of_the_Organization_2026.pdf');
+    } catch (error) {
+      console.error('Failed to export Context PDF:', error);
+      alert('Failed to generate Context of the Organization PDF');
+    } finally {
+      setIsExportingContext(false);
+    }
+  };
+
+  const handleExportPartiesPdf = () => {
+    setIsExportingParties(true);
+    try {
+      const doc = generateInterestedPartiesPDF();
+      doc.save('PROME_Interested_Parties_2026.pdf');
+    } catch (error) {
+      console.error('Failed to export Interested Parties PDF:', error);
+      alert('Failed to generate Interested Parties PDF');
+    } finally {
+      setIsExportingParties(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -346,7 +396,73 @@ const OrganizationContext: React.FC = () => {
         </div>
 
         {/* ACTIONS */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <button 
+            className="btn btn-outline"
+            onClick={handleExportScopePdf}
+            disabled={isExportingScope}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              fontSize: '0.85rem', 
+              padding: '0.55rem 1rem',
+              backgroundColor: '#fff',
+              borderColor: '#991b1b',
+              color: '#991b1b',
+              fontWeight: 600,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              cursor: 'pointer'
+            }}
+            title="Export updated multi-page Scope of the Organization PDF with charts, flowchart & links (ISO 9001/45001 Clause 4.3)"
+          >
+            <Download size={16} /> {isExportingScope ? 'Generating Scope...' : 'Export Scope PDF'}
+          </button>
+
+          <button 
+            className="btn btn-outline"
+            onClick={handleExportContextPdf}
+            disabled={isExportingContext}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              fontSize: '0.85rem', 
+              padding: '0.55rem 1rem',
+              backgroundColor: '#fff',
+              borderColor: '#0284c7',
+              color: '#0284c7',
+              fontWeight: 600,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              cursor: 'pointer'
+            }}
+            title="Export official Context of the Organization PDF (Internal & External Factors, ISO 9001/45001 Clause 4.1)"
+          >
+            <Download size={16} /> {isExportingContext ? 'Generating Context...' : 'Export Context PDF'}
+          </button>
+
+          <button 
+            className="btn btn-outline"
+            onClick={handleExportPartiesPdf}
+            disabled={isExportingParties}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              fontSize: '0.85rem', 
+              padding: '0.55rem 1rem',
+              backgroundColor: '#fff',
+              borderColor: '#059669',
+              color: '#059669',
+              fontWeight: 600,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              cursor: 'pointer'
+            }}
+            title="Export official Interested Parties Mapping PDF (ISO 9001/45001 Clause 4.2)"
+          >
+            <Download size={16} /> {isExportingParties ? 'Generating Parties...' : 'Export Interested Parties PDF'}
+          </button>
+
           <button 
             className="btn btn-secondary" 
             onClick={handleSeedOfficialData}
@@ -584,6 +700,27 @@ const OrganizationContext: React.FC = () => {
                       DB Issues ({dbIssues.length})
                     </button>
                   </div>
+                  <button
+                    onClick={handleExportContextPdf}
+                    disabled={isExportingContext}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      fontSize: '0.8rem',
+                      border: '1px solid #0284c7',
+                      borderRadius: '6px',
+                      backgroundColor: '#eff6ff',
+                      color: '#0284c7',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                    title="Export official Context of the Organization PDF (ISO 9001/45001 Clause 4.1)"
+                  >
+                    <Download size={14} /> {isExportingContext ? 'Generating...' : 'Export Context PDF'}
+                  </button>
                 </div>
               </div>
 
@@ -717,6 +854,26 @@ const OrganizationContext: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    onClick={handleExportPartiesPdf}
+                    disabled={isExportingParties}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      fontSize: '0.8rem',
+                      border: '1px solid #059669',
+                      borderRadius: '6px',
+                      backgroundColor: '#ecfdf5',
+                      color: '#059669',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                    title="Export official Clause 4.2 Interested Parties Register PDF"
+                  >
+                    <Download size={14} /> {isExportingParties ? 'Generating...' : 'Export Parties PDF'}
+                  </button>
                   <div style={{ position: 'relative' }}>
                     <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                     <input 
@@ -732,7 +889,7 @@ const OrganizationContext: React.FC = () => {
                       onClick={() => setViewMode('official')}
                       style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', border: 'none', backgroundColor: viewMode === 'official' ? '#cc0000' : '#f8fafc', color: viewMode === 'official' ? '#fff' : '#475569', cursor: 'pointer', fontWeight: 600 }}
                     >
-                      Official Record (Rev 05)
+                      Official Record (2026)
                     </button>
                     <button 
                       onClick={() => setViewMode('custom')}
@@ -773,8 +930,18 @@ const OrganizationContext: React.FC = () => {
                             </span>
                             <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>{party.category}</div>
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', verticalAlign: 'top', fontWeight: 600, color: '#0f172a' }}>
-                            {party.name}
+                          <td style={{ padding: '0.85rem 1rem', verticalAlign: 'top', color: '#0f172a' }}>
+                            <div style={{ fontWeight: 600 }}>{party.name}</div>
+                            {party.needsAndExpectations && (
+                              <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '4px', lineHeight: '1.4' }}>
+                                <span style={{ fontWeight: 600, color: '#0f172a' }}>Needs & Expectations: </span>{party.needsAndExpectations}
+                              </div>
+                            )}
+                            {party.records && (
+                              <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span>📎 Records:</span> {party.records}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '0.85rem 1rem', verticalAlign: 'top', fontSize: '0.78rem' }}>
                             <div style={{ color: '#475569' }}>IP→Co: <strong>{party.ipToCompany}</strong></div>
@@ -793,8 +960,8 @@ const OrganizationContext: React.FC = () => {
                     </tbody>
                   </table>
                   <div style={{ padding: '0.75rem 1rem', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Official Document Reference: <strong>PROME-QSP-CSVM-21 (Rev 05)</strong></span>
-                    <span>Clause 4.2 ISO 9001:2015 / ISO 9001:2018 Standard Compliance</span>
+                    <span>Official Document Reference: <strong>PROME-IMSR-CPSD-25 / PROME-QSP-CSVM-21 (Rev 06, Jan 2026)</strong></span>
+                    <span>Clause 4.2 ISO 9001:2015 & ISO 45001:2018 Standard Compliance</span>
                   </div>
                 </div>
               ) : (
@@ -866,12 +1033,11 @@ const OrganizationContext: React.FC = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '20px' }}>
-                      Ref: PROME-QSP-CSVM-18 (Rev 05)
+                      Ref: PROME-QSP-CSVM-18 (Rev 06)
                     </span>
-                    <a
-                      href="/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf"
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      onClick={handleExportScopePdf}
+                      disabled={isExportingScope}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -882,12 +1048,34 @@ const OrganizationContext: React.FC = () => {
                         fontSize: '0.78rem',
                         padding: '4px 12px',
                         borderRadius: '20px',
-                        textDecoration: 'none',
+                        border: 'none',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
                         cursor: 'pointer'
                       }}
+                      title="Export multi-page Scope of the Organization PDF with charts, flowchart & links"
                     >
-                      <Printer size={13} /> View & Print Official Policy PDF (2026) <ExternalLink size={12} />
+                      <Download size={13} /> {isExportingScope ? 'Generating...' : 'Export Scope PDF'}
+                    </button>
+                    <a
+                      href="/uploads/company-documents/PROME_Quality_OHS_Policy_2026.pdf"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: 'rgba(255,255,255,0.15)',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '0.78rem',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        textDecoration: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Printer size={13} /> View Policy PDF (2026) <ExternalLink size={12} />
                     </a>
                   </div>
                 </div>
