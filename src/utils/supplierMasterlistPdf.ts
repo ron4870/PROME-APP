@@ -24,7 +24,7 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
   const pageHeight = 297;
   const marginX = 14;
   const contentWidth = pageWidth - marginX * 2; // 182mm
-  const bottomLimit = pageHeight - 20;
+  const bottomLimit = pageHeight - 22;
 
   // Colors
   const primaryRed = [153, 27, 27]; // #991b1b
@@ -37,7 +37,7 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
 
   let curPage = 1;
 
-  // Draw Page Header Box
+  // Draw Page Header Box - Zero text overwrite
   const drawPageHeader = () => {
     // Top primary bar
     doc.setDrawColor(primaryRed[0], primaryRed[1], primaryRed[2]);
@@ -45,61 +45,75 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
     doc.line(marginX, 8, marginX + contentWidth, 8);
 
     const boxY = 9.5;
-    const boxH = 22;
+    const boxH = 25; // 25mm height for comfortable spacing
     doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
     doc.setLineWidth(0.35);
     doc.setFillColor(255, 255, 255);
     doc.rect(marginX, boxY, contentWidth, boxH, 'FD');
 
-    // Left: Logo
-    const div1 = marginX + 46;
-    const div2 = marginX + contentWidth - 48;
+    // Dividers: Left logo = 44mm, Right meta = 48mm, Center = 90mm
+    const div1 = marginX + 44; // 58mm
+    const div2 = marginX + contentWidth - 48; // 148mm
     doc.line(div1, boxY, div1, boxY + boxH);
     doc.line(div2, boxY, div2, boxY + boxH);
 
+    // Left Column: High-Res Logo
     try {
-      doc.addImage(PROME_HEADER_LOGO_BASE64, 'JPEG', marginX + 3, boxY + 2.5, 40, 17);
+      doc.addImage(PROME_HEADER_LOGO_BASE64, 'JPEG', marginX + 3, boxY + 3.5, 38, 17.5);
     } catch (e) {
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setTextColor(primaryRed[0], primaryRed[1], primaryRed[2]);
       doc.text('PROME CONSULTANTS', marginX + 3, boxY + 11);
+      doc.setFontSize(8);
+      doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
+      doc.text('LIMITED', marginX + 3, boxY + 16);
     }
 
-    // Center: Title & Document Metadata
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11.5);
-    doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-    doc.text('MASTER LIST OF APPROVED SUPPLIERS', (div1 + div2) / 2, boxY + 7, { align: 'center' });
+    // Center Column: Centered title with plenty of room (90mm wide, center at 103mm)
+    const centerX = (div1 + div2) / 2;
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(9.5);
     doc.setTextColor(primaryRed[0], primaryRed[1], primaryRed[2]);
-    doc.text('ISO 9001:2015 Clause 8.4 — Control of Externally Provided Processes', (div1 + div2) / 2, boxY + 12.5, { align: 'center' });
+    doc.text('PROME CONSULTANTS LIMITED', centerX, boxY + 6.0, { align: 'center' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(slateText[0], slateText[1], slateText[2]);
-    doc.text('Document Ref: PROME-IMSR-TO-31 | Original: Dec 2023 | Revision: Jan 2026', (div1 + div2) / 2, boxY + 17.5, { align: 'center' });
-
-    // Right: Control Metadata
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(11);
     doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
-    doc.text('CONTROLLED DOCUMENT', div2 + 3, boxY + 5);
+    doc.text('MASTER LIST OF APPROVED SUPPLIERS', centerX, boxY + 11.5, { align: 'center' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(primaryRed[0], primaryRed[1], primaryRed[2]);
+    doc.text('ISO 9001:2015 Clause 8.4 — Control of External Providers', centerX, boxY + 16.5, { align: 'center' });
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.8);
     doc.setTextColor(slateText[0], slateText[1], slateText[2]);
-    doc.text('Issue: Version 2026', div2 + 3, boxY + 9);
-    doc.text('Approved: Eng. R. Kibuuka', div2 + 3, boxY + 13);
-    doc.text('Status: Active / Approved', div2 + 3, boxY + 17);
-    doc.text('Dept: PMBDD / Procurement', div2 + 3, boxY + 20.5);
+    doc.text('Integrated Management System (IMS) Operational Register 2026', centerX, boxY + 21.0, { align: 'center' });
+
+    // Right Column: Document Control Metadata (Inside 48mm width, x = 148 to 196)
+    const rightX = div2 + 3;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
+    doc.text('CONTROLLED DOCUMENT', rightX, boxY + 5.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.4);
+    doc.setTextColor(slateText[0], slateText[1], slateText[2]);
+    doc.text('Ref: PROME-IMSR-TO-31', rightX, boxY + 9.5);
+    doc.text('Issue Date: Dec 2023', rightX, boxY + 13.5);
+    doc.text('Revision: Jan 2026 (Rev 01)', rightX, boxY + 17.5);
+    doc.text('Approval: Eng. R. Kibuuka (MD)', rightX, boxY + 21.5);
 
     return boxY + boxH + 4;
   };
 
+  // Draw Page Footer - Zero text overwrite
   const drawPageFooter = () => {
-    const footerY = pageHeight - 10;
+    const footerY = pageHeight - 11;
     doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
     doc.setLineWidth(0.3);
     doc.line(marginX, footerY - 2, marginX + contentWidth, footerY - 2);
@@ -107,18 +121,18 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-    doc.text('PROME Consultants Limited — Master List of Approved Suppliers (PROME-IMSR-TO-31)', marginX, footerY + 2);
-    doc.text('Confidential — Controlled IMS Record', pageWidth / 2, footerY + 2, { align: 'center' });
-    doc.text(`Page ${curPage}`, marginX + contentWidth, footerY + 2, { align: 'right' });
+    doc.text('PROME Consultants Ltd | Ref: PROME-IMSR-TO-31', marginX, footerY + 2.5);
+    doc.text('Confidential — Master List of Approved Suppliers 2026', pageWidth / 2, footerY + 2.5, { align: 'center' });
+    doc.text(`Page ${curPage}`, marginX + contentWidth, footerY + 2.5, { align: 'right' });
   };
 
   // Table Columns (Total = 182mm)
   const cols = [
     { key: 'no', title: 'REF / NO.', width: 22 },
-    { key: 'name', title: 'SUPPLIER NAME', width: 50 },
-    { key: 'address', title: 'CONTACT ADDRESS', width: 50 },
-    { key: 'phone', title: 'TELEPHONE & FAX', width: 36 },
-    { key: 'status', title: 'STATUS', width: 24 },
+    { key: 'name', title: 'SUPPLIER NAME', width: 52 },
+    { key: 'address', title: 'CONTACT ADDRESS', width: 52 },
+    { key: 'phone', title: 'TELEPHONE & FAX', width: 34 },
+    { key: 'status', title: 'STATUS', width: 22 },
   ];
 
   const drawTableHeader = (startY: number) => {
@@ -174,10 +188,10 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
     y += 5.5;
 
     group.forEach((item, rIdx) => {
-      const noLines = doc.splitTextToSize(item.supplierNumber, cols[0].width - 3);
-      const nameLines = doc.splitTextToSize(item.name, cols[1].width - 3);
-      const addrLines = doc.splitTextToSize(item.contactName || 'Kampala, Uganda', cols[2].width - 3);
-      const phoneLines = doc.splitTextToSize(item.phone || '-', cols[3].width - 3);
+      const noLines = doc.splitTextToSize(item.supplierNumber, cols[0].width - 4);
+      const nameLines = doc.splitTextToSize(item.name, cols[1].width - 4);
+      const addrLines = doc.splitTextToSize(item.contactName || 'Kampala, Uganda', cols[2].width - 4);
+      const phoneLines = doc.splitTextToSize(item.phone || '-', cols[3].width - 4);
 
       const maxLines = Math.max(noLines.length, nameLines.length, addrLines.length, phoneLines.length, 1);
       const rowH = Math.max(maxLines * 3.4 + 3.0, 7.5);
@@ -259,8 +273,8 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
 
   y += 5;
 
-  // Sign-off Box
-  const signH = 26;
+  // Sign-off Box - clean layout with zero text/signature collision
+  const signH = 28;
   doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
   doc.setLineWidth(0.35);
@@ -282,24 +296,18 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
   doc.text('Stephanie Apio Canowira', lX, y + 10.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.8);
   doc.setTextColor(slateText[0], slateText[1], slateText[2]);
-  doc.text('Internal Auditor / Procurement Document Controller', lX, y + 14.5);
-  doc.text('Date: 04th January 2026 | Ref: PROME-IMSR-TO-31', lX, y + 18.5);
-  doc.text('Status: All listed vendors evaluated & confirmed compliant', lX, y + 22.5);
+  doc.text('Internal Auditor / Procurement Document Controller', lX, y + 15.0);
+  doc.text('Date: 04th January 2026 | Ref: PROME-IMSR-TO-31', lX, y + 19.5);
+  doc.text('Status: All listed vendors evaluated & confirmed compliant', lX, y + 24.0);
 
-  // Right: Approved by
+  // Right: Approved by (Text on left side of cell, signature on right side of cell)
   const rX = marginX + half + 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(darkNavy[0], darkNavy[1], darkNavy[2]);
   doc.text('APPROVED BY:', rX, y + 5.5);
-
-  try {
-    doc.addImage(MD_SIGNATURE_BASE64, 'PNG', rX + half - 42, y + 2.5, 30, 18);
-  } catch (e) {
-    // fallback
-  }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
@@ -307,11 +315,19 @@ export const generateSupplierMasterListPDF = (suppliers: SupplierItemDef[]): jsP
   doc.text('Eng. Ronald Kibuuka', rX, y + 10.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.8);
   doc.setTextColor(slateText[0], slateText[1], slateText[2]);
-  doc.text('Managing Director / Top Management', rX, y + 14.5);
-  doc.text('Date: 04th January 2026 | Revision Date: January 2026', rX, y + 18.5);
-  doc.text('Authorization: Approved for 2026 IMS Operations', rX, y + 22.5);
+  doc.text('Managing Director / Top Management', rX, y + 15.0);
+  doc.text('Date: 04th January 2026', rX, y + 19.5);
+  doc.text('Authorization: Approved for 2026 IMS Operations', rX, y + 24.0);
+
+  // Signature image placed on right margin of right cell without touching text
+  try {
+    const sigX = marginX + contentWidth - 32;
+    doc.addImage(MD_SIGNATURE_BASE64, 'PNG', sigX, y + 4.5, 28, 17);
+  } catch (e) {
+    // fallback
+  }
 
   drawPageFooter();
 
