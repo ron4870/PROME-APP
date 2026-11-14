@@ -143,9 +143,42 @@ export default function LocalPurchaseOrderForm() {
       });
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      if (pdfHeight <= pageHeight) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      } else if (pdfHeight <= pageHeight * 1.25) {
+        const scale = pageHeight / pdfHeight;
+        const scaledWidth = pdfWidth * scale;
+        const offsetX = (pdfWidth - scaledWidth) / 2;
+        pdf.addImage(imgData, 'JPEG', offsetX, 0, scaledWidth, pageHeight);
+      } else {
+        const pxPerMm = canvas.width / pdfWidth;
+        const pagePx = pageHeight * pxPerMm;
+        let srcY = 0;
+        let pNum = 1;
+
+        while (srcY < canvas.height) {
+          if (pNum > 1) pdf.addPage();
+          const slicePx = Math.min(pagePx, canvas.height - srcY);
+          const sliceMm = slicePx / pxPerMm;
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = slicePx;
+          const ctx = sliceCanvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+            ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, sliceCanvas.width, slicePx);
+            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+            pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, sliceMm);
+          }
+          srcY += slicePx;
+          pNum++;
+        }
+      }
       pdf.save(`${currentUniqueId || 'LPO'}.pdf`);
 
       if (!isReadOnly) {
@@ -194,13 +227,15 @@ export default function LocalPurchaseOrderForm() {
           style={{
             width: '210mm',
             minHeight: '297mm',
-            padding: '20mm',
+            padding: '16mm 20mm',
             backgroundColor: 'white',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             fontFamily: 'Arial, sans-serif',
             color: 'black',
             boxSizing: 'border-box',
-            position: 'relative'
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
           {/* Header */}
@@ -384,16 +419,18 @@ export default function LocalPurchaseOrderForm() {
               </tbody>
             </table>
 
-            <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
-              <div>PROME Consultants Ltd - ISO 9001:2015 Certified</div>
-              <div>&copy; {new Date().getFullYear()} PROME Consultants Ltd. All Rights Reserved.</div>
-            </div>
-
-            <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
-              <QRCode 
-                value={`https://ims.promeconsult.com/forms/local-purchase-order?id=${uniqueId || ''}`}
-                size={60} 
-              />
+            <div style={{ marginTop: 'auto', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ width: '50px' }}></div>
+              <div style={{ fontSize: '10px', textAlign: 'center', color: '#666' }}>
+                <div>PROME Consultants Ltd - ISO 9001:2015 Certified</div>
+                <div>&copy; {new Date().getFullYear()} PROME Consultants Ltd. All Rights Reserved.</div>
+              </div>
+              <div>
+                <QRCode 
+                  value={`https://ims.promeconsult.com/forms/local-purchase-order?id=${uniqueId || ''}`}
+                  size={50} 
+                />
+              </div>
             </div>
 
           </div>

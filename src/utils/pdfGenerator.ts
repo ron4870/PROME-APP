@@ -126,59 +126,77 @@ export const generateDynamicPDF = async (selectedNodes: any[], docType: string, 
     });
     
     // 5. Build PDF with Headers & Footers
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
-    
-    // Calculate how many pages this canvas takes
-    const canvasWidthInMm = pdfWidth;
-    const canvasHeightInMm = (canvas.height * pdfWidth) / canvas.width;
-    
-    let heightLeft = canvasHeightInMm;
-    let position = 0;
-    let pageNumber = 1;
-    
-    // A4 dimensions in mm
     const pageHeight = 297;
+
+    const headerH = 16;
+    const footerH = 16;
+    const pageContentH = pageHeight - headerH - footerH; // 265mm of content per page
 
     // Header & Footer Configuration
     const drawHeaderFooter = (pageNum: number) => {
       // Header
       pdf.setFillColor(241, 245, 249); // #f1f5f9
-      pdf.rect(0, 0, pdfWidth, 15, 'F');
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 116, 139);
-      pdf.text(title, 15, 10);
-      pdf.text(docType, pdfWidth - 15, 10, { align: 'right' });
+      pdf.rect(0, 0, pdfWidth, headerH, 'F');
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(title, 15, 10.5);
+      pdf.text(docType, pdfWidth - 15, 10.5, { align: 'right' });
+      pdf.setDrawColor(203, 213, 225);
+      pdf.setLineWidth(0.3);
+      pdf.line(0, headerH, pdfWidth, headerH);
       
       // Footer
       pdf.setFillColor(241, 245, 249);
-      pdf.rect(0, pdfHeight - 15, pdfWidth, 15, 'F');
-      pdf.text('PROME Consultants Ltd.', 15, pdfHeight - 6);
-      pdf.text(`Page ${pageNum}`, pdfWidth - 15, pdfHeight - 6, { align: 'right' });
+      pdf.rect(0, pdfHeight - footerH, pdfWidth, footerH, 'F');
+      pdf.setDrawColor(203, 213, 225);
+      pdf.setLineWidth(0.3);
+      pdf.line(0, pdfHeight - footerH, pdfWidth, pdfHeight - footerH);
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text('PROME Consultants Ltd. — Integrated Management System', 15, pdfHeight - 6.5);
+      pdf.text(`Page ${pageNum}`, pdfWidth - 15, pdfHeight - 6.5, { align: 'right' });
     };
 
-    // The first slice
-    pdf.addImage(imgData, 'PNG', 0, position, canvasWidthInMm, canvasHeightInMm);
-    drawHeaderFooter(pageNumber);
-    heightLeft -= pageHeight;
-    
-    // Subsequent slices
-    while (heightLeft > 0) {
-      position -= pageHeight; // shift image up
-      pdf.addPage();
-      pageNumber++;
-      pdf.addImage(imgData, 'PNG', 0, position, canvasWidthInMm, canvasHeightInMm);
-      // To hide the overlap at the top of the new page, we can draw a white rectangle over the top margin
-      // Actually, drawing the header covers the top 15mm.
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, pdfWidth, 15, 'F'); // white out top margin
-      pdf.rect(0, pdfHeight - 15, pdfWidth, 15, 'F'); // white out bottom margin
+    // Ratio of pixels per mm
+    const pxPerMm = canvas.width / pdfWidth;
+    const pageContentPx = pageContentH * pxPerMm;
+
+    let srcY = 0;
+    let pageNumber = 1;
+
+    while (srcY < canvas.height) {
+      if (pageNumber > 1) {
+        pdf.addPage();
+      }
+
+      const currentSlicePx = Math.min(pageContentPx, canvas.height - srcY);
+      const currentSliceMm = currentSlicePx / pxPerMm;
+
+      // Create slice canvas for this page to avoid text overlapping or cutoffs
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = currentSlicePx;
+      const ctx = sliceCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(
+          canvas,
+          0, srcY, canvas.width, currentSlicePx,
+          0, 0, sliceCanvas.width, currentSlicePx
+        );
+        const sliceData = sliceCanvas.toDataURL('image/png');
+        pdf.addImage(sliceData, 'PNG', 0, headerH, pdfWidth, currentSliceMm);
+      }
+
       drawHeaderFooter(pageNumber);
-      
-      heightLeft -= pageHeight;
+
+      srcY += currentSlicePx;
+      pageNumber++;
     }
     
     pdf.save(`${title} - ${docType}.pdf`);

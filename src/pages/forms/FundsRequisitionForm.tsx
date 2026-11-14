@@ -148,9 +148,44 @@ export default function FundsRequisitionForm() {
           
           const pdf = new jsPDF('p', 'mm', 'a4');
           const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
           const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
           
-          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+          if (pdfHeight <= pageHeight) {
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+          } else if (pdfHeight <= pageHeight * 1.25) {
+            // Scale proportionally to fit cleanly on single A4 page
+            const scale = pageHeight / pdfHeight;
+            const scaledWidth = pdfWidth * scale;
+            const offsetX = (pdfWidth - scaledWidth) / 2;
+            pdf.addImage(imgData, 'JPEG', offsetX, 0, scaledWidth, pageHeight);
+          } else {
+            // Multi-page slicing so text and signatures are not cut off
+            const pxPerMm = canvas.width / pdfWidth;
+            const pagePx = pageHeight * pxPerMm;
+            let srcY = 0;
+            let pNum = 1;
+
+            while (srcY < canvas.height) {
+              if (pNum > 1) pdf.addPage();
+              const slicePx = Math.min(pagePx, canvas.height - srcY);
+              const sliceMm = slicePx / pxPerMm;
+
+              const sliceCanvas = document.createElement('canvas');
+              sliceCanvas.width = canvas.width;
+              sliceCanvas.height = slicePx;
+              const ctx = sliceCanvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+                ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, sliceCanvas.width, slicePx);
+                const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+                pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, sliceMm);
+              }
+              srcY += slicePx;
+              pNum++;
+            }
+          }
           pdf.save(`${currentUniqueId || 'Funds-Requisition'}.pdf`);
           
           setIsSubmitting(false);
@@ -196,14 +231,16 @@ export default function FundsRequisitionForm() {
             ref={formRef}
             style={{ 
               width: '210mm', 
-              height: '297mm', 
+              minHeight: '297mm', 
               backgroundColor: 'white', 
-              padding: '20mm', 
+              padding: '16mm 20mm', 
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               fontFamily: '"Times New Roman", Times, serif',
               color: 'black',
               boxSizing: 'border-box',
-              position: 'relative'
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             {/* Header */}
@@ -361,20 +398,20 @@ export default function FundsRequisitionForm() {
               </div>
             </div>
 
-            <div style={{ marginTop: '20px', fontSize: '10px', textAlign: 'center', color: '#666' }}>
-              <div>PROME Consultants Ltd - ISO 9001:2015 Certified</div>
-              <div>PROME-IMSR-AFD-15</div>
-            </div>
-
-            <div style={{ position: 'absolute', bottom: '10mm', left: '20mm' }}>
-              <img src="/prome-stamp.png" alt="PROME Stamp" style={{ width: '80px', opacity: 0.9 }} />
-            </div>
-
-            <div style={{ position: 'absolute', bottom: '10mm', right: '20mm' }}>
-              <QRCode 
-                value={`https://ims.promeconsult.com/forms/funds-requisition?id=${uniqueId || ''}`}
-                size={50} 
-              />
+            <div style={{ marginTop: 'auto', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <img src="/prome-stamp.png" alt="PROME Stamp" style={{ width: '80px', opacity: 0.9 }} />
+              </div>
+              <div style={{ fontSize: '10px', textAlign: 'center', color: '#666' }}>
+                <div style={{ fontWeight: '600' }}>PROME Consultants Ltd - ISO 9001:2015 Certified</div>
+                <div>PROME-IMSR-AFD-15</div>
+              </div>
+              <div>
+                <QRCode 
+                  value={`https://ims.promeconsult.com/forms/funds-requisition?id=${uniqueId || ''}`}
+                  size={50} 
+                />
+              </div>
             </div>
 
           </div>

@@ -116,9 +116,42 @@ export default function CustomerPropertyForm() {
 
           const pdf = new jsPDF('p', 'mm', 'a4');
           const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
           const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+          if (pdfHeight <= pageHeight) {
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+          } else if (pdfHeight <= pageHeight * 1.25) {
+            const scale = pageHeight / pdfHeight;
+            const scaledWidth = pdfWidth * scale;
+            const offsetX = (pdfWidth - scaledWidth) / 2;
+            pdf.addImage(imgData, 'JPEG', offsetX, 0, scaledWidth, pageHeight);
+          } else {
+            const pxPerMm = canvas.width / pdfWidth;
+            const pagePx = pageHeight * pxPerMm;
+            let srcY = 0;
+            let pNum = 1;
+
+            while (srcY < canvas.height) {
+              if (pNum > 1) pdf.addPage();
+              const slicePx = Math.min(pagePx, canvas.height - srcY);
+              const sliceMm = slicePx / pxPerMm;
+
+              const sliceCanvas = document.createElement('canvas');
+              sliceCanvas.width = canvas.width;
+              sliceCanvas.height = slicePx;
+              const ctx = sliceCanvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+                ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, sliceCanvas.width, slicePx);
+                const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+                pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, sliceMm);
+              }
+              srcY += slicePx;
+              pNum++;
+            }
+          }
           pdf.save(`${currentUniqueId || 'PROME-Customer-Property-Info'}.pdf`);
 
           setIsSubmitting(false);

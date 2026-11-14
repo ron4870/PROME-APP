@@ -88,7 +88,35 @@ export default function TeamCVBuilder({ sectionId, team, onChange, wikiPages }: 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, pdf.internal.pageSize.getHeight()));
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      if (pdfHeight <= pageHeight) {
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      } else {
+        const pxPerMm = canvas.width / pdfWidth;
+        const pagePx = pageHeight * pxPerMm;
+        let srcY = 0;
+        let pNum = 1;
+
+        while (srcY < canvas.height) {
+          if (pNum > 1) pdf.addPage();
+          const slicePx = Math.min(pagePx, canvas.height - srcY);
+          const sliceMm = slicePx / pxPerMm;
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = slicePx;
+          const ctx = sliceCanvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+            ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, sliceCanvas.width, slicePx);
+            const sliceData = sliceCanvas.toDataURL('image/png');
+            pdf.addImage(sliceData, 'PNG', 0, 0, pdfWidth, sliceMm);
+          }
+          srcY += slicePx;
+          pNum++;
+        }
+      }
       pdf.save('Proposed_Team_Evaluations.pdf');
     } catch (err) {
       alert('Failed to generate PDF');

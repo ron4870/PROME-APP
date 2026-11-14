@@ -191,9 +191,36 @@ export default function BidSectionModule({ section, users, bid, onClose, onUpdat
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      // If content is very long, it might get cut off in a single page
-      // For a robust implementation, jsPDF needs chunking, but for this mock, one page scale is fine.
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, pdf.internal.pageSize.getHeight()));
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      if (pdfHeight <= pageHeight) {
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      } else {
+        // Multi-page slicing so text and tables are not cut off
+        const pxPerMm = canvas.width / pdfWidth;
+        const pagePx = pageHeight * pxPerMm;
+        let srcY = 0;
+        let pNum = 1;
+
+        while (srcY < canvas.height) {
+          if (pNum > 1) pdf.addPage();
+          const slicePx = Math.min(pagePx, canvas.height - srcY);
+          const sliceMm = slicePx / pxPerMm;
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = slicePx;
+          const ctx = sliceCanvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+            ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, sliceCanvas.width, slicePx);
+            const sliceData = sliceCanvas.toDataURL('image/png');
+            pdf.addImage(sliceData, 'PNG', 0, 0, pdfWidth, sliceMm);
+          }
+          srcY += slicePx;
+          pNum++;
+        }
+      }
       
       const bidTitle = bid?.opportunity?.title || 'Bid';
       const sectionName = section?.name || 'Section';
