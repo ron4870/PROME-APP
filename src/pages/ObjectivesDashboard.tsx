@@ -817,11 +817,12 @@ const ObjectivesDashboard: React.FC = () => {
               const isSelected = selectedDivision === div;
               let label = div === 'ALL' ? 'All Divisions' : div;
               if (div.includes('PMBDD')) label = 'PMBDD';
-              if (div.includes('CPSD') || div.includes('CP&SD') || div.includes('CORPORATE PLANNING')) label = 'CP&SD';
-              if (div.includes('BE&ED') || div.includes('PED')) label = 'PED';
-              if (div.includes('PDMD') || div.includes('PROJECT DELIVERY')) label = 'PDMD';
-              if (div.includes('FINANCE') || div.includes('FD') || div.includes('AFD')) label = 'Finance';
-              if (div.includes('HRAD') || div.includes('ADMINISTRATION')) label = 'HR&AD';
+              else if (div.includes('CPSD') || div.includes('CP&SD') || div.includes('CORPORATE PLANNING')) label = 'CP&SD';
+              else if (div.includes('BE&ED') || div.includes('PED')) label = 'PED';
+              else if (div.includes('PDMD') || div.includes('PROJECT DELIVERY')) label = 'PDMD';
+              else if (div.includes('AFD') || (div.includes('ADMINISTRATION') && div.includes('FINANCE'))) label = 'AFD';
+              else if (div.includes('FINANCE') || div.includes('FD')) label = 'Finance';
+              else if (div.includes('HRAD') || div.includes('ADMINISTRATION')) label = 'HR&AD';
               
               return (
                 <button
